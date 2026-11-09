@@ -1,6 +1,6 @@
 # ficheiros do macOS
 .DS_Store
-
+.vscode
 # Node modules — nunca devem ir para o repo
 node_modules/
 
