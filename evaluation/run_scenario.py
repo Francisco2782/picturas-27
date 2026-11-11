@@ -22,6 +22,11 @@ from typing import Any, Callable
 import requests
 from requests import Response
 
+try:
+    from .summarize import SummaryError, render_table, summarize
+except ImportError:  # Direct execution as `python evaluation/run_scenario.py`.
+    from summarize import SummaryError, render_table, summarize
+
 
 LOG_RE = re.compile(
     r"^(?P<timestamp>\S+)\s+(?:\S+\s+)?\[video\]\s+msg=(?P<msg>\S+)\s+"
@@ -528,6 +533,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.runs < 1:
+        raise SystemExit("--runs must be at least 1")
+    if args.warmup < 0:
+        raise SystemExit("--warmup must be zero or greater")
     if not 1 <= args.dispatch_delay <= 2:
         raise SystemExit("--dispatch-delay must be between 1 and 2 seconds")
     if not args.email:
@@ -555,6 +564,11 @@ def main(argv: list[str] | None = None) -> int:
     for index in range(args.runs):
         print(f"Starting valid run {index + 1}/{args.runs}", flush=True)
         run_once(api, args, "measured", paths)
+    try:
+        aggregate = summarize(args.output_dir, args.runs)
+    except SummaryError as exc:
+        raise ScenarioError(f"Unable to summarize requested evidence: {exc}") from exc
+    print(render_table(aggregate), flush=True)
     return 0
 
 

@@ -1,54 +1,70 @@
 # Video baseline evaluation
 
-This directory contains the evaluation-only scenario runner. It does not modify
-the application, Docker Compose, RabbitMQ, or frontend code.
+This evaluation-only harness measures contention between subtitle job A and
+brightness workload B. It leaves application and deployment code unchanged.
 
 ## Prerequisites
 
-Start the PictuRAS stack and ensure the account used by the runner is premium.
-The 177-second subtitle video exceeds the free-account duration limit. The
-sample files must be present at their default paths:
+- The PictuRAS Docker Compose stack is running, including the API, `video_queue`,
+  RabbitMQ management, and the `video_tool` worker.
+- Docker CLI access is available to read worker logs and resource statistics.
+- A premium account is available: the 177-second upload exceeds the free limit.
+- The three required samples exist at the paths below. The harness rejects
+  `corrupted.mp4` and `too_long_90s.mp4`; neither is part of this workload.
+- Python 3, `requests`, and a locally trusted/accepted self-signed certificate
+  setup. By default the runner allows the local self-signed certificate; use
+  `--verify-tls` only when the certificate is trusted.
+
+Required samples:
 
 - `samples/video/speech_mandela_177s_1080p.webm`
 - `samples/video/sample_10s_720p.mp4`
 - `samples/video/sample_6s.mov`
 
-The runner uses the local self-signed HTTPS certificate without verification by
-default. RabbitMQ management is sampled through `localhost:15672`, and Docker
-logs/stats are read from `picturas-video_tool-1` by default.
-
-## Warm-up command
-
-The current implementation is intentionally limited to Setup, Foundational,
-US1, and US2. Run exactly one uncounted warm-up and stop before the three valid
-runs with:
+Install dependencies and provide credentials through the environment:
 
 ```sh
+pip install requests
 export PICTURAS_EMAIL='premium-account@example.com'
 export PICTURAS_PASSWORD='your-picturas-password'
-export RABBITMQ_MANAGEMENT_PASSWORD='password'
-python3 evaluation/run_scenario.py --warmup 1 --runs 3 --stop-after-warmup
+export RABBITMQ_MANAGEMENT_PASSWORD='your-rabbitmq-password'
 ```
 
-Do not replace the quoted values with credentials committed to a file. The
-runner reads passwords only from environment variables and writes local
-evidence to `evaluation/evidence/`, which is ignored by Git.
+The runner also reads `RABBITMQ_MANAGEMENT_USER` (default `user`) and
+`VIDEO_WORKER_CONTAINER` (default `picturas-video_tool-1`). The API defaults to
+`https://localhost:8080/api-gateway`; RabbitMQ management defaults to
+`http://localhost:15672/api/queues/%2F/video_queue`.
 
-Required variables:
+## Run the scenario
 
-- `PICTURAS_EMAIL`: premium PictuRAS account email.
-- `PICTURAS_PASSWORD`: password for that account.
-- `RABBITMQ_MANAGEMENT_PASSWORD`: RabbitMQ management password (default user:
-  `user`).
+```sh
+python3 evaluation/run_scenario.py --runs 3 --warmup 1
+```
 
-Optional variables:
+Each run creates fresh projects. A uploads the 177-second speech video and uses
+`subtitles`; B uploads two copies of the 10-second MP4 and one 6-second MOV and
+uses `brightness`. A is submitted first; B follows after 1.5 seconds. The
+runner records result completion, UTC Docker log timestamps, queue samples, and
+worker CPU/memory samples. B's wait uses the first matching brightness log
+timestamp minus B's submission timestamp. Queue depth is corroborating evidence
+and the worker log is the processing-start measurement.
 
-- `PICTURAS_API_BASE` (default: `https://localhost:8080/api-gateway`)
-- `RABBITMQ_MANAGEMENT_URL` (default:
-  `http://localhost:15672/api/queues/%2F/video_queue`)
-- `RABBITMQ_MANAGEMENT_USER` (default: `user`)
-- `VIDEO_WORKER_CONTAINER` (default: `picturas-video_tool-1`)
+The evidence tree is local:
 
-The `--stop-after-warmup` flag is required for this increment. Aggregate
-summaries and the valid-run phase belong to User Story 3 and are not implemented
-yet.
+```text
+evaluation/evidence/<run-id>/
+├── run.json       # workload, status, timestamps, and matching worker logs
+├── samples.csv    # timestamped RabbitMQ and Docker samples
+└── summary.json   # status and the eight per-run metrics (or failure reason)
+```
+
+The summarizer excludes warm-up, invalid, and incomplete runs. It prints each
+valid measured run and mean/min/max for `a_duration_seconds`,
+`b_duration_seconds`, `b_wait_seconds`, `makespan_seconds`, `max_ready`,
+`max_unacked`, `peak_cpu_percent`, and `peak_memory_bytes`. The command exits
+non-zero if it cannot obtain the requested number of valid measured runs. To
+summarize existing evidence independently, use
+`python3 evaluation/summarize.py evaluation/evidence --runs 3`.
+
+No evidence files, credentials, JWTs, or authorization headers are committed.
+Keep generated evidence under `evaluation/evidence/`; it is ignored by Git.
