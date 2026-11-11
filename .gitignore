@@ -16,3 +16,6 @@ backups/
 __pycache__/
 *.py[cod]
 .venv/
+
+# local evaluation evidence
+evaluation/evidence/

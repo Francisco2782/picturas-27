@@ -75,22 +75,23 @@ specified maxima and peaks.
 
 ### User Story 3 - Compare Repeated Measurements (Priority: P2)
 
-As a project maintainer, I want mean and standard deviation across valid runs so
-that baseline evidence reflects variability rather than one lucky observation.
+As a project maintainer, I want mean, minimum, and maximum across valid runs so that
+baseline evidence reflects typical and boundary behavior rather than one lucky
+observation.
 
 **Why this priority**: Repeated measurements make comparison with the refactored
 system defensible and expose unstable scenarios.
 
 **Independent Test**: Run the command with at least three valid runs and verify that
-the printed summary contains one row per run and aggregate mean and standard
-deviation for every requested timing and resource metric.
+the printed summary contains one row per run and aggregate mean, minimum, and
+maximum for every requested timing and resource metric.
 
 **Acceptance Scenarios**:
 
 1. **Given** N valid measured runs, **When** the command finishes, **Then** it prints
-   a readable table containing per-run values and aggregate mean and standard
-   deviation for A duration, B duration, B wait, makespan, maximum ready,
-   maximum unacknowledged, peak CPU, and peak memory.
+   a readable table containing per-run values and aggregate mean, minimum, and
+   maximum for A duration, B duration, B wait, makespan, maximum ready, maximum
+   unacknowledged, peak CPU, and peak memory.
 2. **Given** the same scenario is run against the baseline and a later refactoring,
    **When** the evaluator compares the result directories, **Then** both executions
    use the same workload definition, sampling interval, run count, and environment
@@ -136,7 +137,7 @@ deviation for every requested timing and resource metric.
   one-second intervals while the scenario is active.
 - **FR-009**: The harness MUST write timestamped raw observations and a per-run
   summary containing all metrics required by FR-006 through FR-008.
-- **FR-010**: The harness MUST calculate and print mean and standard deviation over
+- **FR-010**: The harness MUST calculate and print mean, minimum, and maximum over
   valid measured runs for every per-run summary metric.
 - **FR-011**: The warm-up run MUST be excluded from aggregate statistics, and the
   harness MUST identify warm-up, valid, invalid, and incomplete runs distinctly.
@@ -168,7 +169,7 @@ deviation for every requested timing and resource metric.
 - **Raw Observation**: A timestamped queue-depth or worker-resource sample captured
   during a run.
 - **Run Summary**: Derived timing, queue, resource, and validity metrics for one run.
-- **Aggregate Summary**: Mean and standard deviation of each requested metric across
+- **Aggregate Summary**: Mean, minimum, and maximum of each requested metric across
   valid measured runs, excluding warm-up and invalid runs.
 
 ## Success Criteria *(mandatory)*
@@ -183,7 +184,7 @@ deviation for every requested timing and resource metric.
   maximum unacknowledged, peak CPU, and peak memory.
 - **SC-003**: Every valid measured run retains timestamped raw observations at an
   average interval no greater than 1.5 seconds while processing is active.
-- **SC-004**: Aggregate output includes mean and standard deviation for all eight
+- **SC-004**: Aggregate output includes mean, minimum, and maximum for all eight
   requested metrics and excludes the warm-up and invalid runs.
 - **SC-005**: Across three requested measured runs, the command either produces
   three valid summaries or exits with a clear statement that the required evidence
@@ -206,7 +207,7 @@ deviation for every requested timing and resource metric.
   behavior needed by the scenario; this feature does not alter those services.
 - A one-to-two-second dispatch gap and approximately one-second observation interval
   are acceptable repeatability tolerances for the baseline scenario.
-- Standard deviation is calculated across valid measured runs using one documented
-  convention consistently for baseline and final measurements.
+- Aggregate mean, minimum, and maximum are calculated across valid measured runs
+  using one documented convention consistently for baseline and final measurements.
 - Evaluation output may contain timing and resource data but must not contain
   credentials, tokens, or personal account information.
