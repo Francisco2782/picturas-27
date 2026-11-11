@@ -128,6 +128,34 @@ baseline and final configurations:
 
 Do not commit evidence or credentials.
 
+### Verifiable requirements
+
+- **NFR-CAP-001 — Official baseline:** The baseline measurement MUST run from
+  tag `phase2-base` and record its resolved commit SHA. It MUST contain one
+  uncounted warm-up and three valid measured runs; invalid/incomplete attempts
+  MUST remain in the evidence set and MUST NOT count toward three.
+- **NFR-CAP-002 — Bounded capacity change:** The final configuration MUST run
+  exactly two `video_tool` replicas consuming the existing `video_queue`, with
+  one unacknowledged job per replica. It MUST NOT add a subtitle queue or change
+  the `projects` dispatch contract.
+- **NFR-CAP-003 — Wait-time acceptance:** For each valid run, the harness MUST
+  calculate `b_wait_seconds` from B submission to the first matching brightness
+  worker log across the worker group. The final three-run mean MUST be at most
+  15 seconds to meet the target and MUST be at most 30 seconds to meet the
+  minimum acceptable level.
+- **NFR-CAP-004 — Complete observations:** Each run MUST retain all eight defined
+  metrics. Queue depth MUST represent the shared queue. CPU and memory MUST cover
+  every worker replica, retaining per-replica samples and reporting group peaks
+  using the aggregation defined above.
+- **NFR-CAP-005 — Functional and operational validity:** A run with a worker
+  crash, OOM event, processing failure, or missing expected result MUST be marked
+  invalid. The report MUST include these events and CPU, memory, queue and restart
+  observations; no extra CPU/memory ceiling is imposed.
+- **NFR-CAP-006 — Comparable evidence:** Baseline and final MUST use the same
+  measurement harness revision, workload, samples, host/Docker limits, account,
+  and harness parameters. Their evidence sets MUST contain the raw observations,
+  summaries, environment manifest, and worker-group observations listed above.
+
 ## NFR 2 — Usability: operability during processing
 
 **ISO/IEC 25010:2011:** Usability, operability.
@@ -217,6 +245,35 @@ configuration, sample identity, start/end times, four interaction outcomes,
 navigation/refresh outcomes, observed status/progress, subtitle result, and
 timestamped notes or screenshots. Archive these artifacts beside the relevant
 baseline/final evidence without credentials or session tokens.
+
+### Verifiable requirements
+
+- **NFR-USE-001 — Reproducible trial:** Each baseline and final measurement set
+  MUST use one warm-up and three valid trials under the shared Chromium,
+  1280×720, premium-account conditions. Each trial MUST use fresh, independent
+  projects A and B and the same 10-second speech-bearing sample; a no-audio or
+  no-speech no-op MUST NOT count as a valid trial.
+- **NFR-USE-002 — Concurrent operability:** While A's subtitle job is active, the
+  evaluator MUST be able to open B, use B's toolbar controls without starting a
+  second processing job, return to A, and confirm A's current progress/status.
+  Each action MUST be scored separately and completed during the active window.
+- **NFR-USE-003 — State recovery:** After navigating away and returning, and after
+  refreshing the page, the UI MUST show the latest available status for A. It
+  MUST NOT show a stale active state after completion or report false completion.
+  Navigation and refresh outcomes MUST be recorded separately for every trial.
+- **NFR-USE-004 — Acceptance threshold:** The target is 12/12 successful scored
+  interactions and 3/3 successful navigation and refresh recoveries. The minimum
+  acceptable result is at least 3/4 interactions in every trial, plus 3/3 correct
+  navigation recoveries and 3/3 correct refresh recoveries, with no false
+  completion.
+- **NFR-USE-005 — Baseline validity:** The baseline score MUST be measured on
+  `phase2-base` before application changes. Source inspection or the provisional
+  0/4 estimate MUST NOT be substituted for the observed baseline.
+- **NFR-USE-006 — Side effects and evidence:** Every valid or invalid trial MUST
+  retain its interaction scores, navigation/refresh outcomes, subtitle duration
+  and result, status observations, and redacted timestamped notes or screenshots.
+  The report MUST include status/API request counts and stale/duplicate progress
+  observations; no arbitrary CPU or request-rate ceiling is imposed.
 
 ## Functional preservation
 
