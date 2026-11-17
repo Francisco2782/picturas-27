@@ -34,7 +34,7 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** evaluation tests pass; one- and two-replica observations are
     attributable to every container; missing replica data fails clearly rather
     than silently sampling only `video_tool-1`; no secrets are serialized.
-  - **Status:** Complete. 12/12 offline tests pass.
+  - **Estado:** Concluída. Os 12 testes offline passaram.
 
 - [x] **B-02 — Capture official performance baseline.**
   - **Depends on:** B-01.
@@ -50,7 +50,7 @@ start application changes before the official baseline gate is complete.
     revision, sample hashes, host/Docker configuration, one replica, raw runs,
     aggregate output and no credentials. Official baseline mean/range for
     `b_wait_seconds` is calculated from exactly three valid measured runs.
-  - **Status:** Complete. Official baseline mean `b_wait_seconds` = 61.727 s (range 61.390–61.936 s).
+  - **Estado:** Concluída. Média oficial de `b_wait_seconds` = 61,727 s (intervalo 61,390–61,936 s).
 
 - [x] **B-03 — Capture official usability baseline.**
   - **Depends on:** B-02's checkout/environment manifest; still on
@@ -68,7 +68,7 @@ start application changes before the official baseline gate is complete.
     navigation and refresh outcomes, sample hash, timestamps, status
     observations and redacted notes/screenshots. Do not substitute the earlier
     source-based 0/4 estimate.
-  - **Status:** Complete. 6/12 interactions passed (50%), navigation recovery 0/3 (0%), refresh recovery 0/3 (0%).
+  - **Estado:** Concluída. Passaram 6/12 interações (50%); a recuperação por navegação passou em 0/3 ensaios (0%) e por atualização da página em 0/3 (0%).
 
 - [x] **B-04 — Baseline gate review.**
   - **Depends on:** B-02 and B-03.
@@ -77,17 +77,18 @@ start application changes before the official baseline gate is complete.
     representative raw evidence for provenance and secret leakage.
   - **Acceptance:** both official baseline sets are reproducible and complete;
     team records approval before app implementation starts.
-  - **Status:** APPROVED on 2026-11-17. Implementation gate unlocked.
+  - **Estado:** APROVADA em 2026-11-17. Gate de implementação desbloqueada.
 
 ## 1. Implementation — NFR performance capacity
 
-### Agreed implementation order (2026-11-17)
+### Ordem de implementação acordada (2026-11-17)
 
-- Complete the Performance workstream first: P-01, then P-02 and P-03.
-- U-01 is complete and remains documented; defer U-02, U-03 and U-04 until
-  P-02 and P-03 are complete.
-- After P-03, resume the Usability workstream at U-02, followed by U-03 and U-04.
-- Run the integrated regression tasks after both workstreams are complete.
+- Concluir primeiro o conjunto de tarefas de Desempenho: P-01, depois P-02 e
+  P-03.
+- U-01 está concluída e documentada; adiar U-02, U-03 e U-04 até terminar P-02 e
+  P-03.
+- Depois de P-03, retomar Usabilidade em U-02 e seguir para U-03 e U-04.
+- Executar as tarefas de regressão integrada depois de concluir os dois conjuntos.
 
 - [x] **P-01 — Validate bounded Compose scaling.**
   - **Depends on:** B-04.
@@ -102,7 +103,7 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** exactly two observable final replicas; queue, message
     contract, shared volumes, ack-after-completion and default local scale remain
     unchanged.
-  - **Status:** Complete. Started `video_tool` with `--scale video_tool=2`; both containers ran the same worker image and mounted `image_data` plus `whisper_models`. RabbitMQ showed exactly two active `video_queue` consumers, both with acknowledgements required and `prefetch_count=1`. Compose has no replica override, so its default remains one. Captured details: `evaluation/evidence/phase2-p01-smoke-2026-11-17/manifest.json` (local/ignored).
+  - **Estado:** Concluída. Iniciado `video_tool` com `--scale video_tool=2`; ambos os containers usaram a mesma imagem e montaram `image_data` e `whisper_models`. O RabbitMQ mostrou exatamente dois consumidores ativos de `video_queue`, ambos com confirmação de mensagens obrigatória e `prefetch_count=1`. O Compose não define substituição do número de réplicas, pelo que mantém uma por omissão. Detalhes: `evaluation/evidence/phase2-p01-smoke-2026-11-17/manifest.json` (ficheiro local, ignorado pelo Git).
 
 - [ ] **P-02 — Verify concurrent batch result safety.**
   - **Depends on:** P-01.
@@ -145,7 +146,7 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** authoritative status survives service/UI reload and cannot
     report an old run as current; existing result ownership and run tokens remain
     authoritative.
-  - **Status:** Complete. Added the latest-run `processingRun` snapshot to the Project model and pure transition helpers. Both processing start paths persist `running`; source/dispatch/worker failures persist `failed`; only an active matching run can commit `completed`; cancellation records `cancelled` while retaining the existing active-token invalidation. Snapshots retain per-video progress and replace the previous terminal snapshot when a newer run starts. `node --test tests/*.test.js` from `projects/`: 14 passed, 0 failed.
+  - **Estado:** Concluída. Acrescentado ao modelo Project o snapshot `processingRun` da execução mais recente e criadas funções puras de transição. Os dois caminhos de início guardam `running`; falhas ao obter originais, no despacho ou no worker guardam `failed`; só uma execução ativa com token correspondente pode fazer commit de `completed`; o cancelamento guarda `cancelled` e mantém a invalidação existente por token. O snapshot mantém o progresso por vídeo e é substituído quando começa uma execução mais recente. `node --test tests/*.test.js`, em `projects/`: 14 aprovados, 0 falhados.
 
 - [ ] **U-02 — Persist worker progress through the projects service.**
   - **Depends on:** U-01.
