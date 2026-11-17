@@ -18,7 +18,7 @@ start application changes before the official baseline gate is complete.
 
 ### Baseline preparation and capture
 
-- [ ] **B-01 — Extend evaluation worker-group observations.**
+- [x] **B-01 — Extend evaluation worker-group observations.**
   - **Depends on:** none; evaluation tooling changes only.
   - **Components/files:** `evaluation/run_scenario.py`,
     `evaluation/summarize.py`, `evaluation/tests/`; Docker CLI observation of
@@ -34,8 +34,9 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** evaluation tests pass; one- and two-replica observations are
     attributable to every container; missing replica data fails clearly rather
     than silently sampling only `video_tool-1`; no secrets are serialized.
+  - **Status:** Complete. 12/12 offline tests pass.
 
-- [ ] **B-02 — Capture official performance baseline.**
+- [x] **B-02 — Capture official performance baseline.**
   - **Depends on:** B-01.
   - **Components/files:** tag `phase2-base`; frozen `evaluation/` harness;
     local ignored `evaluation/evidence/` output.
@@ -49,8 +50,9 @@ start application changes before the official baseline gate is complete.
     revision, sample hashes, host/Docker configuration, one replica, raw runs,
     aggregate output and no credentials. Official baseline mean/range for
     `b_wait_seconds` is calculated from exactly three valid measured runs.
+  - **Status:** Complete. Official baseline mean `b_wait_seconds` = 61.727 s (range 61.390–61.936 s).
 
-- [ ] **B-03 — Capture official usability baseline.**
+- [x] **B-03 — Capture official usability baseline.**
   - **Depends on:** B-02's checkout/environment manifest; still on
     `phase2-base`, before application changes.
   - **Components/files:** existing frontend and project service; local redacted
@@ -66,18 +68,28 @@ start application changes before the official baseline gate is complete.
     navigation and refresh outcomes, sample hash, timestamps, status
     observations and redacted notes/screenshots. Do not substitute the earlier
     source-based 0/4 estimate.
+  - **Status:** Complete. 6/12 interactions passed (50%), navigation recovery 0/3 (0%), refresh recovery 0/3 (0%).
 
-- [ ] **B-04 — Baseline gate review.**
+- [x] **B-04 — Baseline gate review.**
   - **Depends on:** B-02 and B-03.
   - **Components/files:** both baseline evidence sets and environment manifests.
   - **Tests/validation:** independently replay the summarizer and inspect
     representative raw evidence for provenance and secret leakage.
   - **Acceptance:** both official baseline sets are reproducible and complete;
     team records approval before app implementation starts.
+  - **Status:** APPROVED on 2026-11-17. Implementation gate unlocked.
 
 ## 1. Implementation — NFR performance capacity
 
-- [ ] **P-01 — Validate bounded Compose scaling.**
+### Agreed implementation order (2026-11-17)
+
+- Complete the Performance workstream first: P-01, then P-02 and P-03.
+- U-01 is complete and remains documented; defer U-02, U-03 and U-04 until
+  P-02 and P-03 are complete.
+- After P-03, resume the Usability workstream at U-02, followed by U-03 and U-04.
+- Run the integrated regression tasks after both workstreams are complete.
+
+- [x] **P-01 — Validate bounded Compose scaling.**
   - **Depends on:** B-04.
   - **Components/files:** Compose runtime configuration for `video_tool`,
     `Tools/video/video.py`, RabbitMQ `video_queue`; no default replica change.
@@ -90,6 +102,7 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** exactly two observable final replicas; queue, message
     contract, shared volumes, ack-after-completion and default local scale remain
     unchanged.
+  - **Status:** Complete. Started `video_tool` with `--scale video_tool=2`; both containers ran the same worker image and mounted `image_data` plus `whisper_models`. RabbitMQ showed exactly two active `video_queue` consumers, both with acknowledgements required and `prefetch_count=1`. Compose has no replica override, so its default remains one. Captured details: `evaluation/evidence/phase2-p01-smoke-2026-11-17/manifest.json` (local/ignored).
 
 - [ ] **P-02 — Verify concurrent batch result safety.**
   - **Depends on:** P-01.
@@ -119,7 +132,7 @@ start application changes before the official baseline gate is complete.
 
 ## 2. Implementation — NFR usability during processing
 
-- [ ] **U-01 — Define durable run-status model and transitions.**
+- [x] **U-01 — Define durable run-status model and transitions.**
   - **Depends on:** B-04; can proceed independently of P-01 through P-03.
   - **Components/files:** `projects/models/project.js` and/or
     `projects/models/process.js`, `projects/routes/projects.js`.
@@ -132,6 +145,7 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** authoritative status survives service/UI reload and cannot
     report an old run as current; existing result ownership and run tokens remain
     authoritative.
+  - **Status:** Complete. Added the latest-run `processingRun` snapshot to the Project model and pure transition helpers. Both processing start paths persist `running`; source/dispatch/worker failures persist `failed`; only an active matching run can commit `completed`; cancellation records `cancelled` while retaining the existing active-token invalidation. Snapshots retain per-video progress and replace the previous terminal snapshot when a newer run starts. `node --test tests/*.test.js` from `projects/`: 14 passed, 0 failed.
 
 - [ ] **U-02 — Persist worker progress through the projects service.**
   - **Depends on:** U-01.

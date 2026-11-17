@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { dispatchProcessBatch } = require('../utils/processBatch');
+const { startProcessingRun } = require('../utils/processingRun');
 
 // Simulate workers completing immediately when published, which used to permit
 // the first source to commit before the second source had even been registered.
@@ -36,17 +37,35 @@ test('registration failure starts no workers and rolls back only newly registere
   assert.deepEqual([...pending], ['previous-run']);
 });
 
-test('a cancelled run cannot overwrite the committed results with a delayed commit', async () => {
+test('only the active current run can commit results and terminal status', async () => {
   const modelPath = require.resolve('../models/project');
   const controllerPath = require.resolve('../controllers/project');
   const originalModel = require.cache[modelPath];
   const originalController = require.cache[controllerPath];
-  const state = { user_id: 'owner', _id: 'project', activeToken: 8, committedToken: 6 };
+  const state = {
+    user_id: 'owner', _id: 'project', activeToken: 8, committedToken: 6,
+    processingRun: {
+      runToken: 8, state: 'running', outcome: null,
+      startedAt: new Date('2026-11-17T12:00:00Z'),
+      updatedAt: new Date('2026-11-17T12:00:00Z'), finishedAt: null,
+      videos: [{ mediaId: 'video', progress: 70, preview: false, updatedAt: new Date() }],
+    },
+  };
   require.cache[modelPath] = { id: modelPath, filename: modelPath, loaded: true, exports: {
+    findOne(filter) {
+      return { exec: async () => state.activeToken === filter.activeToken ? { ...state } : null };
+    },
     findOneAndUpdate(filter, update) {
       return { exec: async () => {
-        if (Object.entries(filter).some(([key, value]) => state[key] !== value)) return null;
-        Object.assign(state, update.$set);
+        if (state.activeToken !== filter.activeToken
+          || state.processingRun.runToken !== filter['processingRun.runToken']
+          || state.processingRun.state !== filter['processingRun.state']) return null;
+        for (const [key, value] of Object.entries(update.$set)) {
+          const parts = key.split('.');
+          let target = state;
+          while (parts.length > 1) target = target[parts.shift()];
+          target[parts[0]] = value;
+        }
         return { ...state };
       }};
     },
@@ -59,6 +78,17 @@ test('a cancelled run cannot overwrite the committed results with a delayed comm
     const result = await Project.commitRunIfActive('owner', 'project', 8, [{ procedure: 'extract_frames' }]);
     assert.equal(result.committedToken, 8);
     assert.equal(result.resultsToken, 8);
+    assert.equal(result.processingRun.state, 'completed');
+    assert.equal(result.processingRun.outcome, 'completed');
+    assert.equal(result.processingRun.videos[0].progress, 100);
+    assert.equal(await Project.commitRunIfActive('owner', 'project', 8, []), null);
+
+    state.activeToken = 9;
+    state.processingRun = startProcessingRun(9, ['video'], new Date());
+    const failed = await Project.failRunIfActive('owner', 'project', 9);
+    assert.equal(failed.processingRun.state, 'failed');
+    assert.equal(failed.processingRun.outcome, 'failed');
+    assert.equal(await Project.failRunIfActive('owner', 'project', 9), null);
   } finally {
     if (originalModel) require.cache[modelPath] = originalModel; else delete require.cache[modelPath];
     if (originalController) require.cache[controllerPath] = originalController; else delete require.cache[controllerPath];

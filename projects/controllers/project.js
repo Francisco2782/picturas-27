@@ -1,5 +1,6 @@
 var Project = require("../models/project");
 const ProjectModel = require("../models/project");
+const { finishProcessingRun } = require("../utils/processingRun");
 
 // DELETE condicional por versão
 module.exports.deleteIfVersion = async (user_id, project_id, expectedVersion) => {
@@ -92,9 +93,56 @@ module.exports.updateRaw = async (user_id, project_id, update) => {
 
 // Commit only if cancellation/new processing has not changed the active run.
 module.exports.commitRunIfActive = async (user_id, project_id, token, tools) => {
+  const current = await Project.findOne({ user_id, _id: project_id, activeToken: token }).exec();
+  if (!current) return null;
+
+  const processingRun = current.processingRun;
+  const hasCurrentRun = processingRun && processingRun.runToken === token;
+  const nextRun = hasCurrentRun
+    ? finishProcessingRun(processingRun, token, "completed")
+    : null;
+
+  // A failed run must never be changed to completed by a slower sibling job.
+  if (hasCurrentRun && !nextRun) return null;
+
+  const filter = { user_id, _id: project_id, activeToken: token };
+  const update = {
+    committedToken: token,
+    resultsToken: token,
+    committedTools: tools,
+  };
+  if (hasCurrentRun) {
+    filter["processingRun.runToken"] = token;
+    filter["processingRun.state"] = "running";
+    update.processingRun = nextRun;
+  } else {
+    // Backward compatibility for runs that were already in flight during rollout.
+    filter["processingRun.runToken"] = { $exists: false };
+  }
+
   return Project.findOneAndUpdate(
-    { user_id, _id: project_id, activeToken: token },
-    { $set: { committedToken: token, resultsToken: token, committedTools: tools } },
+    filter,
+    { $set: update },
+    { new: true }
+  ).exec();
+};
+
+module.exports.failRunIfActive = async (user_id, project_id, token) => {
+  const now = new Date();
+  return Project.findOneAndUpdate(
+    {
+      user_id,
+      _id: project_id,
+      activeToken: token,
+      "processingRun.runToken": token,
+      "processingRun.state": "running",
+    },
+    { $set: {
+      "processingRun.state": "failed",
+      "processingRun.outcome": "failed",
+      "processingRun.updatedAt": now,
+      "processingRun.finishedAt": now,
+    } },
     { new: true }
   ).exec();
 };

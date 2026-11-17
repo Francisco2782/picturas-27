@@ -29,6 +29,31 @@ const imgSchema = new mongoose.Schema({
   },
 });
 
+const runVideoSchema = new mongoose.Schema({
+  mediaId: { type: String, required: true },
+  progress: { type: Number, min: 0, max: 100, default: 0 },
+  preview: { type: Boolean, default: false },
+  updatedAt: { type: Date, required: true },
+}, { _id: false });
+
+const processingRunSchema = new mongoose.Schema({
+  runToken: { type: Number, required: true },
+  state: {
+    type: String,
+    enum: ["running", "completed", "failed", "cancelled"],
+    required: true,
+  },
+  outcome: {
+    type: String,
+    enum: ["completed", "failed", "cancelled", null],
+    default: null,
+  },
+  startedAt: { type: Date, required: true },
+  updatedAt: { type: Date, required: true },
+  finishedAt: { type: Date, default: null },
+  videos: { type: [runVideoSchema], default: [] },
+}, { _id: false });
+
 
 const projectSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -41,6 +66,8 @@ const projectSchema = new mongoose.Schema({
   cancelToken: { type: Number, default: 0 },
   committedToken: { type: Number, default: 0 },
   prevCommittedToken: { type: Number, default: 0 },
+  // Only the latest run snapshot is retained; a new run replaces this value.
+  processingRun: { type: processingRunSchema, default: undefined },
   committedTools: { type: Array, default: [] },        // snapshot das tools do último commit
   prevCommittedTools: { type: Array, default: [] },    // snapshot anterior para rollback (se o run cancelado chegou a commitar)
   

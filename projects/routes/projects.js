@@ -68,6 +68,7 @@ const {
 } = require("../utils/video");
 const { persistFrameResults } = require("../utils/frameResults");
 const { dispatchProcessBatch } = require("../utils/processBatch");
+const { startProcessingRun, finishProcessingRun } = require("../utils/processingRun");
 
 const storage = multer.memoryStorage();
 var upload = multer({ storage: storage });
@@ -215,6 +216,11 @@ function process_msg() {
         }
         
         else {
+          await Project.failRunIfActive(
+            process.user_id,
+            process.project_id,
+            process.token || 0
+          );
           send_msg_client_error(
             user_msg_id,
             timestamp,
@@ -1620,6 +1626,7 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
               img_resp.data.pipe(writer);
             });
           } catch (_) {
+            await Project.failRunIfActive(ownerId, req.params.project, runToken);
             res.status(400).jsonp("Error acquiring source images");
             return;
           }
@@ -1671,6 +1678,7 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
             send: (job) => send_msg_tool(job.msg_id, job.timestamp, job.og_img_uri, job.new_img_uri, job.tool_name, job.params),
           });
         } catch (error) {
+          await Project.failRunIfActive(ownerId, req.params.project, runToken);
           return res.status(603).jsonp("Could not start all processing requests. Please try again.");
         }
         res.sendStatus(201);
@@ -1706,6 +1714,10 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
 
           // abrir uma execução nova SEMPRE
           project.activeToken = (project.activeToken || 0) + 1;
+          project.processingRun = startProcessingRun(
+            project.activeToken,
+            project.imgs.filter(isVideoMedia).map((img) => String(img._id))
+          );
 
           // coerência de counters
           if (charged !== project.chargedAdvancedTools) {
@@ -1736,6 +1748,7 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
           await startProcessing();
         } catch (e) {
           console.error("Error starting processing (no advanced tools):", e);
+          if (runToken !== null) await Project.failRunIfActive(ownerId, req.params.project, runToken);
           res.status(500).jsonp("Error processing project");
         }
         return;
@@ -1763,6 +1776,10 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
 
             // abrir uma execução nova
             project.activeToken = (project.activeToken || 0) + 1;
+            project.processingRun = startProcessingRun(
+              project.activeToken,
+              project.imgs.filter(isVideoMedia).map((img) => String(img._id))
+            );
 
             const updated = await Project.updateIfVersion(
               ownerId,
@@ -1786,6 +1803,7 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
             await startProcessing();
           } catch (e) {
             console.error("Error starting processing (advanced tools):", e);
+            if (runToken !== null) await Project.failRunIfActive(ownerId, req.params.project, runToken);
             res.status(500).jsonp("Error processing project");
           }
         })
@@ -2267,6 +2285,12 @@ router.delete(
       const adv_ops = project.pendingAdvancedOps || 0;
 
       const cancelTok = project.activeToken || 0;
+
+      project.processingRun = finishProcessingRun(
+        project.processingRun,
+        cancelTok,
+        "cancelled"
+      ) || project.processingRun;
 
       // invalidar sempre execução atual
       project.activeToken = (project.activeToken || 0) + 1;
