@@ -13,20 +13,20 @@ Não devemos acrescentar funcionalidades novas.
 
 Preencher esta tabela para cada requisito escolhido.
 
-| Decisão | Requisito 1 | Requisito 2 |
+| Decisão | NFR 1 — Capacidade de processamento de vídeo | NFR 2 — Usabilidade durante o processamento |
 | --- | --- | --- |
-| Nome do requisito |  |  |
-| Classificação ISO/IEC 25010 |  |  |
-| Problema atual no sistema |  |  |
-| O que vamos medir? |  |  |
-| Unidade da medição |  |  |
-| Como vamos medir? |  |  |
-| Valor da baseline |  |  |
-| Valor-alvo |  |  |
-| Mínimo aceitável |  |  |
-| Refactoring proposto |  |  |
-| Testes de regressão |  |  |
-| Riscos/efeitos secundários |  |  |
+| Nome do requisito | Eficiência de desempenho — capacidade | Usabilidade — operabilidade |
+| Classificação ISO/IEC 25010:2011 | Eficiência de desempenho / capacidade | Usabilidade / operabilidade |
+| Problema atual no sistema | Existe uma réplica de `video_tool`, com `prefetch_count=1`, que processa cada pipeline de vídeo de forma síncrona. A transcrição CPU-bound de legendas ocupa esse worker e atrasa os restantes trabalhos na `video_queue`. | O dashboard apresenta uma sobreposição de processamento bloqueante e mantém o estado no componente. A navegação fica limitada e um refresh perde o estado visível do trabalho. |
+| O que vamos medir? | Métrica principal: `b_wait_seconds` (início do primeiro log `brightness` menos a submissão do projeto B). Também duração A/B, makespan, máximos da fila pronta/não confirmada e picos de CPU/RAM por worker e agregados. | Interações concluídas durante o processamento ativo (0–4 por ensaio e percentagem em três ensaios), recuperação após navegação (0–3) e após refresh (0–3). Registar ainda duração/resultado das legendas e pedidos de estado/API e eventos de progresso duplicados/obsoletos. |
+| Unidade da medição | Segundos; mensagens para máximos da fila; CPU em percentagem; memória em bytes; número de réplicas. | Número de interações e recuperações bem-sucedidas e percentagem. Pedidos/eventos em contagem e duração em segundos. |
+| Como vamos medir? | Cenário A/B fixo e automatizado: A processa o vídeo de fala com `subtitles`; B processa dois MP4 de 10 s e um MOV de 6 s com `brightness`. Projetos novos, A submetido 1–2 s antes de B. Uma amostra de aquecimento e três medições válidas. Baseline em `phase2-base` com uma réplica; final com duas. Agregar logs e amostras de todas as réplicas. | Chromium, viewport 1280×720 e conta premium. Um aquecimento e três ensaios válidos com projetos A/B independentes e o mesmo vídeo de 10 s com fala. Durante o job de legendas em A: abrir B, usar a toolbar sem iniciar outro processamento, regressar a A e confirmar o estado; depois verificar recuperação após navegação e refresh. Registar separadamente cada resultado. |
+| Valor da baseline | Ainda por medir oficialmente em `phase2-base`. Evidência local provisória: média de 65,7 s (intervalo 62,6–70,1 s), não aceite como baseline oficial. | Ainda por medir em `phase2-base`; não substituir por estimativas baseadas apenas na inspeção do código. |
+| Valor-alvo | Média final de `b_wait_seconds` ≤ 15 s em três medições válidas. | 12/12 interações; recuperação correta em 3/3 navegações e 3/3 refreshes, sem estado ativo obsoleto nem falsa conclusão. |
+| Mínimo aceitável | Média final de `b_wait_seconds` ≤ 30 s em três medições válidas. | Pelo menos 3/4 interações em cada ensaio; recuperação correta em 3/3 navegações e 3/3 refreshes; nenhuma falsa conclusão. |
+| Refactoring proposto | Executar duas réplicas limitadas do worker existente na mesma `video_queue`, cada uma com `prefetch_count=1`. Manter uma réplica por omissão, o contrato de dispatch e o pipeline integral por vídeo. Não criar uma fila separada para legendas. | Persistir no serviço `projects` o estado mínimo recuperável de cada execução; validar progresso por token e encaminhá-lo pelo `project_queue` existente; disponibilizar snapshot autorizado e mostrar o estado num painel não bloqueante partilhado entre páginas. Preservar o cancelamento apenas se já existir. |
+| Testes de regressão | Harness: zero/uma/duas réplicas, IDs que mudam, logs por réplica, amostras ausentes/malformadas e agregação alinhada. Aplicação: lotes concorrentes, conclusão fora de ordem, resultados únicos, tokens e falhas/limpeza; suites de projetos e `Tools/video`. | Transições, permissões, token, progresso monotónico, duplicados/atrasados, refresh/navegação/reconexão e estados terminais; regressões de imagem/vídeo, frontend e cancelamento se suportado. |
+| Riscos/efeitos secundários | Maior utilização de CPU/RAM, pressão na fila e volume partilhado, reinícios/OOM e conclusão fora de ordem. Registar recursos por worker e agregados, reinícios, falhas e execuções inválidas; verificar commits e limpeza. | Escritas/leitura adicionais de estado, eventos fora de ordem ou duplicados, estados presos após falha e exposição indevida do estado. Validar idempotência, precedência terminal, autorização e reconciliar snapshot/socket por token e timestamp. |
 
 ## Opções sugeridas no guideline
 

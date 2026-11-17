@@ -78,7 +78,13 @@ def aggregate(records: list[dict[str, Any]], required_runs: int | None = None) -
             "max": max(values) if values else 0,
             "count": len(values),
         }
-    return {"count": len(runs), "metrics": metrics, "runs": runs}
+    worker_peaks = [
+        {"run_id": run["run_id"], **worker}
+        for run in runs
+        for worker in (run.get("worker_metrics") or {}).values()
+    ]
+    return {"count": len(runs), "metrics": metrics, "runs": runs,
+            "worker_peaks": worker_peaks}
 
 
 def render_table(summary: dict[str, Any]) -> str:
@@ -91,6 +97,15 @@ def render_table(summary: dict[str, Any]) -> str:
     for name in METRICS:
         item = summary["metrics"][name]
         lines.append(f"Aggregate  {name}  {_format(item['mean'])}  {_format(item['min'])}  {_format(item['max'])}")
+    if summary.get("worker_peaks"):
+        lines.extend(("", "Per-worker peak resources (valid measured runs)",
+                      "run_id  container  name  peak_cpu_percent  peak_memory_bytes"))
+        for worker in summary["worker_peaks"]:
+            lines.append(
+                f"{worker['run_id']}  {worker['container_id']}  {worker['container_name']}  "
+                f"{_format(worker['peak_cpu_percent']) if worker['peak_cpu_percent'] is not None else 'n/a'}  "
+                f"{worker['peak_memory_bytes'] if worker['peak_memory_bytes'] is not None else 'n/a'}"
+            )
     waits = [run["metrics"]["b_wait_seconds"] for run in summary["runs"]]
     if any(value > 0 for value in waits):
         lines.append(f"B waited {sum(waits) / len(waits):.1f}s")

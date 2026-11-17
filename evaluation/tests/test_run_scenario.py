@@ -1,6 +1,6 @@
 import argparse
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 from evaluation.run_scenario import (
@@ -11,13 +11,64 @@ from evaluation.run_scenario import (
     ScenarioRun,
     WorkloadProject,
     calculate_metrics,
+    collect_logs,
+    discover_workers,
     parse_memory,
     parse_stats,
+    parse_worker_stats,
     parse_video_logs,
 )
 
 
 class RunScenarioTests(unittest.TestCase):
+    def test_worker_discovery_handles_zero_one_two_and_changing_ids(self):
+        outputs = ["", "abc123\tpicturas-video_tool-1\n",
+                   "def456\tpicturas-video_tool-2\nabc123\tpicturas-video_tool-1\n",
+                   "ghi789\tpicturas-video_tool-1\n"]
+        def runner(*args, **kwargs):
+            return Mock(stdout=outputs.pop(0))
+
+        self.assertEqual(discover_workers(runner=runner), [])
+        self.assertEqual(len(discover_workers(runner=runner)), 1)
+        two = discover_workers(runner=runner)
+        self.assertEqual(len(two), 2)
+        self.assertEqual([worker["container_id"] for worker in two], ["abc123", "def456"])
+        changed = discover_workers(runner=runner)
+        self.assertEqual(changed[0]["container_id"], "ghi789")
+
+    def test_worker_stats_keep_individual_values_and_sum_group_resources(self):
+        workers = [
+            {"container_id": "a1", "name": "video_tool-1"},
+            {"container_id": "b2", "name": "video_tool-2"},
+        ]
+        sample = parse_worker_stats(
+            "a1,video_tool-1,12.5%,10MiB / 1GiB\n"
+            "b2,video_tool-2,7%,20MiB / 1GiB\n", workers,
+            "2026-11-10T12:00:00+00:00",
+        )
+        self.assertEqual(sample.cpu_percent, 19.5)
+        self.assertEqual(sample.memory_bytes, 30 * 1024 * 1024)
+        self.assertEqual([worker.cpu_percent for worker in sample.workers], [12.5, 7.0])
+        self.assertEqual([worker.memory_bytes for worker in sample.workers],
+                         [10 * 1024 * 1024, 20 * 1024 * 1024])
+
+    def test_worker_stats_missing_or_malformed_rows_are_errors(self):
+        workers = [
+            {"container_id": "a1", "name": "video_tool-1"},
+            {"container_id": "b2", "name": "video_tool-2"},
+        ]
+        missing = parse_worker_stats(
+            "a1,video_tool-1,12%,10MiB / 1GiB\n", workers, "now",
+        )
+        self.assertTrue(missing.errors)
+        self.assertIsNone(missing.cpu_percent)
+        malformed = parse_worker_stats(
+            "a1,video_tool-1,bad\n"
+            "b2,video_tool-2,7%,20MiB / 1GiB\n", workers, "now",
+        )
+        self.assertTrue(malformed.errors)
+        self.assertIsNone(malformed.cpu_percent)
+
     def test_api_requests_use_bearer_authorization(self):
         client = ApiClient("https://localhost", verify_tls=False, timeout=1)
         client.jwt = "jwt-value"
@@ -62,6 +113,25 @@ class RunScenarioTests(unittest.TestCase):
         matches = parse_video_logs(output)
         self.assertEqual([item["label"] for item in matches], ["A", "B"])
         self.assertEqual(matches[1]["timestamp"], "2026-11-10T12:00:03.123456+00:00")
+
+    @patch("evaluation.run_scenario.subprocess.run")
+    @patch("evaluation.run_scenario.discover_workers")
+    def test_logs_are_collected_and_attributed_across_replicas(self, discover, run_command):
+        discover.return_value = [
+            {"container_id": "a1", "name": "video_tool-1"},
+            {"container_id": "b2", "name": "video_tool-2"},
+        ]
+        run_command.side_effect = [
+            Mock(stdout="2026-11-10T12:00:01Z [video] msg=a preview=False tools=['subtitles']\n", stderr=""),
+            Mock(stdout="2026-11-10T12:00:03Z [video] msg=b preview=False tools=['brightness']\n", stderr=""),
+        ]
+        args = argparse.Namespace(video_worker_service="video_tool", compose_project="picturas", timeout=1)
+
+        matches = collect_logs(args, "2026-11-10T12:00:00Z")
+
+        self.assertEqual([match["label"] for match in matches], ["A", "B"])
+        self.assertEqual([match["container_id"] for match in matches], ["a1", "b2"])
+        self.assertEqual(run_command.call_count, 2)
 
     def test_b_wait_uses_first_b_log_not_queue_transition(self):
         run = ScenarioRun("r", "warmup")

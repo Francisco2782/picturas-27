@@ -95,6 +95,15 @@ class WorkloadProject:
 
 
 @dataclass
+class WorkerSample:
+    container_id: str
+    name: str
+    cpu_percent: float | None
+    memory_bytes: int | None
+    errors: list[str] = field(default_factory=list)
+
+
+@dataclass
 class ResourceSample:
     timestamp: str
     ready: int | None
@@ -102,6 +111,7 @@ class ResourceSample:
     cpu_percent: float | None
     memory_bytes: int | None
     errors: list[str] = field(default_factory=list)
+    workers: list[WorkerSample] = field(default_factory=list)
 
 
 @dataclass
@@ -283,6 +293,67 @@ def parse_stats(output: str, timestamp: str | None = None) -> ResourceSample:
     return ResourceSample(timestamp or iso_now(), None, None, cpu, memory, errors)
 
 
+def discover_workers(
+    service: str = "video_tool", project: str = "picturas",
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> list[dict[str, str]]:
+    """Discover running Compose workers by service and project labels."""
+    command = [
+        "docker", "ps", "--filter", f"label=com.docker.compose.service={service}",
+        "--filter", f"label=com.docker.compose.project={project}",
+        "--format", "{{.ID}}\t{{.Names}}",
+    ]
+    try:
+        result = runner(command, check=True, capture_output=True, text=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ScenarioError(f"docker worker discovery failed: {exc}") from exc
+    workers: list[dict[str, str]] = []
+    for line in result.stdout.splitlines():
+        fields = line.strip().split("\t", 1)
+        if len(fields) == 2 and fields[0] and fields[1]:
+            workers.append({"container_id": fields[0], "name": fields[1]})
+    return sorted(workers, key=lambda worker: (worker["name"], worker["container_id"]))
+
+
+def parse_worker_stats(
+    output: str, workers: list[dict[str, str]], timestamp: str,
+) -> ResourceSample:
+    """Parse stats by Docker ID so output row ordering cannot mix replicas."""
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    errors: list[str] = []
+    samples: list[WorkerSample] = []
+    rows: dict[str, tuple[str, str]] = {}
+    for line in lines:
+        fields = [part.strip() for part in line.split(",", 3)]
+        if len(fields) == 4:
+            rows[fields[0]] = (fields[2], fields[3])
+        else:
+            errors.append(f"malformed docker stats row: {line!r}")
+    for worker in workers:
+        row = next((value for key, value in rows.items()
+                    if worker["container_id"].startswith(key)
+                    or key.startswith(worker["container_id"])), None)
+        if row is None:
+            samples.append(WorkerSample(worker["container_id"], worker["name"], None, None,
+                                        ["missing docker stats row"]))
+            errors.append(f"{worker['name']}: missing docker stats row")
+            continue
+        parsed = parse_stats(f"{row[0]},{row[1]}", timestamp)
+        samples.append(WorkerSample(
+            worker["container_id"], worker["name"], parsed.cpu_percent,
+            parsed.memory_bytes, parsed.errors,
+        ))
+        errors.extend(f"{worker['name']}: {error}" for error in parsed.errors)
+    cpu_values = [sample.cpu_percent for sample in samples if sample.cpu_percent is not None]
+    memory_values = [sample.memory_bytes for sample in samples if sample.memory_bytes is not None]
+    return ResourceSample(
+        timestamp, None, None,
+        sum(cpu_values) if len(cpu_values) == len(workers) and workers else None,
+        sum(memory_values) if len(memory_values) == len(workers) and workers else None,
+        errors, samples,
+    )
+
+
 def parse_video_logs(output: str) -> list[dict[str, str]]:
     matches: list[dict[str, str]] = []
     for line in output.splitlines():
@@ -355,6 +426,7 @@ class Sampler:
         self.args = args
         self.run = run
         self.stop_event = threading.Event()
+        self.worker_count: int | None = None
         self.thread = threading.Thread(target=self._loop, name="scenario-sampler", daemon=True)
 
     def start(self) -> None:
@@ -380,30 +452,68 @@ class Sampler:
             except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
                 sample.errors.append(f"rabbitmq sample failed: {exc}")
             try:
+                workers = discover_workers(
+                    self.args.video_worker_service, self.args.compose_project,
+                )
+                if not workers:
+                    raise ScenarioError(
+                        f"No running Compose workers found for project "
+                        f"{self.args.compose_project!r}, service "
+                        f"{self.args.video_worker_service!r}"
+                    )
+                if self.worker_count is None:
+                    self.worker_count = len(workers)
+                elif len(workers) != self.worker_count:
+                    raise ScenarioError(
+                        f"Worker replica count changed during run: expected "
+                        f"{self.worker_count}, found {len(workers)}"
+                    )
+                ids = [worker["container_id"] for worker in workers]
                 result = subprocess.run(
                     ["docker", "stats", "--no-stream", "--format",
-                     "{{.CPUPerc}},{{.MemUsage}}", self.args.video_worker_container],
+                     "{{.ID}},{{.Name}},{{.CPUPerc}},{{.MemUsage}}", *ids],
                     check=True, capture_output=True, text=True, timeout=self.args.timeout,
                 )
-                stats = parse_stats(result.stdout, sample.timestamp)
+                stats = parse_worker_stats(result.stdout, workers, sample.timestamp)
                 sample.cpu_percent, sample.memory_bytes = stats.cpu_percent, stats.memory_bytes
+                sample.workers = stats.workers
                 sample.errors.extend(stats.errors)
-            except (OSError, subprocess.SubprocessError) as exc:
-                sample.errors.append(f"docker stats failed: {exc}")
+            except (OSError, subprocess.SubprocessError, ScenarioError) as exc:
+                sample.errors.append(f"docker worker stats failed: {exc}")
             self.run.samples.append(sample)
             self.stop_event.wait(self.args.sample_interval)
 
 
-def collect_logs(args: argparse.Namespace, since: str) -> list[dict[str, str]]:
-    try:
-        result = subprocess.run(
-            ["docker", "logs", "--timestamps", "--since", since, args.video_worker_container],
-            check=True, capture_output=True, text=True, timeout=args.timeout,
+def collect_logs(
+    args: argparse.Namespace, since: str,
+    observed_workers: list[dict[str, str]] | None = None,
+) -> list[dict[str, str]]:
+    workers_by_id = {
+        worker["container_id"]: worker
+        for worker in (observed_workers or [])
+    }
+    for worker in discover_workers(args.video_worker_service, args.compose_project):
+        workers_by_id[worker["container_id"]] = worker
+    workers = sorted(workers_by_id.values(), key=lambda item: (item["name"], item["container_id"]))
+    if not workers:
+        raise ScenarioError(
+            f"No running Compose workers found for project {args.compose_project!r}, "
+            f"service {args.video_worker_service!r} while collecting logs"
         )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise ScenarioError(f"docker logs failed: {exc}") from exc
-    output = result.stdout + result.stderr
-    return parse_video_logs(output)
+    matches: list[dict[str, str]] = []
+    for worker in workers:
+        try:
+            result = subprocess.run(
+                ["docker", "logs", "--timestamps", "--since", since, worker["container_id"]],
+                check=True, capture_output=True, text=True, timeout=args.timeout,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ScenarioError(f"docker logs failed for {worker['name']}: {exc}") from exc
+        for match in parse_video_logs(result.stdout + result.stderr):
+            match["container_id"] = worker["container_id"]
+            match["container_name"] = worker["name"]
+            matches.append(match)
+    return sorted(matches, key=lambda item: (item["timestamp"], item["container_id"]))
 
 
 def prepare_project(
@@ -467,7 +577,11 @@ def run_once(api: ApiClient, args: argparse.Namespace, kind: str, paths: dict[st
         wait_for_result(api, a, args)
         wait_for_result(api, b, args)
         sampler.stop()
-        run.log_matches = collect_logs(args, run.started_at)
+        observed_workers = {
+            worker.container_id: {"container_id": worker.container_id, "name": worker.name}
+            for sample in run.samples for worker in sample.workers
+        }
+        run.log_matches = collect_logs(args, run.started_at, list(observed_workers.values()))
         metrics = calculate_metrics(run, run.samples)
         run.status = "valid"
         run.ended_at = iso_now()
@@ -491,13 +605,26 @@ def write_run_outputs(output_dir: Path, run: ScenarioRun, metrics: dict[str, Any
         json.dumps(redact(asdict(run)), indent=2, sort_keys=True), encoding="utf-8",
     )
     with (run_dir / "samples.csv").open("w", newline="", encoding="utf-8") as stream:
-        writer = csv.DictWriter(stream, fieldnames=["timestamp", "ready", "unacked", "cpu_percent", "memory_bytes", "errors"])
+        writer = csv.DictWriter(stream, fieldnames=["timestamp", "ready", "unacked", "cpu_percent", "memory_bytes", "workers", "errors"])
         writer.writeheader()
         for sample in run.samples:
-            writer.writerow(asdict(sample))
+            row = asdict(sample)
+            row["workers"] = json.dumps(row["workers"], sort_keys=True)
+            writer.writerow(row)
+    worker_metrics: dict[str, dict[str, Any]] = {}
+    for sample in run.samples:
+        for worker in sample.workers:
+            item = worker_metrics.setdefault(worker.container_id, {
+                "container_id": worker.container_id, "container_name": worker.name,
+                "peak_cpu_percent": None, "peak_memory_bytes": None,
+            })
+            if worker.cpu_percent is not None:
+                item["peak_cpu_percent"] = max(item["peak_cpu_percent"] or 0, worker.cpu_percent)
+            if worker.memory_bytes is not None:
+                item["peak_memory_bytes"] = max(item["peak_memory_bytes"] or 0, worker.memory_bytes)
     (run_dir / "summary.json").write_text(
         json.dumps({"run_id": run.run_id, "kind": run.kind, "status": run.status,
-                    "metrics": metrics, "error": run.error,
+                    "metrics": metrics, "worker_metrics": worker_metrics, "error": run.error,
                     "uploaded_files": {
                         label: project.uploaded_files
                         for label, project in run.projects.items()
@@ -521,7 +648,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rabbit-url", default=os.getenv("RABBITMQ_MANAGEMENT_URL", "http://localhost:15672/api/queues/%2F/video_queue"))
     parser.add_argument("--rabbit-user", default=os.getenv("RABBITMQ_MANAGEMENT_USER", "user"))
     parser.add_argument("--rabbit-password-env", default="RABBITMQ_MANAGEMENT_PASSWORD")
-    parser.add_argument("--video-worker-container", default=os.getenv("VIDEO_WORKER_CONTAINER", "picturas-video_tool-1"))
+    parser.add_argument("--compose-project", default=os.getenv("COMPOSE_PROJECT_NAME", "picturas"))
+    parser.add_argument("--video-worker-service", default=os.getenv("VIDEO_WORKER_SERVICE", "video_tool"))
     parser.add_argument("--sample-interval", type=float, default=1.0)
     parser.add_argument("--dispatch-delay", type=float, default=1.5)
     parser.add_argument("--poll-interval", type=float, default=2.0)
