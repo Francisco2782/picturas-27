@@ -34,6 +34,36 @@ export interface SingleProject {
   version: number;
 
 }
+
+export type ProcessingRunStatus = {
+  runToken: number;
+  state: "running" | "completed" | "failed" | "cancelled";
+  outcome: "completed" | "failed" | "cancelled" | null;
+  startedAt: string;
+  updatedAt: string;
+  finishedAt: string | null;
+  videos: Array<{
+    mediaId: string;
+    progress: number;
+    preview: boolean;
+    updatedAt: string;
+  }>;
+};
+
+export const fetchProjectProcessingStatus = async (
+  uid: string,
+  pid: string,
+  token: string,
+  ownerId?: string,
+  shareId?: string,
+): Promise<ProcessingRunStatus | null> => {
+  const pathUid = pathUidFor(uid, ownerId, shareId);
+  const response = await api.get<ProcessingRunStatus | null>(
+    `/projects/${pathUid}/${pid}/processing-status${buildQuery({ ownerId, shareId })}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  return response.data;
+};
 export interface VideoInfo {
   duration: number;
   width: number;

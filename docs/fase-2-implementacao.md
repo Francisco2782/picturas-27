@@ -165,9 +165,8 @@ desse consumidor não faz parte desta tarefa e fica registada para acompanhament
 
 - Ordem acordada em 2026-11-17: concluir Desempenho antes de retomar
   Usabilidade. P-01, P-02 e P-03 estão concluídas; U-01 também está concluída.
-- U-02 também está concluída; o próximo incremento acordado é U-03, seguindo
-  depois para U-04.
-- R-01 a R-04, M-01 a M-04 e D-01 a D-02: regressão, medições finais e relatório.
+- U-01, U-02 e U-03 estão concluídas; U-04 é o próximo incremento de
+  Usabilidade. R-01 a R-04, M-01 a M-04 e D-01 a D-02 continuam pendentes.
 
 ## Incremento U-02 — Persistir o progresso enviado pelo worker
 
@@ -202,3 +201,36 @@ desse consumidor não faz parte desta tarefa e fica registada para acompanhament
   de `0` até `100`, e só depois passou a `completed`. O resultado final foi
   guardado normalmente e não ficaram tarefas pendentes. O projeto e os ficheiros
   criados para o teste foram removidos.
+
+## Incremento U-03 — Consultar o estado autorizado da execução
+
+**Estado: concluído.**
+
+### Alterações
+
+- Criada a rota autenticada `GET /projects/:owner/:project/processing-status`.
+  A resposta contém o token, estado, resultado, datas e progresso por vídeo da
+  execução mais recente. Se o projeto ainda não tiver uma execução, a resposta é
+  `null`.
+- O dono pode consultar o próprio projeto. Um colaborador só recebe o estado
+  quando apresenta um link de partilha válido com permissão de leitura ou edição.
+  Utilizadores sem acesso recebem `403`; um projeto inexistente recebe `404`.
+- A rota devolve uma projeção explícita do snapshot, sem serializar o documento
+  completo do projeto nem campos internos. Uma consulta antiga continua a
+  devolver somente o snapshot que está atualmente guardado.
+- O gateway encaminha a rota e o cliente tem o tipo `ProcessingRunStatus`, a
+  função `fetchProjectProcessingStatus` e a query `useGetProjectProcessingStatus`.
+  A interface não foi alterada; a recuperação visual pertence à U-04.
+
+### Validação
+
+- `node --test tests/*.test.js`, executado em `projects/`: **28 aprovados, 0
+  falhados**. Inclui os 4 testes da U-03, que cobrem campos expostos, estados
+  terminais, projeto sem execução, acesso do dono/colaborador, rejeição de
+  utilizador sem acesso e leitura do snapshot mais recente.
+- `node --check routes/projects.js` e `node --check utils/processingStatus.js`
+  passaram em `projects/`; `node --check routes/projects.js` passou em
+  `apiGateway/`; `git diff --check` passou.
+- Não foi possível verificar a tipagem do frontend: as dependências não estão
+  instaladas (`frontend/node_modules/.bin/tsc` não existe neste checkout).
+- `git diff --check` passou.

@@ -5,11 +5,25 @@ import {
   getProjectImages,
   ProjectImage,
   fetchProjectResults,
+  fetchProjectProcessingStatus,
 } from "../projects";
 import io from "socket.io-client";
 import { listProjectShareLinks, fetchSharedProject } from "../projects";
 import type { ShareLink } from "../projects";
 import { resolveShareLink } from "../projects";
+import type { ProcessingRunStatus } from "../projects";
+
+export const useGetProjectProcessingStatus = (
+  uid: string,
+  pid: string,
+  token: string,
+  ownerId?: string,
+  shareId?: string,
+) => useQuery<ProcessingRunStatus | null>({
+  queryKey: ["projectProcessingStatus", uid, pid, token, ownerId, shareId],
+  queryFn: () => fetchProjectProcessingStatus(uid, pid, token, ownerId, shareId),
+  enabled: !!uid && !!pid && !!token,
+});
 
 export const useProjectShareLinks = (
   userId: string,

@@ -71,6 +71,7 @@ const { persistFrameResults } = require("../utils/frameResults");
 const { dispatchProcessBatch, persistAndSettleProcess } = require("../utils/processBatch");
 const { startProcessingRun, finishProcessingRun } = require("../utils/processingRun");
 const { handleVideoProgress } = require("../utils/videoProgress");
+const { buildProcessingStatus, canReadProcessingStatus } = require("../utils/processingStatus");
 
 const storage = multer.memoryStorage();
 var upload = multer({ storage: storage });
@@ -864,6 +865,23 @@ router.get("/:user", (req, res, next) => {
 });
 
 // Get a specific user's project
+router.get("/:user/:project/processing-status", requireAuth, checkSharePermission, async (req, res) => {
+  const callerId = getCallerId(req);
+  if (!canReadProcessingStatus(callerId, req.params.user, req.sharedPermission)) {
+    return res.status(403).jsonp("Not allowed");
+  }
+
+  try {
+    const project = req.sharedProject || await Project.getOne(req.params.user, req.params.project);
+    if (!project) return res.status(404).jsonp("Project not found");
+
+    return res.status(200).jsonp(buildProcessingStatus(project));
+  } catch (error) {
+    console.error("Error acquiring project processing status:", error);
+    return res.status(500).jsonp("Error acquiring project processing status");
+  }
+});
+
 router.get("/:user/:project", checkSharePermission, async (req, res, next) => {
   try {
     // só conta como “colaborador” se puder editar (dono ou share edit)

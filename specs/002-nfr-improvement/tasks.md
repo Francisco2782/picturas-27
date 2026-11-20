@@ -181,7 +181,7 @@ start application changes before the official baseline gate is complete.
     um smoke test integrado que observou o progresso guardado de 0 a 100 antes
     da conclusão do processamento.
 
-- [ ] **U-03 — Add authorized status snapshot.**
+- [x] **U-03 — Add authorized status snapshot.**
   - **Depends on:** U-01 and U-02.
   - **Components/files:** project status route/controller, API gateway route
     forwarding if required, frontend query/API types.
@@ -192,6 +192,11 @@ start application changes before the official baseline gate is complete.
     user, active/completed/failed/cancelled state and stale token.
   - **Acceptance:** reload can retrieve the authoritative current status;
     unauthorized users cannot infer another project's processing activity.
+  - **Estado (2026-11-20):** concluída. A nova rota devolve apenas o snapshot
+    mais recente e permite acesso ao dono ou a utilizadores autenticados com
+    link de leitura/edição válido. Sem execução, devolve `null`; não inclui
+    campos internos do projeto. O gateway e os tipos/query do cliente também
+    foram atualizados. Os 4 testes específicos passaram.
 
 - [ ] **U-04 — Replace blocking page state with recoverable status UI.**
   - **Depends on:** U-03.

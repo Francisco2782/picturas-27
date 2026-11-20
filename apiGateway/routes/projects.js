@@ -217,6 +217,23 @@ router.get("/:user/:project", auth.checkToken, function (req, res, next) {
     .catch((err) => forwardAxiosError(res, err, "mensagem fallback"));
 });
 
+// Get the latest durable processing status for a project.
+router.get("/:user/:project/processing-status", auth.checkToken, function (req, res) {
+  const ownerId = req.query.owner || req.params.user;
+  const callerId = req.authUserId || req.params.user;
+  axios
+    .get(projectsURL + `${ownerId}/${req.params.project}/processing-status`, {
+      httpsAgent,
+      params: req.query.share ? { share: req.query.share } : undefined,
+      headers: {
+        Authorization: req.headers["authorization"],
+        "X-Caller-Id": callerId,
+      },
+    })
+    .then((resp) => res.status(200).jsonp(resp.data))
+    .catch((err) => forwardAxiosError(res, err, "Error getting project processing status"));
+});
+
 
 /**
  * Get project image
