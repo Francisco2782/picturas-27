@@ -1,4 +1,5 @@
 const { send_rabbit_msg, read_rabbit_msg } = require('./rabbit_mq')
+const amqp = require('amqplib');
 
 const queues = {
     'cut': 'cut_queue',
@@ -36,7 +37,31 @@ function send_msg_tool(msg_id, timestamp, og_img_uri, new_img_uri, tool, params)
         }
     };
 
-    send_rabbit_msg(msg, queue);
+    return send_rabbit_msgConfirmed(msg, queue);
+}
+
+async function send_rabbit_msgConfirmed(msg, queue) {
+    const host = process.env.RABBITMQ_HOST;
+    const port = process.env.RABBITMQ_PORT;
+    const username = process.env.RABBITMQ_USER;
+    const password = process.env.RABBITMQ_PASS;
+    const connection = await amqp.connect(`amqp://${username}:${password}@${host}:${port}`);
+    try {
+        const channel = await connection.createConfirmChannel();
+        try {
+            await channel.assertExchange('picturas', 'direct', { durable: true });
+            await new Promise((resolve, reject) => {
+                channel.publish('picturas', queue, Buffer.from(JSON.stringify(msg)), {}, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
+        } finally {
+            await channel.close();
+        }
+    } finally {
+        await connection.close();
+    }
 }
 
 function send_msg_client(msg_id, timestamp, user) {

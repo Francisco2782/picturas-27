@@ -45,3 +45,7 @@ module.exports.countByProjectAndToken = async (project_id, token) => {
   return await Process.countDocuments({ project_id, token }).exec();
 };
 
+module.exports.deleteByProjectAndToken = async (user_id, project_id, token) => {
+  return Process.deleteMany({ user_id, project_id, token }).exec();
+};
+

@@ -142,7 +142,7 @@ module.exports.failRunIfActive = async (user_id, project_id, token) => {
       "processingRun.outcome": "failed",
       "processingRun.updatedAt": now,
       "processingRun.finishedAt": now,
-    } },
+    }, $inc: { activeToken: 1 } },
     { new: true }
   ).exec();
 };

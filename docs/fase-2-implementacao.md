@@ -83,12 +83,70 @@ worker. O snapshot autorizado e a interface recuperável pertencem a U-03 e U-04
 O ambiente fica com duas réplicas para os próximos testes de concorrência e
 falhas. P-02 e P-03 continuam pendentes.
 
+## Incremento P-02 — Segurança de resultados em lotes concorrentes
+
+**Estado: implementação e testes locais concluídos; smoke test com duas réplicas pendente.**
+
+### Alterações
+
+- O orquestrador regista todos os trabalhos do lote antes de os enviar à fila.
+  Se o registo ou o envio falhar, remove apenas os trabalhos criados para esse
+  lote e marca a execução ativa como falhada.
+- Um trabalho mantém o seu registo `Process` até guardar o resultado. Assim,
+  uma resposta rápida não faz o projeto parecer concluído enquanto ainda há
+  vídeos do mesmo lote em processamento.
+- O último resultado a terminar tenta concluir a execução. A atualização só é
+  aceite se o token e o estado ainda forem os da execução ativa. Respostas
+  atrasadas depois de cancelamento/falha são removidas e não podem concluir a
+  execução.
+- O envio para ferramentas aguarda confirmação do RabbitMQ. Falhas tardias de
+  publicação passam a ser detetadas pelo orquestrador.
+- O cancelamento por falha invalida o token ativo, remove os trabalhos dessa
+  execução e elimina os seus resultados temporários.
+
+### Validação
+
+- `node --check` nos ficheiros JavaScript alterados.
+- `node --test tests/*.test.js`, executado em `projects/`: **17 aprovados, 0
+  falhados**. Inclui falha durante publicação, rollback limitado ao lote,
+  resultados fora de ordem e resultado atrasado após cancelamento.
+- O smoke test de ponta a ponta com dois vídeos ainda não foi possível: durante
+  esta validação, `projects` e as duas réplicas `video_tool` estavam a reiniciar
+  porque não conseguiam resolver o endereço do RabbitMQ. Por isso, a aceitação
+  operacional da P-02 continua pendente.
+
+## Incremento P-03 — Recursos e falhas do worker de vídeo
+
+**Estado: verificações locais concluídas; teste operacional com duas réplicas pendente.**
+
+### O que foi verificado
+
+- As saídas intermediárias usam ficheiros temporários no diretório do resultado;
+  a saída final só substitui o destino depois de o processamento terminar.
+- Em erro, o worker remove o ficheiro parcial. Subtítulos e extração de frames
+  usam diretórios temporários que são limpos ao sair do processamento.
+- Cada réplica mantém no máximo um trabalho ativo (`prefetch_count=1`). A cache
+  do modelo Whisper usa o volume partilhado `whisper_models`; os caminhos de
+  entrada e saída ficam no volume partilhado `image_data`.
+- O worker confirma a mensagem apenas depois de enviar a resposta de sucesso ou
+  erro. O serviço usa `restart: on-failure`; uma perda de ligação encerra o
+  processo e permite ao Compose reiniciá-lo.
+- `.venv/bin/python -m pytest -q tests`, em `Tools/video/`: **74 aprovados**.
+  Há um aviso de depreciação do Pillow num teste; não afeta o resultado.
+
+### Pendências
+
+Não foi possível observar consumo real de CPU/RAM, reinício e reconexão das duas
+réplicas nem executar um vídeo com legendas através da aplicação: RabbitMQ não
+estava resolvível pelos containers durante a validação. A P-03 não está concluída
+até esse smoke test operacional ser repetido.
+
 ## Incrementos pendentes
 
 - Ordem acordada em 2026-11-17: concluir Desempenho antes de retomar
   Usabilidade. P-01 e U-01 estão concluídas. Não iniciar U-02, U-03 ou U-04 antes
   de concluir P-02 e P-03.
-- P-02 e P-03: segurança dos resultados em lotes concorrentes e comportamento
-  perante recursos e falhas. P-01 passou o smoke test de escala limitada.
+- P-02 e P-03 têm implementação e testes locais registados acima. Falta repetir
+  os smoke tests operacionais quando RabbitMQ e os serviços estiverem estáveis.
 - Retomar Usabilidade em U-02, seguindo depois para U-03 e U-04.
 - R-01 a R-04, M-01 a M-04 e D-01 a D-02: regressão, medições finais e relatório.

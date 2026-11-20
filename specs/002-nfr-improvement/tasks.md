@@ -118,6 +118,10 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** all expected media results commit exactly once; no run
     commits early, stale result overwrites active result, or registered job is
     lost; rollback remains scoped to the affected batch.
+  - **Estado (2026-11-20):** implementação e regressões locais concluídas; os
+    17 testes Node passaram. Falta o smoke test com dois vídeos nas duas
+    réplicas: os containers `projects` e `video_tool` estavam a reiniciar por
+    falha de resolução do RabbitMQ. Mantém-se pendente até validar o fluxo real.
 
 - [ ] **P-03 — Check worker resource and failure behavior.**
   - **Depends on:** P-01 and P-02.
@@ -130,6 +134,11 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** failures are visible and do not leave partial committed
     output; all resource/restart effects are captured; no artificial CPU/memory
     ceiling is added.
+  - **Estado (2026-11-20):** revisão do worker e os 74 testes Python concluídos.
+    Temporários, cache partilhada, confirmação no fim do trabalho e política de
+    reinício foram verificados no código. Falta o smoke test operacional de
+    vídeo/legendas e a observação de recursos e reinício, bloqueados pela falha
+    de resolução do RabbitMQ nos containers.
 
 ## 2. Implementation — NFR usability during processing
 
