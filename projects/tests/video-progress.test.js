@@ -52,7 +52,7 @@ test('accepted progress is saved before the browser event is published', async (
   assert.equal(state.updates, 1);
   assert.deepEqual(state.events, [{
     user: 'editor', projectId: 'project', imgId: 'video-a',
-    preview: false, percent: 25, timestamp: message.timestamp,
+    preview: false, percent: 25, timestamp: message.timestamp, runToken: 5,
   }]);
 });
 

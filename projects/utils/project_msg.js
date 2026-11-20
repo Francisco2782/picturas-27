@@ -65,19 +65,20 @@ async function send_rabbit_msgConfirmed(msg, queue) {
     }
 }
 
-function send_msg_client(msg_id, timestamp, user) {
+function send_msg_client(msg_id, timestamp, user, run = {}) {
     const queue = queues['ws'];
     const msg = {
         "messageId": msg_id,
         "timestamp": timestamp,
         "user": user,
-        "status": 'success'
+        "status": 'success',
+        ...run,
     };
 
     send_rabbit_msg(msg, queue);
 }
 
-function send_msg_client_error(msg_id, timestamp, user, error_code, error_msg) {
+function send_msg_client_error(msg_id, timestamp, user, error_code, error_msg, run = {}) {
     const queue = queues['ws'];
     const msg = {
         "messageId": msg_id,
@@ -85,7 +86,8 @@ function send_msg_client_error(msg_id, timestamp, user, error_code, error_msg) {
         "user": user,
         "status": "error",
         "errorCode": error_code,
-        "errorMsg": error_msg
+        "errorMsg": error_msg,
+        ...run,
     };
 
     send_rabbit_msg(msg, queue);
@@ -118,7 +120,7 @@ function send_msg_client_preview_error(msg_id, timestamp, user, error_code, erro
     send_rabbit_msg(msg, queue);
 }
 
-function send_msg_client_video_progress({ user, projectId, imgId, preview, percent, timestamp }) {
+function send_msg_client_video_progress({ user, projectId, imgId, preview, percent, timestamp, runToken }) {
     send_rabbit_msg({
         messageId: `update-client-video-progress-${uuidv4()}`,
         timestamp,
@@ -128,6 +130,7 @@ function send_msg_client_video_progress({ user, projectId, imgId, preview, perce
         imgId,
         preview,
         percent,
+        runToken,
     }, queues['ws']);
 }
 

@@ -68,6 +68,9 @@ function process_msg() {
                 imgId: msg_content.imgId,
                 preview: msg_content.preview,
                 percent: msg_content.percent,
+                runToken: msg_content.runToken,
+                timestamp: msg_content.timestamp,
+                messageId: msg_id,
             });
         }
 
@@ -92,12 +95,21 @@ function process_msg() {
                 const error_code = msg_content.errorCode;
                 const error_msg = msg_content.errorMsg;
 
-                io.to(user).emit("process-error", { error_code, error_msg }); 
+                io.to(user).emit("process-error", {
+                    error_code, error_msg, projectId: msg_content.projectId,
+                    runToken: msg_content.runToken, timestamp,
+                    messageId: msg_id,
+                });
 
                 return;
             }
 
-            io.to(user).emit("process-update", msg_id);
+            io.to(user).emit("process-update", {
+                projectId: msg_content.projectId,
+                runToken: msg_content.runToken,
+                timestamp,
+                messageId: msg_id,
+            });
         }
 
         else if (msg_content.type === "project-op") {

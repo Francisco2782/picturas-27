@@ -165,8 +165,9 @@ desse consumidor não faz parte desta tarefa e fica registada para acompanhament
 
 - Ordem acordada em 2026-11-17: concluir Desempenho antes de retomar
   Usabilidade. P-01, P-02 e P-03 estão concluídas; U-01 também está concluída.
-- U-01, U-02 e U-03 estão concluídas; U-04 é o próximo incremento de
-  Usabilidade. R-01 a R-04, M-01 a M-04 e D-01 a D-02 continuam pendentes.
+- U-01, U-02 e U-03 estão concluídas. A implementação da U-04 está feita;
+  falta o ensaio manual A/B no Chromium. R-01 a R-04, M-01 a M-04 e D-01 a
+  D-02 continuam pendentes.
 
 ## Incremento U-02 — Persistir o progresso enviado pelo worker
 
@@ -231,6 +232,46 @@ desse consumidor não faz parte desta tarefa e fica registada para acompanhament
 - `node --check routes/projects.js` e `node --check utils/processingStatus.js`
   passaram em `projects/`; `node --check routes/projects.js` passou em
   `apiGateway/`; `git diff --check` passou.
-- Não foi possível verificar a tipagem do frontend: as dependências não estão
-  instaladas (`frontend/node_modules/.bin/tsc` não existe neste checkout).
+- A verificação TypeScript isolada da U-03 não correu porque as dependências
+  não estavam instaladas. O build do frontend feito na U-04 também compilou os
+  tipos e a query acrescentados pela U-03, sem erro.
+
+## Incremento U-04 — Estado recuperável sem bloquear o dashboard
+
+**Estado: implementação concluída; ensaio manual A/B pendente.**
+
+### Alterações
+
+- Removido o overlay que cobria a página durante o processamento. O projeto em
+  execução fica só de leitura, mas o utilizador pode abrir outro projeto e usar
+  as respetivas ferramentas.
+- Acrescentado um painel de estado ao layout comum do dashboard. Continua visível
+  ao navegar entre projetos, permite voltar ao projeto em execução e pode ser
+  fechado quando a execução termina. O painel também mantém o botão para cancelar.
+- O projeto acompanhado é guardado no `sessionStorage`. Ao abrir novamente o
+  dashboard, o painel consulta a rota autenticada da U-03 e repõe o estado mais
+  recente. A query atualiza a cada segundo enquanto a execução está ativa e
+  consulta novamente ao recuperar a ligação ou voltar à janela.
+- O cliente reconcilia respostas HTTP e eventos WebSocket pela execução e pelas
+  datas. Tokens antigos, percentagens repetidas/decrescentes e eventos anteriores
+  não fazem regredir o estado. O worker já publicava o token e a data de progresso
+  de vídeo; os eventos de conclusão/erro agora também incluem projeto, token, data
+  e ID da mensagem.
+- A conclusão só é mostrada quando a API indica `completed`; depois os resultados
+  são atualizados. O erro e o cancelamento continuam visíveis, e o cancelamento
+  funciona no painel comum e na página do projeto.
+
+### Validação
+
+- `docker compose build frontend ws_gateway projects`: **concluído**. O frontend
+  compilou e a verificação TypeScript passou. Não surgiram avisos novos na página
+  alterada; permaneceram três avisos de lint já existentes noutras páginas.
+- `node --test frontend/tests/processing-status.test.mjs`: **7 aprovados**. Os
+  testes cobrem tokens antigos, estado terminal, ordenação por data, progresso
+  WebSocket repetido/antigo, projeto errado e atualização do snapshot.
+- `node --test projects/tests/*.test.js`: **28 aprovados**. As verificações de
+  sintaxe dos serviços alterados e `git diff --check` também passaram.
+- O ensaio manual completo (Projeto A com legendas, navegação e ferramentas no
+  Projeto B, regresso, atualização da página e reconexão) ainda não foi executado
+  no Chromium. Por isso a U-04 fica por validar antes de a dar como concluída.
 - `git diff --check` passou.

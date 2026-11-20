@@ -12,6 +12,8 @@ import { listProjectShareLinks, fetchSharedProject } from "../projects";
 import type { ShareLink } from "../projects";
 import { resolveShareLink } from "../projects";
 import type { ProcessingRunStatus } from "../projects";
+import { reconcileProcessingStatus } from "../processing-status";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const useGetProjectProcessingStatus = (
   uid: string,
@@ -19,11 +21,24 @@ export const useGetProjectProcessingStatus = (
   token: string,
   ownerId?: string,
   shareId?: string,
-) => useQuery<ProcessingRunStatus | null>({
-  queryKey: ["projectProcessingStatus", uid, pid, token, ownerId, shareId],
-  queryFn: () => fetchProjectProcessingStatus(uid, pid, token, ownerId, shareId),
-  enabled: !!uid && !!pid && !!token,
-});
+) => {
+  const qc = useQueryClient();
+  const queryKey = ["projectProcessingStatus", uid, pid, token, ownerId, shareId];
+  return useQuery<ProcessingRunStatus | null>({
+    queryKey,
+    queryFn: async () => {
+      const incoming = await fetchProjectProcessingStatus(uid, pid, token, ownerId, shareId);
+      return reconcileProcessingStatus(
+        qc.getQueryData<ProcessingRunStatus | null>(queryKey),
+        incoming,
+      );
+    },
+    enabled: !!uid && !!pid && !!token,
+    refetchInterval: (query) => query.state.data?.state === "running" ? 1000 : false,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
+  });
+};
 
 export const useProjectShareLinks = (
   userId: string,

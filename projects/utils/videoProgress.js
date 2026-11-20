@@ -69,6 +69,7 @@ async function handleVideoProgress(message, {
     preview: observation.preview,
     percent: observation.percent,
     timestamp: observation.timestamp.toISOString(),
+    runToken: observation.runToken,
   });
   return { accepted: true };
 }

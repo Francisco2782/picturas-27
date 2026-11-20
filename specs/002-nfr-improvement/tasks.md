@@ -214,6 +214,9 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** evaluator can open B, use its toolbar, return to A and see
     current status; navigation and refresh recover correct status; no false
     completion or stale active state appears; cancel keeps existing semantics.
+  - **Estado (2026-11-20):** implementação concluída e build/testes locais
+    aprovados. Falta o ensaio manual no Chromium com os projetos A/B e vídeo com
+    fala; manter pendente até essa validação.
 
 ## 3. Regression and integrated validation
 

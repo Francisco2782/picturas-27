@@ -256,7 +256,8 @@ function process_msg() {
             timestamp,
             runnerId,   
             msg_content.error.code,
-            msg_content.error.msg
+            msg_content.error.msg,
+            { projectId: String(process.project_id), runToken: process.token || 0 }
           );
         }
         return;
@@ -491,7 +492,9 @@ if (/preview/.test(msg_id) && isLast) {
       }
 
       if (chainEnd) {
-        if (!/preview/.test(msg_id)) send_msg_client(user_msg_id, timestamp, runnerId);
+        if (!/preview/.test(msg_id)) send_msg_client(user_msg_id, timestamp, runnerId, {
+          projectId: String(process.project_id), runToken: process.token || 0,
+        });
         return;
       }
 
@@ -545,7 +548,9 @@ if (/preview/.test(msg_id) && isLast) {
         tool_name,
         params
       );
-      if (!/preview/.test(msg_id)) send_msg_client(user_msg_id, timestamp, runnerId);
+      if (!/preview/.test(msg_id)) send_msg_client(user_msg_id, timestamp, runnerId, {
+        projectId: String(process.project_id), runToken: process.token || 0,
+      });
     } catch (err) {
 
       if (isVideoProgress) {
@@ -566,7 +571,8 @@ if (/preview/.test(msg_id) && isLast) {
         timestamp,
         target,
         "30000",
-        "An error happened while processing the project"
+        "An error happened while processing the project",
+        { projectId: String(projectIdSafe), runToken: runTokenSafe }
       );
       return;
     }
