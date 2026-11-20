@@ -90,6 +90,35 @@ module.exports.updateRaw = async (user_id, project_id, update) => {
   ).exec();
 };
 
+module.exports.updateVideoProgressIfActive = async ({
+  userId, projectId, runToken, mediaId, percent, preview, timestamp,
+}) => {
+  return Project.findOneAndUpdate(
+    {
+      user_id: userId,
+      _id: projectId,
+      activeToken: runToken,
+      "processingRun.runToken": runToken,
+      "processingRun.state": "running",
+      "processingRun.updatedAt": { $lte: timestamp },
+      "processingRun.videos": {
+        $elemMatch: {
+          mediaId: String(mediaId),
+          progress: { $lt: percent },
+          updatedAt: { $lte: timestamp },
+        },
+      },
+    },
+    { $set: {
+      "processingRun.updatedAt": timestamp,
+      "processingRun.videos.$.progress": percent,
+      "processingRun.videos.$.preview": preview,
+      "processingRun.videos.$.updatedAt": timestamp,
+    } },
+    { new: true }
+  ).exec();
+};
+
 
 // Commit only if cancellation/new processing has not changed the active run.
 module.exports.commitRunIfActive = async (user_id, project_id, token, tools) => {

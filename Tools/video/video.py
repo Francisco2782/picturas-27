@@ -20,6 +20,7 @@ from pika.exchange_type import ExchangeType
 
 import utils.env as env
 from effects import UnsupportedEffect
+from progress import build_progress_message
 from video_processor import InvalidSpeed, InvalidTrim, InvalidVideo, process_video
 
 EXCHANGE = "picturas"
@@ -110,18 +111,10 @@ class VideoWorker:
         })
 
     def _progress(self, progress, preview, percent):
-        if not progress or not progress.get("user"):
+        message = build_progress_message(progress, preview, percent, now().isoformat())
+        if not message:
             return
-        self._publish(WS_QUEUE, {
-            "messageId": f"update-client-video-progress-{uuid.uuid4()}",
-            "timestamp": now().isoformat(),
-            "status": "success",
-            "user": progress["user"],
-            "projectId": progress.get("projectId"),
-            "imgId": progress.get("imgId"),
-            "preview": bool(preview),
-            "percent": percent,
-        })
+        self._publish(PROJECT_QUEUE, message)
 
     def callback(self, ch, method, properties, body):
         started = now()

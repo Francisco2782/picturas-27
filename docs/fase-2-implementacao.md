@@ -85,7 +85,7 @@ falhas. P-02 e P-03 continuam pendentes.
 
 ## Incremento P-02 — Segurança de resultados em lotes concorrentes
 
-**Estado: implementação e testes locais concluídos; smoke test com duas réplicas pendente.**
+**Estado: concluído.**
 
 ### Alterações
 
@@ -103,21 +103,30 @@ falhas. P-02 e P-03 continuam pendentes.
   publicação passam a ser detetadas pelo orquestrador.
 - O cancelamento por falha invalida o token ativo, remove os trabalhos dessa
   execução e elimina os seus resultados temporários.
+- Corrigida a transição terminal para converter o subdocumento do Mongoose num
+  objeto simples. Sem isso, os resultados eram guardados e o token era marcado
+  como concluído, mas `processingRun` ficava em `running`.
 
 ### Validação
 
 - `node --check` nos ficheiros JavaScript alterados.
-- `node --test tests/*.test.js`, executado em `projects/`: **17 aprovados, 0
+- `node --test tests/*.test.js`, executado em `projects/`: **18 aprovados, 0
   falhados**. Inclui falha durante publicação, rollback limitado ao lote,
-  resultados fora de ordem e resultado atrasado após cancelamento.
-- O smoke test de ponta a ponta com dois vídeos ainda não foi possível: durante
-  esta validação, `projects` e as duas réplicas `video_tool` estavam a reiniciar
-  porque não conseguiam resolver o endereço do RabbitMQ. Por isso, a aceitação
-  operacional da P-02 continua pendente.
+  resultados fora de ordem, resultado atrasado após cancelamento e transição a
+  partir de um subdocumento Mongoose.
+- Smoke test integrado num projeto temporário, com duas réplicas: um vídeo de
+  60 segundos e outro de 6 segundos. O curto terminou primeiro. Nesse momento,
+  o lote continuou `running`, havia um resultado guardado e um `Process` pendente;
+  o token anterior continuou como último commit. Depois do vídeo longo terminar,
+  o lote passou uma única vez para `completed`, com dois resultados no mesmo
+  token e nenhum `Process` pendente.
+- O teste encontrou a transição Mongoose descrita acima. Após a correção, a
+  execução integrada terminou com progresso `100` nos dois vídeos. O projeto e
+  os ficheiros temporários usados no teste foram removidos.
 
 ## Incremento P-03 — Recursos e falhas do worker de vídeo
 
-**Estado: verificações locais concluídas; teste operacional com duas réplicas pendente.**
+**Estado: concluído.**
 
 ### O que foi verificado
 
@@ -131,22 +140,65 @@ falhas. P-02 e P-03 continuam pendentes.
 - O worker confirma a mensagem apenas depois de enviar a resposta de sucesso ou
   erro. O serviço usa `restart: on-failure`; uma perda de ligação encerra o
   processo e permite ao Compose reiniciá-lo.
+- Smoke test através de RabbitMQ: um vídeo com efeito comum e um vídeo com
+  legendas foram processados por réplicas diferentes. Ambos produziram MP4s
+  válidos; as legendas foram testadas numa amostra de 8 segundos.
+- Após reiniciar RabbitMQ, os dois workers voltaram a ficar ativos e a consumir
+  `video_queue`, cada um com `prefetch_count=1`. O contador de reinícios passou
+  de 277 para 279 e nenhum worker foi marcado como terminado por OOM.
+- Durante um vídeo de 60 segundos, uma amostragem de 1 segundo observou no worker
+  ativo um pico de **271,6% de CPU** e **1,85 GiB de memória**. O worker que
+  recebeu o vídeo curto ficou praticamente inativo. Não há limite artificial de
+  CPU ou memória definido no serviço.
+- Depois dos testes, não ficaram ficheiros `.part` nem diretórios temporários
+  no projeto descartável. O cache Whisper continuou no volume partilhado.
 - `.venv/bin/python -m pytest -q tests`, em `Tools/video/`: **74 aprovados**.
   Há um aviso de depreciação do Pillow num teste; não afeta o resultado.
 
-### Pendências
+### Observação
 
-Não foi possível observar consumo real de CPU/RAM, reinício e reconexão das duas
-réplicas nem executar um vídeo com legendas através da aplicação: RabbitMQ não
-estava resolvível pelos containers durante a validação. A P-03 não está concluída
-até esse smoke test operacional ser repetido.
+Ao reiniciar RabbitMQ, os workers recuperaram pela política do Compose. O serviço
+`projects` saiu e precisou de ser iniciado novamente; a recuperação automática
+desse consumidor não faz parte desta tarefa e fica registada para acompanhamento.
 
 ## Incrementos pendentes
 
 - Ordem acordada em 2026-11-17: concluir Desempenho antes de retomar
-  Usabilidade. P-01 e U-01 estão concluídas. Não iniciar U-02, U-03 ou U-04 antes
-  de concluir P-02 e P-03.
-- P-02 e P-03 têm implementação e testes locais registados acima. Falta repetir
-  os smoke tests operacionais quando RabbitMQ e os serviços estiverem estáveis.
-- Retomar Usabilidade em U-02, seguindo depois para U-03 e U-04.
+  Usabilidade. P-01, P-02 e P-03 estão concluídas; U-01 também está concluída.
+- U-02 também está concluída; o próximo incremento acordado é U-03, seguindo
+  depois para U-04.
 - R-01 a R-04, M-01 a M-04 e D-01 a D-02: regressão, medições finais e relatório.
+
+## Incremento U-02 — Persistir o progresso enviado pelo worker
+
+**Estado: concluído.**
+
+### Alterações
+
+- O worker envia cada observação de progresso para `project_queue`, com tipo de
+  mensagem, ID da tarefa de origem, projeto, vídeo, token da execução, percentagem,
+  indicação de pré-visualização e data/hora. Não foi criada uma fila nova.
+- O serviço `projects` confirma que a tarefa ainda existe e que projeto, vídeo,
+  token e execução ativa correspondem à mensagem. Percentagens inválidas,
+  repetidas, antigas ou de outra execução são ignoradas.
+- O progresso aceite é guardado no `processingRun` com uma atualização atómica e
+  monotónica. O evento para a interface só é publicado depois da gravação.
+- O consumidor confirma mensagens depois de as tratar. Se ocorrer uma falha ao
+  guardar, a mensagem é devolvida à fila para nova tentativa; mensagens inválidas
+  ou antigas são confirmadas e descartadas.
+- As respostas finais de sucesso/erro continuam a usar o mesmo caminho. Os
+  eventos de progresso de pré-visualizações sem execução ativa são ignorados, pois
+  não há uma execução persistente a que possam ser associados.
+
+### Validação
+
+- `node --test tests/*.test.js`, em `projects/`: **24 aprovados, 0 falhados**.
+  Os testes cobrem progresso aceite, repetido, antigo, cancelado, projeto/vídeo
+  errado, conteúdo inválido, gravação condicional e confirmação/recolocação na
+  fila.
+- `.venv/bin/python -m pytest -q tests`, em `Tools/video/`: **76 aprovados**.
+  Inclui o formato tipado da mensagem produzida pelo worker.
+- Smoke test integrado com um vídeo de 10 segundos: o estado persistido avançou
+  de `0` até `100`, e só depois passou a `completed`. O resultado final foi
+  guardado normalmente e não ficaram tarefas pendentes. O projeto e os ficheiros
+  criados para o teste foram removidos.

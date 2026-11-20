@@ -7,6 +7,7 @@ const rabbit_password = process.env.RABBITMQ_PASS;
 const exchange = "picturas";
 
 const rabbit_mq_sv = `amqp://${rabbit_username}:${rabbit_password}@${rabbit_host}:${rabbit_port}`;
+const { settleDelivery } = require("./rabbitDelivery");
 
 function send_rabbit_msg(msg, queue) {
     amqp.connect(rabbit_mq_sv, (err_sv, connection) => {
@@ -45,9 +46,12 @@ function read_rabbit_msg(queue, callback) {
 
                 channel.consume(q.queue, (msg) => {
                     if(msg != null){
-                        callback(msg);
-                        // Acknowledge the message
-                        channel.ack(msg);
+                        settleDelivery(
+                            msg,
+                            callback,
+                            (delivery) => channel.ack(delivery),
+                            (delivery) => channel.nack(delivery, false, true),
+                        );
                     }
                 }, {
                     noAck: false

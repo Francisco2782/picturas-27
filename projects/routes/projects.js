@@ -22,6 +22,7 @@ const {
   send_msg_client_error,
   send_msg_client_preview,
   send_msg_client_preview_error,
+  send_msg_client_video_progress,
   read_msg,
   send_msg_project_op,   
 } = require("../utils/project_msg");
@@ -69,6 +70,7 @@ const {
 const { persistFrameResults } = require("../utils/frameResults");
 const { dispatchProcessBatch, persistAndSettleProcess } = require("../utils/processBatch");
 const { startProcessingRun, finishProcessingRun } = require("../utils/processingRun");
+const { handleVideoProgress } = require("../utils/videoProgress");
 
 const storage = multer.memoryStorage();
 var upload = multer({ storage: storage });
@@ -195,9 +197,21 @@ function process_msg() {
     let ownerIdSafe = null;
     let projectIdSafe = null;
     let runTokenSafe = null;
+    let isVideoProgress = false;
 
     try {
       const msg_content = JSON.parse(msg.content.toString());
+      isVideoProgress = msg_content.messageType === "video-progress";
+      if (isVideoProgress) {
+        await handleVideoProgress(msg_content, {
+          getProcess: (sourceProcessId) => Process.getOneByMsgId(sourceProcessId),
+          getProject: (userId, projectId) => Project.getOne(userId, projectId),
+          updateProgress: (update) => Project.updateVideoProgressIfActive(update),
+          publishProgress: send_msg_client_video_progress,
+        });
+        return;
+      }
+
       const msg_id = msg_content.correlationId;
 
       const process = await Process.getOneByMsgId(msg_id);
@@ -532,6 +546,11 @@ if (/preview/.test(msg_id) && isLast) {
       );
       if (!/preview/.test(msg_id)) send_msg_client(user_msg_id, timestamp, runnerId);
     } catch (err) {
+
+      if (isVideoProgress) {
+        console.error("[video-progress] failed; message will be retried:", err);
+        throw err;
+      }
 
       console.error("[process_msg] error:", err);
 
@@ -1216,6 +1235,10 @@ router.post("/:user/:project/preview/:img", checkSharePermission, requireEditPer
 
       const msg_id = `preview-${uuidv4()}`;
       const timestamp = new Date().toISOString();
+      if (previewIsVideo) {
+        params.progress.sourceProcessId = msg_id;
+        params.progress.runToken = project.activeToken || 0;
+      }
       const og_img_uri = img.og_uri;
       const img_id = img._id;
 
@@ -1673,6 +1696,11 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
             cancelToken: project.cancelToken || 0,
             token: runToken,
           };
+
+          if (isVideoMedia(img)) {
+            params.progress.sourceProcessId = msg_id;
+            params.progress.runToken = runToken;
+          }
 
           pendingJobs.push({ process, msg_id, timestamp, og_img_uri, new_img_uri, tool_name, params });
         }

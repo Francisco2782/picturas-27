@@ -1,5 +1,6 @@
 const { send_rabbit_msg, read_rabbit_msg } = require('./rabbit_mq')
 const amqp = require('amqplib');
+const { v4: uuidv4 } = require('uuid');
 
 const queues = {
     'cut': 'cut_queue',
@@ -117,6 +118,19 @@ function send_msg_client_preview_error(msg_id, timestamp, user, error_code, erro
     send_rabbit_msg(msg, queue);
 }
 
+function send_msg_client_video_progress({ user, projectId, imgId, preview, percent, timestamp }) {
+    send_rabbit_msg({
+        messageId: `update-client-video-progress-${uuidv4()}`,
+        timestamp,
+        status: 'success',
+        user,
+        projectId,
+        imgId,
+        preview,
+        percent,
+    }, queues['ws']);
+}
+
 function read_msg(callback){
     read_rabbit_msg(queues['project'], callback);
 }
@@ -134,4 +148,4 @@ function send_msg_project_op({ projectId, ownerId, op }) {
   send_rabbit_msg(msg, queue);
 }
 
-module.exports = { send_msg_tool, send_msg_client, send_msg_client_error, send_msg_client_preview, send_msg_client_preview_error, read_msg, send_msg_project_op };
+module.exports = { send_msg_tool, send_msg_client, send_msg_client_error, send_msg_client_preview, send_msg_client_preview_error, send_msg_client_video_progress, read_msg, send_msg_project_op };

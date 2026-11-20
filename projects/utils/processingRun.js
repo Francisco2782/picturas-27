@@ -5,6 +5,10 @@ function toDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function toPlainObject(value) {
+  return value && typeof value.toObject === "function" ? value.toObject() : value;
+}
+
 function startProcessingRun(runToken, videoIds = [], now = new Date()) {
   if (!Number.isSafeInteger(runToken) || runToken < 1) {
     throw new TypeError("runToken must be a positive safe integer");
@@ -29,6 +33,7 @@ function startProcessingRun(runToken, videoIds = [], now = new Date()) {
 }
 
 function applyVideoProgress(run, observation) {
+  run = toPlainObject(run);
   if (!run || run.state !== "running") return { accepted: false, run };
   if (run.runToken !== observation.runToken) return { accepted: false, run };
   if (!Number.isSafeInteger(observation.progress) || observation.progress < 0 || observation.progress > 100) {
@@ -55,6 +60,7 @@ function applyVideoProgress(run, observation) {
 }
 
 function finishProcessingRun(run, runToken, outcome, now = new Date()) {
+  run = toPlainObject(run);
   if (!run || run.state !== "running" || run.runToken !== runToken) return null;
   if (!TERMINAL_OUTCOMES.has(outcome)) throw new TypeError("Invalid processing run outcome");
   const finishedAt = toDate(now);

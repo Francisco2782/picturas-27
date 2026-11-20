@@ -59,6 +59,24 @@ test('terminal outcomes are final for a run, and success completes media progres
   assert.equal(finishProcessingRun(run, 8, 'cancelled'), null);
 });
 
+test('run transitions accept Mongoose-style subdocuments as input', () => {
+  const run = startProcessingRun(15, ['video-a']);
+  const subdocument = { toObject: () => run };
+
+  const complete = finishProcessingRun(subdocument, 15, 'completed');
+  assert.equal(complete.state, 'completed');
+  assert.equal(complete.outcome, 'completed');
+  assert.equal(complete.videos[0].progress, 100);
+
+  const progress = applyVideoProgress(subdocument, {
+    runToken: 15,
+    mediaId: 'video-a',
+    progress: 25,
+  });
+  assert.equal(progress.accepted, true);
+  assert.equal(progress.run.videos[0].progress, 25);
+});
+
 test('failure and cancellation retain a terminal outcome and may be replaced only by a newer run', () => {
   const run = startProcessingRun(10, ['video-a']);
   const failed = finishProcessingRun(run, 10, 'failed');

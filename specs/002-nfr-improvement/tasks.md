@@ -105,7 +105,7 @@ start application changes before the official baseline gate is complete.
     unchanged.
   - **Estado:** Concluída. Iniciado `video_tool` com `--scale video_tool=2`; ambos os containers usaram a mesma imagem e montaram `image_data` e `whisper_models`. O RabbitMQ mostrou exatamente dois consumidores ativos de `video_queue`, ambos com confirmação de mensagens obrigatória e `prefetch_count=1`. O Compose não define substituição do número de réplicas, pelo que mantém uma por omissão. Detalhes: `evaluation/evidence/phase2-p01-smoke-2026-11-17/manifest.json` (ficheiro local, ignorado pelo Git).
 
-- [ ] **P-02 — Verify concurrent batch result safety.**
+- [x] **P-02 — Verify concurrent batch result safety.**
   - **Depends on:** P-01.
   - **Components/files:** `projects/routes/projects.js`,
     `projects/utils/processBatch.js`, `projects/controllers/project.js`,
@@ -118,12 +118,13 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** all expected media results commit exactly once; no run
     commits early, stale result overwrites active result, or registered job is
     lost; rollback remains scoped to the affected batch.
-  - **Estado (2026-11-20):** implementação e regressões locais concluídas; os
-    17 testes Node passaram. Falta o smoke test com dois vídeos nas duas
-    réplicas: os containers `projects` e `video_tool` estavam a reiniciar por
-    falha de resolução do RabbitMQ. Mantém-se pendente até validar o fluxo real.
+  - **Estado (2026-11-20):** concluída. Os 18 testes Node passaram. No smoke
+    test integrado, o vídeo curto terminou primeiro e o lote permaneceu aberto
+    até ao vídeo longo terminar. O mesmo token ficou concluído com os dois
+    resultados e sem trabalhos pendentes. O teste também encontrou e corrigiu
+    um estado Mongoose que permanecia em `running` depois do commit.
 
-- [ ] **P-03 — Check worker resource and failure behavior.**
+- [x] **P-03 — Check worker resource and failure behavior.**
   - **Depends on:** P-01 and P-02.
   - **Components/files:** `Tools/video/video.py`, `Tools/video/video_processor.py`,
     shared `image_data` and `whisper_models` volumes, evaluation observations.
@@ -134,11 +135,12 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** failures are visible and do not leave partial committed
     output; all resource/restart effects are captured; no artificial CPU/memory
     ceiling is added.
-  - **Estado (2026-11-20):** revisão do worker e os 74 testes Python concluídos.
-    Temporários, cache partilhada, confirmação no fim do trabalho e política de
-    reinício foram verificados no código. Falta o smoke test operacional de
-    vídeo/legendas e a observação de recursos e reinício, bloqueados pela falha
-    de resolução do RabbitMQ nos containers.
+  - **Estado (2026-11-20):** concluída. Os 74 testes Python passaram. Os smoke
+    tests de vídeo comum e legendas passaram em réplicas diferentes; ambas
+    retomaram o consumo após reiniciar RabbitMQ. Num vídeo de 60 segundos foram
+    observados picos de 271,6% de CPU e 1,85 GiB de RAM; não houve OOM. Os
+    detalhes e a nota sobre o reinício manual de `projects` estão em
+    `docs/fase-2-implementacao.md`.
 
 ## 2. Implementation — NFR usability during processing
 
@@ -157,7 +159,7 @@ start application changes before the official baseline gate is complete.
     authoritative.
   - **Estado:** Concluída. Acrescentado ao modelo Project o snapshot `processingRun` da execução mais recente e criadas funções puras de transição. Os dois caminhos de início guardam `running`; falhas ao obter originais, no despacho ou no worker guardam `failed`; só uma execução ativa com token correspondente pode fazer commit de `completed`; o cancelamento guarda `cancelled` e mantém a invalidação existente por token. O snapshot mantém o progresso por vídeo e é substituído quando começa uma execução mais recente. `node --test tests/*.test.js`, em `projects/`: 14 aprovados, 0 falhados.
 
-- [ ] **U-02 — Persist worker progress through the projects service.**
+- [x] **U-02 — Persist worker progress through the projects service.**
   - **Depends on:** U-01.
   - **Components/files:** `Tools/video/video.py`, RabbitMQ helpers,
     `projects/routes/projects.js` project-queue consumer, Process model.
@@ -172,6 +174,12 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** progress is durable and attributable to the correct run;
     duplicate/late messages are idempotently ignored; result message and
     browser-facing event semantics remain intact.
+  - **Estado (2026-11-20):** concluída. O worker publica observações tipadas em
+    `project_queue`; `projects` valida o processo, o vídeo e o token, guarda só
+    progresso inteiro e crescente e publica o evento da interface após a gravação.
+    Erros de gravação voltam à fila. Passaram 24 testes Node, 76 testes Python e
+    um smoke test integrado que observou o progresso guardado de 0 a 100 antes
+    da conclusão do processamento.
 
 - [ ] **U-03 — Add authorized status snapshot.**
   - **Depends on:** U-01 and U-02.
