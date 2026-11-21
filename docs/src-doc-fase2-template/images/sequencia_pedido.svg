@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" width="100%" height="100%" style="background:#ffffff; font-family:Helvetica, Arial, sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4B5563" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#C2410C" />
+    </marker>
+  </defs>
+
+  <text x="450" y="25" text-anchor="middle" font-size="14" font-weight="bold" fill="#111827">Diagrama de Sequência · Processamento em Lote de Vídeo</text>
+
+  <!-- Participants Header -->
+  <!-- Browser -->
+  <rect x="30" y="45" width="100" height="35" rx="4" fill="#E8F1F1" stroke="#9AA0A6" stroke-width="1"/>
+  <text x="80" y="67" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F2937">Browser (SPA)</text>
+  <line x1="80" y1="80" x2="80" y2="560" stroke="#D1D5DB" stroke-dasharray="4,4" stroke-width="1.5"/>
+
+  <!-- API Gateway -->
+  <rect x="170" y="45" width="100" height="35" rx="4" fill="#F4F5F7" stroke="#9AA0A6" stroke-width="1"/>
+  <text x="220" y="67" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F2937">API Gateway</text>
+  <line x1="220" y1="80" x2="220" y2="560" stroke="#D1D5DB" stroke-dasharray="4,4" stroke-width="1.5"/>
+
+  <!-- Projects (Orquestrador) -->
+  <rect x="310" y="45" width="110" height="35" rx="4" fill="#FFFFFF" stroke="#9AA0A6" stroke-width="1.5"/>
+  <text x="365" y="67" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F2937">Projects :9001</text>
+  <line x1="365" y1="80" x2="365" y2="560" stroke="#D1D5DB" stroke-dasharray="4,4" stroke-width="1.5"/>
+
+  <!-- Storage / DB -->
+  <rect x="460" y="45" width="110" height="35" rx="4" fill="#FFFBEB" stroke="#9AA0A6" stroke-width="1"/>
+  <text x="515" y="67" text-anchor="middle" font-size="11" font-weight="bold" fill="#1F2937">S3 / MongoDB</text>
+  <line x1="515" y1="80" x2="515" y2="560" stroke="#D1D5DB" stroke-dasharray="4,4" stroke-width="1.5"/>
+
+  <!-- RabbitMQ -->
+  <rect x="610" y="45" width="110" height="35" rx="4" fill="#FFFBEB" stroke="#B45309" stroke-width="1"/>
+  <text x="665" y="67" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400E">RabbitMQ</text>
+  <line x1="665" y1="80" x2="665" y2="560" stroke="#D1D5DB" stroke-dasharray="4,4" stroke-width="1.5"/>
+
+  <!-- Video Tool -->
+  <rect x="760" y="45" width="110" height="35" rx="4" fill="#FDE7D3" stroke="#C2410C" stroke-width="1.5"/>
+  <text x="815" y="67" text-anchor="middle" font-size="11" font-weight="bold" fill="#C2410C">video_tool</text>
+  <line x1="815" y1="80" x2="815" y2="560" stroke="#D1D5DB" stroke-dasharray="4,4" stroke-width="1.5"/>
+
+  <!-- Step 1: Upload -->
+  <text x="40" y="105" font-size="10" font-weight="bold" fill="#4B5563">1. Carregamento do Vídeo</text>
+  <line x1="80" y1="115" x2="220" y2="115" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="150" y="110" text-anchor="middle" font-size="9" fill="#374151">POST .../video (multipart)</text>
+
+  <line x1="220" y1="128" x2="365" y2="128" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="292" y="123" text-anchor="middle" font-size="9" fill="#374151">REST (valida ffprobe)</text>
+
+  <line x1="365" y1="140" x2="515" y2="140" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="440" y="135" text-anchor="middle" font-size="9" fill="#374151">Guarda src em S3 / DB</text>
+
+  <line x1="365" y1="155" x2="80" y2="155" stroke="#9CA3AF" stroke-dasharray="3,3" stroke-width="1" marker-end="url(#arrow)"/>
+  <text x="220" y="150" text-anchor="middle" font-size="9" fill="#6B7280">200 OK (video registado)</text>
+
+  <!-- Step 2: Pipeline -->
+  <text x="40" y="180" font-size="10" font-weight="bold" fill="#4B5563">2. Definição do Pipeline</text>
+  <line x1="80" y1="190" x2="365" y2="190" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="220" y="185" text-anchor="middle" font-size="9" fill="#374151">PUT .../pipeline (JSON com efeitos ordenados)</text>
+
+  <line x1="365" y1="205" x2="515" y2="205" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="440" y="200" text-anchor="middle" font-size="9" fill="#374151">Persiste pipeline no Project</text>
+
+  <!-- Step 3: Apply -->
+  <text x="40" y="235" font-size="10" font-weight="bold" fill="#C2410C">3. Submissão (Apply)</text>
+  <line x1="80" y1="245" x2="365" y2="245" stroke="#C2410C" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+  <text x="220" y="240" text-anchor="middle" font-size="9" font-weight="bold" fill="#C2410C">POST .../apply</text>
+
+  <line x1="365" y1="260" x2="515" y2="260" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="440" y="255" text-anchor="middle" font-size="9" fill="#374151">Cria Process e inicia processingRun</text>
+
+  <line x1="365" y1="280" x2="665" y2="280" stroke="#C2410C" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+  <text x="515" y="275" text-anchor="middle" font-size="9" font-weight="bold" fill="#C2410C">Publica em video_queue (1 msg/vídeo, pipeline integral)</text>
+
+  <!-- Step 4: Execution & Progress -->
+  <text x="40" y="310" font-size="10" font-weight="bold" fill="#C2410C">4. Execução e Progresso</text>
+  <line x1="665" y1="320" x2="815" y2="320" stroke="#C2410C" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+  <text x="740" y="315" text-anchor="middle" font-size="9" fill="#C2410C">Consome (prefetch=1)</text>
+
+  <rect x="805" y="330" width="20" height="55" fill="#FFEDD5" stroke="#C2410C" stroke-width="1"/>
+  <text x="835" y="345" font-size="8.5" fill="#7C2D12">Decode FFmpeg</text>
+  <text x="835" y="358" font-size="8.5" fill="#7C2D12">Efeitos PIL por frame</text>
+  <text x="835" y="371" font-size="8.5" fill="#7C2D12">Faster-Whisper (se subtitles)</text>
+
+  <line x1="815" y1="395" x2="665" y2="395" stroke="#C2410C" stroke-width="1.2" marker-end="url(#arrow-orange)"/>
+  <text x="740" y="390" text-anchor="middle" font-size="9" fill="#C2410C">Publica project_queue (video-progress %)</text>
+
+  <line x1="665" y1="410" x2="365" y2="410" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="515" y="405" text-anchor="middle" font-size="9" fill="#374151">projects valida e persiste progresso no Mongo</text>
+
+  <line x1="365" y1="425" x2="80" y2="425" stroke="#2563EB" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="220" y="420" text-anchor="middle" font-size="9" fill="#1D4ED8">ws_queue → wsGateway → WebSocket progress (%)</text>
+
+  <!-- Step 5: Result -->
+  <text x="40" y="455" font-size="10" font-weight="bold" fill="#4B5563">5. Conclusão e Resultado</text>
+  <line x1="815" y1="465" x2="815" y2="480" stroke="#C2410C" stroke-width="1"/>
+  <line x1="815" y1="480" x2="835" y2="480" stroke="#C2410C" stroke-width="1"/>
+  <line x1="835" y1="480" x2="835" y2="465" stroke="#C2410C" stroke-width="1"/>
+  <text x="842" y="475" font-size="8.5" fill="#7C2D12">Encode H.264 / rename .part</text>
+
+  <line x1="815" y1="495" x2="665" y2="495" stroke="#C2410C" stroke-width="1.2" marker-end="url(#arrow-orange)"/>
+  <text x="740" y="490" text-anchor="middle" font-size="9" fill="#C2410C">Publica project_queue (sucesso) + basic_ack</text>
+
+  <line x1="665" y1="510" x2="365" y2="510" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="515" y="505" text-anchor="middle" font-size="9" fill="#374151">Commit do lote: cria Result e remove Process</text>
+
+  <line x1="365" y1="525" x2="515" y2="525" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="440" y="520" text-anchor="middle" font-size="9" fill="#374151">processingRun: completed</text>
+
+  <line x1="365" y1="545" x2="80" y2="545" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="220" y="540" text-anchor="middle" font-size="9" font-weight="bold" fill="#15803D">ws_queue → process_completed (Resultados disponíveis)</text>
+
+</svg>
