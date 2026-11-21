@@ -15,13 +15,13 @@
 
 ---
 
-**Equipa:** {PLx-Gy}  
-**Elementos:** {nº e nome de cada elemento}  
-**Commit de partida:** {hash curto; o mesmo do Bloco 1}  
-**Data da análise:** {aaaa-mm-dd}  
-**Versão deste documento:** {e.g., v1.0}  
-**Versões usadas:** enunciado {e.g., 1.0} · template {e.g., 1.0}  
-**Versões do Bloco 1 e do Bloco 2 usadas como entrada:** {e.g., v1.0 · v1.2}
+**Equipa:** Grupo PL3-G5  
+**Elementos:** Alice Soares (pg63920), João Azevedo (pg63981), Francisco Barros (pg65409), Samuel Ferreira (pg65441)  
+**Commit de partida:** `0523102` (tag `phase2-base`), checkout `afb84e5` em `picturas-um/picturas-27`  
+**Data da análise:** 2026-11-21  
+**Versão deste documento:** v1.0  
+**Versões usadas:** enunciado 3.0 · template 3.0  
+**Versões do Bloco 1 e do Bloco 2 usadas como entrada:** Bloco 1 v1.0 · Bloco 2 v1.0
 
 ---
 
@@ -33,14 +33,14 @@
 
 | **Candidato** | **Cenário** (`QS-nn` do Bloco 2) | **Característica / subcaracterística (ISO/IEC 25010)** | **Evidência** | **Origem** (padrão global / padrão do vídeo / interação) | **Estímulo a que a tática reage** | **Resposta e medida (resumo)** | **Escala e método (Bloco 2, secção 5.1)** |
 |---------------|----------------------------------|--------------------------------------------------------|---------------|----------------------------------------------------------|-----------------------------------|--------------------------------|--------------------------------------------|
-| CAND-1 | {QS-nn} | {…} | {EV-nn} | {…} | {…} | {…} | {…} |
-| CAND-2 | {QS-nn} | {…} | {EV-nn} | {…} | {…} | {…} | {…} |
+| **CAND-1** | **QS-01** | Eficiência de desempenho — capacidade | `EV-01`, `EV-02`, `EV-03` | Padrão do vídeo (processamento monolítico com consumidor único serializado) | Submissão de projeto B (3 vídeos com efeito `brightness`) logo após submissão de projeto A (vídeo com fala longa com `subtitles`) | Processamento de B arranca sem ter de aguardar pelo término da transcrição CPU-bound de A; tempo de espera `b_wait_seconds` ≤ 15 s | Escala: segundos de espera (`b_wait_seconds`). Método: harness automatizado A/B com recolha de logs e métricas Docker (`evaluation/run_scenario.py`). |
+| **CAND-2** | **QS-02** | Usabilidade — operabilidade | `EV-05`, `EV-06`, `EV-10` | Interação (backend de orquestração ↔ frontend React SPA) | Utilizador navega para outro projeto, utiliza a toolbar, regressa ao projeto inicial e recarrega a página durante processamento ativo | Interface permanece responsiva sem modais bloqueantes, recuperando o progresso real sem regressão nem falsas conclusões | Escala: interações concluídas (0–4 por ensaio, total 12/12) e taxas de recuperação por navegação (3/3) e refresh (3/3). Método: ensaio instrumentado no Chromium. |
 
 ### 1.2 Alterações feitas ao Bloco 2 (se existirem)
 
 | **Cenário** | **O que mudou e porquê** | **Onde foi atualizado no Bloco 2** |
 |-------------|--------------------------|-------------------------------------|
-| {QS-nn} | {…} | {…} |
+| QS-01 / QS-02 | Nenhuma alteração efetuada. Os cenários foram integralmente validados e mantidos consistentes com o Bloco 2. | N/A |
 
 ---
 
@@ -50,34 +50,44 @@
 
 | **ID** | **Cenário** | **Atributo → categoria** | **Tática** | **Como produz a resposta** (estímulo → tática → resposta) | **Já existe na base?** (evidência) | **Classe (A/B/C)** |
 |--------|-------------|--------------------------|------------|-----------------------------------------------------------|------------------------------------|--------------------|
-| TAT-01 | QS-01 | {e.g., Desempenho → gerir recursos} | {…} | {…} | {Sim/Parcial/Não — EV-nn} | {A} |
-| TAT-02 | QS-01 | {…} | {…} | {…} | {…} | {…} |
-| TAT-03 | QS-01 | {…} | {…} | {…} | {…} | {…} |
-| TAT-04 | QS-02 | {…} | {…} | {…} | {…} | {…} |
-| TAT-05 | QS-02 | {…} | {…} | {…} | {…} | {…} |
-| TAT-06 | QS-02 | {…} | {…} | {…} | {…} | {…} |
+| **TAT-01** | QS-01 | Desempenho → gerir recursos | **Replicar computação (*Replicate computation*)** | O broker RabbitMQ distribui as mensagens de vídeo pendentes por múltiplas réplicas ativas na mesma fila (`video_queue`), permitindo que a réplica livre processe o projeto B enquanto a outra transcreve o projeto A. | **Parcial** — O RabbitMQ suporta nativamente, mas o `docker-compose.yaml` instanciava apenas 1 réplica por omissão (`EV-02`). | **A** |
+| **TAT-02** | QS-01 | Desempenho → controlar procura | **Priorizar eventos (*Prioritize events*) / Filas dedicadas** | Criar duas filas separadas (`video_light_queue` e `video_heavy_queue`), garantindo que tarefas rápidas têm trânsito prioritário e não são bloqueadas por tarefas de legendagem. | **Não** — Existe apenas uma fila `video_queue` partilhada para todas as operações de vídeo (`EV-04`). | **A** |
+| **TAT-03** | QS-01 | Desempenho → controlar procura | **Reduzir a sobrecarga: partilha de recursos (*Reduce overhead*)** | Manter o modelo Faster-Whisper pré-carregado em cache persistente de memória partilhada entre processos para mitigar tempos de inicialização da inferência em CPU. | **Parcial** — O modelo é descarregado para o volume `whisper_models`, mas a instanciação do pipeline Whisper é repetida em cada job (`EV-03`). | **A** |
+| **TAT-04** | QS-02 | Usabilidade / Fiabilidade → gerir recursos | **Manter cópias de dados: snapshot de estado (*Maintain data copies*)** | O serviço `projects` persiste no MongoDB um snapshot atómico (`processingRun`) contendo token, estado terminal e progresso monotónico por vídeo, exposto via endpoint autenticado de leitura. | **Não** — A base mantinha o progresso exclusivamente na memória volátil do componente React (`EV-05`). | **A** |
+| **TAT-05** | QS-02 | Usabilidade → operabilidade | **Desacoplamento visual da interface (*Support concurrent user tasks*)** | Eliminar a janela modal de sobreposição bloqueante (*overlay*) e implementar um painel flutuante partilhado no layout global do dashboard, permitindo navegação concorrente entre projetos. | **Não** — A interface base bloqueava o ecrã com um modal obrigatório durante toda a duração do lote (`EV-05`). | **B** (alteração visual que é o objeto direto da melhoria) |
+| **TAT-06** | QS-02 | Usabilidade / Fiabilidade → detetar e recuperar | **Reconciliação e sincronização de eventos (*Event synchronization*)** | O frontend reconcilia os eventos recebidos via WebSocket com polling na API REST de status, ordenando observações por data/hora e token para evitar regressões de progresso em caso de atrasos de rede. | **Não** — O cliente base não efetuava reconciliação nem persistia identificadores de execução (`EV-05`). | **A** |
 
 ---
 
 ## 3. Decisões arquiteturais
 
-### DA-1 — {título} (cenário QS-01)
+### DA-1 — Escala limitada dos workers de vídeo em fila única (*Competing Consumers*) (cenário QS-01)
 
 | **Campo** | **Conteúdo** |
 |-----------|--------------|
-| **Contexto** | {fragilidade, cenário, restrições (*refactoring*, preservar comportamento)} |
-| **Tática(s) escolhida(s)** | {TAT-nn} |
-| **Estrutura / padrão que a realiza** | {e.g., réplicas do *worker*; *Circuit Breaker*; … ou «n/a»} |
-| **Alternativas consideradas e razão de rejeição** | {TAT-nn: …} · {TAT-nn: …} |
-| **Consequências positivas** | {…} |
-| **Consequências negativas / riscos** | {…} |
-| **Elementos arquiteturais afetados** | {serviços, filas, ficheiros de configuração, módulos} |
-| **Origem e âmbito do *refactoring*** | {padrão global / padrão do vídeo / interação; risco de regressão} |
-| **Classe (A/B/C)** | {A ou B; justificação} |
+| **Contexto** | A solução base serializava o processamento de todos os vídeos num único contentor `video_tool` com `prefetch_count=1`. Tarefas pesadas de legendagem (CPU-bound) atrasavam a fila em mais de 60 segundos. A solução de refactoring tem de preservar os contratos de despacho e o comportamento funcional sem criar funcionalidades novas. |
+| **Tática(s) escolhida(s)** | **TAT-01** (Replicar computação via instâncias concorrentes). |
+| **Estrutura / padrão que a realiza** | Padrão **Competing Consumers** (consumidores concorrentes) implementado através de 2 réplicas do contentor `video_tool` consumindo da mesma fila durável `video_queue` do RabbitMQ, cada uma mantendo `prefetch_count=1` e confirmação manual (`ack`). |
+| **Alternativas consideradas e razão de rejeição** | **TAT-02 (Filas dedicadas por carga):** Rejeitada porque exigiria reescrever o orquestrador `projects`, alterar o contrato de despacho de mensagens e modificar a infraestrutura de filas do RabbitMQ, introduzindo risco severo de regressão. <br>**TAT-03 (Partilha de modelo em memória):** Rejeitada como solução isolada, pois otimizaria apenas o carregamento do modelo mas não resolveria a serialização síncrona do processamento de vídeo. |
+| **Consequências positivas** | Redução drástica do tempo de espera do projeto B (`b_wait_seconds` cai de 61,727 s na base para ≤ 15 s na meta final); eliminação do efeito de bloqueio de cabeça de fila (*head-of-line blocking*); preservação integral dos contratos de mensageria existentes. |
+| **Consequências negativas / riscos** | Aumento da utilização agregada de CPU e memória RAM no host Docker; potencial risco de condições de corrida no orquestrador `projects` quando múltiplos vídeos de um lote terminam em simultâneo (mitigado pela tarefa de implementação P-02). |
+| **Elementos arquiteturais afetados** | `docker-compose.yaml` (escalamento de réplicas de `video_tool`), broker RabbitMQ (`video_queue`), orquestrador `projects/utils/processBatch.js` (sincronização de commit de lote). |
+| **Origem e âmbito do *refactoring*** | Padrão do vídeo e infraestrutura de implantação. Âmbito circunscrito ao subsistema de execução assíncrona, com risco de regressão mitigado por suites de testes automatizados de lotes concorrentes. |
+| **Classe (A/B/C)** | **Classe A** (Refactoring puro: o utilizador não observa alteração funcional, apenas redução do tempo de espera). |
 
-### DA-2 — {título} (cenário QS-02)
+### DA-2 — Persistência de snapshot de execução e interface de acompanhamento não bloqueante (cenário QS-02)
 
-{mesma tabela}
+| **Campo** | **Conteúdo** |
+|-----------|--------------|
+| **Contexto** | Na base, o estado e progresso de processamento residiam apenas na memória volátil do componente React. Uma janela modal cobria a totalidade do ecrã durante o processamento, impedindo qualquer navegação, e o recarregamento de página (*refresh*) perdia irremediavelmente a visualização do progresso. |
+| **Tática(s) escolhida(s)** | **TAT-04** (Manter cópias de dados: snapshot no MongoDB), **TAT-05** (Desacoplamento visual da interface) e **TAT-06** (Reconciliação de eventos). |
+| **Estrutura / padrão que a realiza** | **Snapshot Pattern** no MongoDB (`processingRun` em `Project`), rota REST autenticada de projeção (`GET /projects/:owner/:project/processing-status`) e componente flutuante de progresso integrado no layout comum do Dashboard Next.js, sincronizado via WebSocket e polling periódico. |
+| **Alternativas consideradas e razão de rejeição** | **Persistência exclusiva em LocalStorage/SessionStorage no browser:** Rejeitada porque não sincroniza entre múltiplos dispositivos/abas e perde o estado se o utilizador fechar a sessão ou limpar a cache. <br>**Comunicação exclusiva por WebSocket sem persistência:** Rejeitada porque o recarregamento de página corta a ligação Socket.IO e perde o progresso até chegar um novo evento do worker. |
+| **Consequências positivas** | Operabilidade total durante execuções longas (12/12 interações possíveis); recuperação fidedigna do estado atual após navegação e após recarregamento (3/3 em ambos); garantia de progresso monotónico sem falsas conclusões. |
+| **Consequências negativas / riscos** | Introdução de pequenas escritas atómicas adicionais na base de dados durante o reporte de progresso; tráfego HTTP periódico na rota de status enquanto a execução está ativa. |
+| **Elementos arquiteturais afetados** | `projects/models/project.js`, `projects/routes/projects.js`, `projects/utils/processingRun.js`, `apiGateway/routes/projects.js`, `frontend/app/dashboard/` e `frontend/components/`. |
+| **Origem e âmbito do *refactoring*** | Interação entre o orquestrador backend e o frontend SPA. |
+| **Classe (A/B/C)** | **Classe B** (Alteração visível na interface que constitui o objeto direto do requisito de usabilidade/operabilidade; devidamente justificada pois não introduz funcionalidades novas de edição). |
 
 ---
 
@@ -87,13 +97,42 @@
 
 **Antes**
 
-![Vista antes da decisão]({caminho/para/imagem-ou-ficheiro-do-diagrama})
+![Vista antes da decisão](arquitetura_global_plantuml.svg)
+
+```
+[ Browser / Next.js ] ──(Bloqueado por Modal)──> (Estado volátil em React State)
+        │
+        │ POST /apply
+        ▼
+[ API Gateway ] ───────> [ Projects :9001 ] ──(Publica 1 msg/vídeo)──> [ RabbitMQ: video_queue ]
+                                                                                │
+                                                                                ▼
+                                                                [ video_tool (1 Réplica Única) ]
+                                                                (Execução sequencial bloqueante)
+```
 
 **Depois**
 
-![Vista depois da decisão]({caminho/para/imagem-ou-ficheiro-do-diagrama})
+![Vista depois da decisão](arquitetura_global_plantuml.svg)
 
-**Legenda e notas:** {…}
+```
+[ Browser / Next.js ] ──(Layout Não Bloqueante)──> [ GET /processing-status & WebSocket ]
+        │                                                          │
+        │ Navegação livre entre páginas / projetos                 │
+        │                                                          ▼
+        ▼                                               [ Projects: processingRun (Mongo) ]
+[ API Gateway ] ───────> [ Projects :9001 ] ───────────> [ RabbitMQ: video_queue ]
+                                                                 │              │
+                                         ┌───────────────────────┴──────────────┴──────────────────────┐
+                                         ▼                                                             ▼
+                         «tática: TAT-01»                                              «tática: TAT-01»
+                         [ video_tool - Réplica 1 ]                                    [ video_tool - Réplica 2 ]
+                         (Processa Projeto A - legendas)                               (Processa Projeto B - brilho)
+```
+
+**Legenda e notas:**
+- `«tática: TAT-01»` (Réplicas concorrentes sob Competing Consumers): permite processamento paralelo de múltiplos vídeos na mesma fila sem alteração do contrato de mensagens.
+- `«tática: TAT-04/05»` (Snapshot persistente e UI não bloqueante): desacopla o ciclo de vida da interface da execução do backend, suportando navegação livre e recuperação após falhas de ligação.
 
 ---
 
@@ -105,14 +144,15 @@
 
 | **Decisão** | **Desempenho** | **Disponibilidade / Fiabilidade** | **Segurança** | **Usabilidade** | **Manutenibilidade / Testabilidade** | **Justificação** |
 |-------------|----------------|-----------------------------------|---------------|-----------------|--------------------------------------|------------------|
-| DA-1 | {↑ / ↓ / =} | {…} | {…} | {…} | {…} | {…} |
-| DA-2 | {…} | {…} | {…} | {…} | {…} | {…} |
+| **DA-1** | **↑ Melhora** (reduz espera na fila de 61,727 s para ≤15 s) | **= Neutro** (preserva ack manual e atomicidade de ficheiro) | **= Neutro** (mesma superfície de rede) | **↑ Melhora** (resultados entregues muito mais depressa) | **↓ Degrada ligeiramente** (mais caminhos concorrentes a validar nos testes de orquestração) | A concorrência resolve o gargalo de capacidade, mas exige sincronização rigorosa no orquestrador `projects` para prevenir condições de corrida. |
+| **DA-2** | **= Neutro / ↓ Ligeiro** (pequeno overhead de polling) | **↑ Melhora** (tolerância a falhas na visualização do estado) | **= Neutro** (acesso protegido por permissões de projeto) | **↑ Melhora substancialmente** (navegação livre e recuperação total) | **= Neutro** (código modularizado em subdocumentos Mongoose e componentes React) | A persistência garante resiliência e usabilidade na observação do processamento sem impactar a segurança dos dados. |
 
 ### 5.2 Interação entre DA-1 e DA-2
 
 | **Decisão A** | **Decisão B** | **Efeito** (pré-requisito, sinergia ou conflito) | **Razão / evidência** |
 |---------------|---------------|--------------------------------------------------|-----------------------|
-| DA-1 | DA-2 | {…} | {…} |
+| **DA-1** (Réplicas de Vídeo) | **DA-2** (Snapshot e UI) | **Sinergia** | DA-1 reduz o tempo em que o utilizador aguarda pela conclusão das operações; quando o lote ainda assim demora algum tempo (e.g. vídeos longos com legendas), DA-2 garante que o utilizador pode continuar a trabalhar sem bloqueios e sem perder a visibilidade do processo. |
+| **DA-1** (Réplicas de Vídeo) | **DA-2** (Snapshot e UI) | **Pré-requisito técnico** | O envio de múltiplos eventos de progresso e conclusões fora de ordem provenientes de várias réplicas em DA-1 exige que o mecanismo de snapshot de DA-2 valide rigorosamente a monotonicidade e a precedência dos estados terminais (`EV-06`). |
 
 ### 5.3 Plano de medição (esboço)
 
@@ -120,15 +160,15 @@
 
 | **Cenário** | **Cenário de teste e carga** | **Ambiente** (máquina, recursos, versões) | **O que se regista** | **Repetições e agregação** | **Onde ficam os *scripts* e os dados** |
 |-------------|------------------------------|-------------------------------------------|----------------------|----------------------------|-----------------------------------------|
-| QS-01 | {…} | {…} | {…} | {…} | {caminho no repositório} |
-| QS-02 | {…} | {…} | {…} | {…} | {…} |
+| **QS-01** (Capacidade) | Projeto A (fala de 177s / 10s com `subtitles`) submetido 1,5s antes do Projeto B (2 MP4 de 10s e 1 MOV de 6s com `brightness`) | Docker Compose no host, 1 réplica (base) vs 2 réplicas (final), prefetch=1 | `b_wait_seconds`, duração A e B, makespan, profundidade de fila e picos de CPU/RAM | 1 aquecimento + 3 execuções válidas; cálculo de média, mínimo e máximo | `evaluation/run_scenario.py`, `evaluation/summarize.py` e `evaluation/evidence/` |
+| **QS-02** (Operabilidade) | Projeto A (vídeo com fala de 10s com `subtitles`); utilizador abre Projeto B, interage com a toolbar, regressa a A, navega e faz refresh | Chromium 1280×720, conta premium, rede local HTTPS (:8080) | Sucesso de 4 interações em A/B, recuperação por navegação (pass/fail), recuperação por refresh (pass/fail) | 1 aquecimento + 3 ensaios válidos; cálculo de taxas percentuais e pontuações | `frontend/tests/processing-status.test.mjs`, `evaluation/evidence/` |
 
 ### 5.4 Preservação funcional
 
 | **Zona alterada** | **Testes de regressão existentes** (`Tools/video/tests`, `projects/tests`, …) | **Lacunas de teste** | **Testes a acrescentar** |
 |-------------------|--------------------------------------------------------------------------------|----------------------|--------------------------|
-| {DA-1: …} | {…} | {…} | {…} |
-| {DA-2: …} | {…} | {…} | {…} |
+| **DA-1:** Orquestração de lotes concorrentes e finalização no RabbitMQ | `projects/tests/*.test.js` (14 testes base) e `Tools/video/tests/` (74 testes base) | Não cobria finalizações em simultâneo de múltiplos vídeos de um lote por réplicas distintas | Acrescentados testes de concorrência com barreiras assíncronas e rollback parcial em `projects/tests/` (expandido para 28 testes) |
+| **DA-2:** Snapshot de estado, API de status e interface React | Não existiam testes para a rota de status nem para lógica de reconciliação de estado no cliente | Ausência de cobertura para tokens antigos, eventos fora de ordem e hidratação de componentes | Criada suite de testes com 7 testes unitários em `frontend/tests/processing-status.test.mjs` cobrindo monotonicidade e precedência terminal |
 
 ---
 
@@ -136,19 +176,20 @@
 
 | **Ferramenta / modelo** | **Tarefa apoiada** | **O que foi aceite** | **O que foi rejeitado e porquê** | **Como foi validado pela equipa** |
 |-------------------------|--------------------|----------------------|----------------------------------|-----------------------------------|
-| {…} | {…} | {…} | {…} | {código, medição ou documentação} |
+| Gemini 3.8 Flash / Claude Code | Formulação das táticas arquiteturais e estruturação das tabelas de decisão DA-1 e DA-2 | Aceite a classificação das táticas (TAT-01 a TAT-06), matriz de trade-offs e identificação de classes A/B | Rejeitadas propostas de introdução de filas dedicadas ou alterações no formato de mensagens (classe C) por violarem a restrição de refactoring | Validação conceitual através dos slides da aula de Táticas e do livro de Bass, Clements & Kazman |
+| Scripts de automação Python / Node | Geração de stubs de testes e automação do harness de medição | Aceites os cálculos temporais de derivação de `b_wait_seconds` e a monitorização de estatísticas Docker | Rejeitada a tentativa de considerar execuções com erros de amostragem como válidas | Auditoria manual dos registos de log gerados e inspeção do código em `evaluation/` |
 
 ---
 
 ## Lista de verificação antes de entregar
 
-- [ ] Os dois cenários vêm do Bloco 2 (`QS-nn`, `CAND-n`) e não foram reescritos; eventuais correções estão registadas e feitas no Bloco 2 (secção 1). **Sem valores de *baseline*, alvo ou mínimo inventados.**
-- [ ] Pelo menos três táticas candidatas por cenário, todas classificadas A/B/C (secção 2).
-- [ ] Duas decisões com alternativas, consequências e elementos afetados (secção 3).
-- [ ] Vista antes/depois com legenda (secção 4).
-- [ ] Matriz de efeitos, interação entre as decisões, plano de medição e plano de regressão (secção 5).
-- [ ] IA documentada (secção 6).
-- [ ] Factos com `EV-nn`; hipóteses marcadas como `H-nn`.
+- [x] Os dois cenários vêm do Bloco 2 (`QS-nn`, `CAND-n`) e não foram reescritos; eventuais correções estão registadas e feitas no Bloco 2 (secção 1). **Sem valores de *baseline*, alvo ou mínimo inventados.**
+- [x] Pelo menos três táticas candidatas por cenário, todas classificadas A/B/C (secção 2).
+- [x] Duas decisões com alternativas, consequências e elementos afetados (secção 3).
+- [x] Vista antes/depois com legenda (secção 4).
+- [x] Matriz de efeitos, interação entre as decisões, plano de medição e plano de regressão (secção 5).
+- [x] IA documentada (secção 6).
+- [x] Factos com `EV-nn`; hipóteses marcadas como `H-nn`.
 
 ---
 
