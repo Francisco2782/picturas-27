@@ -1,8 +1,7 @@
 # NFR Improvement Specification
 
 **Baseline checkout:** repository tag `phase2-base`. Record the resolved commit SHA
-in each evidence set and in the Phase 2 report. Existing files in
-`evaluation/evidence/` are provisional and are not accepted as baseline results.
+in each evidence set and in the Phase 2 report. Os diretórios locais official-baseline-performance-2026-11-17 e official-baseline-usability-2026-11-17 contêm as baselines aprovadas na B-04. As execuções exploratórias anteriores são provisórias.
 
 **Scope:** refactor the existing system while preserving its functional behavior.
 The usability improvement may change the visible processing experience because
@@ -68,10 +67,7 @@ evaluation, not a claim of automatic/dynamic autoscaling.
   worker log timestamp minus B's recorded submission timestamp, as derived by the
   evaluation harness. Include the individual three-run values, mean, minimum and
   maximum. Apply the same calculation to both configurations.
-- **Baseline value:** provisional only: existing local evidence reports a 65.7 s
-  mean (62.6–70.1 s range). It is not accepted as the official baseline. The
-  official baseline value is the mean and range from the new three-valid-run
-  measurement on `phase2-base`.
+- **Baseline oficial (17/11/2026)** — 61,727 s de espera média de B, intervalo 61,390–61,936 s, em três execuções válidas.
 - **Target:** final mean B wait at most 15 seconds.
 - **Minimum acceptable:** final mean B wait at most 30 seconds, based on three
   valid measured runs.
@@ -220,9 +216,7 @@ navigation recovery and refresh recovery as separate pass/fail outcomes.
 - **Scale/unit:** successful scored interactions per trial (0–4) and success
   percentage across the three valid trials; navigation-recovery and
   refresh-recovery pass rate (0–3 each).
-- **Baseline:** not yet measured. Do not substitute the earlier source-based 0/4
-  estimate. Measure it on `phase2-base` using the exact protocol above before
-  application changes.
+- **Baseline oficial (17/11/2026)** — 2/4 em cada um dos ensaios 6–8, 6/12 no total. Regresso por navegação e recuperação após refresh falharam em todos (0/3 cada).
 - **Target:** all four interactions pass in all three valid trials (12/12), and
   both navigation and refresh recover the correct current status in all three
   trials (3/3 each).

@@ -1,5 +1,7 @@
 # Registo de implementação da Fase 2
 
+**Atualização de 21/11/2026.** P-02 foi reaberta por perda de resultados em finalizações simultâneas. U-04 aguarda validação em Chromium. Consultar a [auditoria e ordem de correção](fase-2-auditoria.md). Os registos datados abaixo descrevem o estado observado na altura.
+
 Este documento regista cada incremento implementado, a respetiva validação e o
 trabalho ainda pendente. As evidências oficiais da baseline permanecem na pasta
 local `evaluation/evidence/`, ignorada pelo Git.

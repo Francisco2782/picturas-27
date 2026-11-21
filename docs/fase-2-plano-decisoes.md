@@ -1,5 +1,7 @@
 # Fase 2 — folha de decisão
 
+**Atualização de 21/11/2026.** P-02 foi reaberta por perda de resultados em finalizações simultâneas. U-04 aguarda validação em Chromium. Consultar a [auditoria e ordem de correção](fase-2-auditoria.md). Os registos datados abaixo descrevem o estado observado na altura.
+
 ## Objetivo da Fase 2
 
 Escolher dois requisitos não funcionais, melhorar o código através de refactoring e

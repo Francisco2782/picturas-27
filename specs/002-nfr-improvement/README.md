@@ -1,24 +1,7 @@
-# Phase 2: Improve two non-functional requirements
+# Fase 2 — capacidade e operabilidade do PictuRAS
 
-This proposal focuses on video processing capacity and the ability to use the
-application while processing runs.
+A espera média inicial de B foi de **61,727 s** com um worker. A configuração final usa duas réplicas de `video_tool` na mesma fila. O mínimo aceitável é ≤30 s e o alvo é ≤15 s.
 
-**Performance efficiency — capacity** (ISO/IEC 25010:2011) matters because the
-baseline has one video worker. A CPU-heavy subtitle job occupies it while
-ordinary video jobs wait. The evaluation harness currently records a mean B wait
-of 65.7 seconds over three valid local runs. The planned refactoring separates
-subtitle work or safely increases capacity, with a target mean wait of at most
-15 seconds and a minimum acceptable mean of 30 seconds.
+Na medição inicial de operabilidade passaram **6/12 ações**, com **0/3** recuperações por navegação e **0/3** após refresh. O painel recuperável está implementado e aguarda validação integrada. A equipa ainda tem de medir os dois resultados finais.
 
-**Usability — operability** matters because the dashboard shows a full-screen
-processing overlay and keeps progress in component state. Users cannot use the
-rest of the app during the overlay, and a reload loses the visible state. The
-planned refactoring makes progress non-blocking and recoverable across
-navigation/reload. Success is measured by four repeatable interactions, with a
-target of all four available and a minimum of three plus recoverable status.
-
-Both changes are refactorings. Existing media behavior, pipeline order, progress
-meaning, and result handling must remain intact. Baselines are captured before
-code changes; identical conditions and regression tests are used afterward.
-See [spec.md](./spec.md), [plan.md](./plan.md), and [tasks.md](./tasks.md) for
-diagnoses, decisions, measurement procedures and acceptance criteria.
+Consultar a [especificação](spec.md), o [plano](plan.md), a [lista de tarefas](tasks.md) e a [auditoria e plano de correções](../../docs/fase-2-auditoria.md).

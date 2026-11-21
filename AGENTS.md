@@ -36,7 +36,7 @@ Behind the gateway:
   - AI tools: `bg_remove_ai`, `cut_ai`, `expand_ai` (uses `generative-mock/`), `obj_ai`,
     `people_ai`, `text_ai`, `upgrade_ai`.
   - `Tools/utils/`: shared RabbitMQ, image I/O and message helpers.
-  - `Tools/video/` (`video_tool`): the single video worker, see below.
+  - `Tools/video/` (`video_tool`): one worker service, with one replica by default.
 - `rabbitMQ/definitions.json`: queues, exchange and bindings.
 - `docker-compose.yaml`: the single source of truth for services and configuration.
 
@@ -47,8 +47,9 @@ Behind the gateway:
 - **Videos**: `projects` sends **one** message per video carrying the whole pipeline to
   `video_queue`. The worker probes with ffprobe, decodes once, applies the frame effects
   (`Tools/video/effects.py`, same PIL operations as the image tools), and encodes once to
-  MP4/H.264 + AAC, keeping the audio. It reports progress as `video-progress` events on
-  `ws_queue`, acks only at the end and leaves no partial output on failure. Preview mode
+  MP4/H.264 + AAC, keeping the audio. It reports typed progress to `project_queue`.
+  For an active run, `projects` persists accepted updates and publishes them to
+  `ws_queue`. The worker acks at the end and removes partial output on failure. Preview mode
   renders only the first `VIDEO_PREVIEW_SECONDS` (3 s).
 
 ### Media types
@@ -124,4 +125,5 @@ cd Tools/video && python3 -m venv .venv && .venv/bin/pip install -r requirements
 - The users service answers errors with a non-standard 701 status (including "daily limit
   reached"); `projects` maps that case to 403 before replying.
 - Image/video handling is branched in the orchestrator, PIL effects are duplicated in
-  `Tools/video/effects.py`, and there is a single `video_tool` with no replicas.
+  `Tools/video/effects.py`. The Phase 2 capacity scenario runs two replicas of
+  `video_tool` on the same queue. See the [audit](docs/fase-2-auditoria.md) for outstanding concurrency checks.

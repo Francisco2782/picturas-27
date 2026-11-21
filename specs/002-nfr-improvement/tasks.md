@@ -8,13 +8,8 @@ start application changes before the official baseline gate is complete.
 
 ### Existing baseline references
 
-- Repository tag `phase2-base` is the official source checkout; resolve and
-  record its commit SHA when collecting official evidence.
-- `evaluation/evidence/` currently contains provisional local runs only. Preserve
-  them as provisional; do not label them as the official baseline or overwrite
-  their provenance.
-- Official baseline measurements are not complete until tasks B-02 and B-03
-  below pass. They must be captured before any application source changes.
+- Base da aplicação em `0523102`, instrumento em `afb84e5`. B-02 e B-03 foram aceites em B-04. Os conjuntos oficiais locais de 17/11 estão separados dos ensaios exploratórios.
+- A [auditoria de 21/11](../../docs/fase-2-auditoria.md) reabre a validação P-02 e enumera as correções e provas de aceitação antes de M-01.
 
 ### Baseline preparation and capture
 
@@ -105,7 +100,7 @@ start application changes before the official baseline gate is complete.
     unchanged.
   - **Estado:** Concluída. Iniciado `video_tool` com `--scale video_tool=2`; ambos os containers usaram a mesma imagem e montaram `image_data` e `whisper_models`. O RabbitMQ mostrou exatamente dois consumidores ativos de `video_queue`, ambos com confirmação de mensagens obrigatória e `prefetch_count=1`. O Compose não define substituição do número de réplicas, pelo que mantém uma por omissão. Detalhes: `evaluation/evidence/phase2-p01-smoke-2026-11-17/manifest.json` (ficheiro local, ignorado pelo Git).
 
-- [x] **P-02 — Verify concurrent batch result safety.**
+- [ ] **P-02 — Verify concurrent batch result safety.**
   - **Depends on:** P-01.
   - **Components/files:** `projects/routes/projects.js`,
     `projects/utils/processBatch.js`, `projects/controllers/project.js`,
@@ -123,6 +118,7 @@ start application changes before the official baseline gate is complete.
     até ao vídeo longo terminar. O mesmo token ficou concluído com os dois
     resultados e sem trabalhos pendentes. O teste também encontrou e corrigiu
     um estado Mongoose que permanecia em `running` depois do commit.
+  - **Reaberta em 21/11.** Duas finalizações simultâneas podem apagar os resultados do token confirmado. Corrigir e testar F1 da auditoria antes de fechar P-02.
 
 - [x] **P-03 — Check worker resource and failure behavior.**
   - **Depends on:** P-01 and P-02.

@@ -1,9 +1,6 @@
 # Technical Plan: Phase 2 NFR Improvement
 
-The Phase 2 work is constrained to refactoring existing behavior. Establish and
-archive the baseline before any application change. The measured performance
-baseline already in `evaluation/evidence/` is provisional until rerun on the
-commit named in the report.
+A equipa aprovou a baseline em 17/11/2026. A aplicação correspondia à tag `phase2-base` e o instrumento à revisão `afb84e5`. O plano abaixo descreve a sequência acordada. Consultar a [auditoria de 21/11](../../docs/fase-2-auditoria.md) antes de iniciar as medições finais.
 
 ## NFR 1 — Video processing performance efficiency: capacity
 
