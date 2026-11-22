@@ -1,6 +1,6 @@
 # Registo de implementação da Fase 2
 
-**Atualização de 22/11/2026.** A correção P-02 passou a regressão local com barreira e aguarda validação integrada. A U-04 passou o build e os testes locais e aguarda validação em Chromium. Consultar a [auditoria](fase-2-auditoria.md) e as sessões [P-02](sessoes/2026-11-22-p02.md) e [U-04](sessoes/2026-11-22-u04.md). Os registos datados abaixo descrevem o estado observado na altura.
+**Atualização de 22/11/2026.** A correção P-02 passou a regressão local com barreira e a validação integrada com duas réplicas. A U-04 passou o build e os testes locais e aguarda validação em Chromium. Consultar a [auditoria](fase-2-auditoria.md) e as sessões [P-02](sessoes/2026-11-22-p02.md) e [U-04](sessoes/2026-11-22-u04.md). Os registos datados abaixo descrevem o estado observado na altura.
 
 Este documento regista cada incremento implementado, a respetiva validação e o
 trabalho ainda pendente. As evidências oficiais da baseline permanecem na pasta
@@ -87,7 +87,7 @@ falhas. P-02 e P-03 continuam pendentes.
 
 ## Incremento P-02 — Segurança de resultados em lotes concorrentes
 
-**Estado atual: correção e regressão local concluídas.** A execução com duas réplicas e persistência real continua pendente. [Sessão P-02](sessoes/2026-11-22-p02.md)
+**Estado atual: concluída.** A execução com duas réplicas e persistência real reproduziu as duas contagens a zero e preservou os dois resultados. [Sessão P-02](sessoes/2026-11-22-p02.md)
 
 ### Alterações
 
@@ -167,7 +167,7 @@ desse consumidor não faz parte desta tarefa e fica registada para acompanhament
 ## Incrementos pendentes
 
 - Ordem acordada em 2026-11-17: concluir Desempenho antes de retomar
-  Usabilidade. P-01 e P-03 estão concluídas. P-02 aguarda a prova integrada do fecho concorrente.
+  Usabilidade. P-01, P-02 e P-03 estão concluídas.
 - U-01, U-02 e U-03 estão concluídas. A implementação da U-04 está feita;
   falta o ensaio manual A/B no Chromium. R-01 a R-04, M-01 a M-04 e D-01 a
   D-02 continuam pendentes.

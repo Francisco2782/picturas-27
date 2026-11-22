@@ -1,6 +1,6 @@
 # Auditoria do PictuRAS em 21 de novembro de 2026
 
-**Seguimento de 22/11/2026.** A análise abaixo descreve a revisão auditada. A proteção de limpeza proposta em F1 foi aplicada e passou a regressão com barreira. A prova integrada P-02 continua por confirmar. Ver [sessão P-02](sessoes/2026-11-22-p02.md).
+**Seguimento de 22/11/2026.** A análise abaixo descreve a revisão auditada. A correção F1 passou a regressão com barreira e a prova integrada P-02 com duas réplicas, MongoDB e armazenamento reais. Ver [sessão P-02](sessoes/2026-11-22-p02.md).
 
 ## 1. Resumo executivo
 

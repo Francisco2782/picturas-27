@@ -6,9 +6,9 @@ user-facing documentation; this file is the short version an agent needs before 
 ## Phase 2 status
 
 - The official baseline is recorded. Compose defaults to one video worker. The capacity scenario uses two.
-- P-02 cleanup protection passed the local concurrency regression. Two replicas with real persistence are pending.
+- P-02 passed the local concurrency regression and the two-replica check with MongoDB and real storage.
 - U-04 passed the local build and status tests. Chromium validation is pending.
-- Next: run the [P-02](docs/sessoes/2026-11-22-p02.md) and [U-04](docs/sessoes/2026-11-22-u04.md) acceptance checks, then the integrated regression and final measurements. See the [audit](docs/fase-2-auditoria.md).
+- Next: run the [U-04](docs/sessoes/2026-11-22-u04.md) Chromium acceptance check, then the integrated regression and final measurements. See the [audit](docs/fase-2-auditoria.md).
 
 ## What the app is
 

@@ -100,7 +100,7 @@ start application changes before the official baseline gate is complete.
     unchanged.
   - **Estado:** Concluída. Iniciado `video_tool` com `--scale video_tool=2`; ambos os containers usaram a mesma imagem e montaram `image_data` e `whisper_models`. O RabbitMQ mostrou exatamente dois consumidores ativos de `video_queue`, ambos com confirmação de mensagens obrigatória e `prefetch_count=1`. O Compose não define substituição do número de réplicas, pelo que mantém uma por omissão. Detalhes: `evaluation/evidence/phase2-p01-smoke-2026-11-17/manifest.json` (ficheiro local, ignorado pelo Git).
 
-- [ ] **P-02 — Verify concurrent batch result safety.**
+- [x] **P-02 — Verify concurrent batch result safety.**
   - **Depends on:** P-01.
   - **Components/files:** `projects/routes/projects.js`,
     `projects/utils/processBatch.js`, `projects/controllers/project.js`,
@@ -118,7 +118,7 @@ start application changes before the official baseline gate is complete.
     até ao vídeo longo terminar. O mesmo token ficou concluído com os dois
     resultados e sem trabalhos pendentes. O teste também encontrou e corrigiu
     um estado Mongoose que permanecia em `running` depois do commit.
-  - **Seguimento de 22/11.** A correção e a regressão local de F1 passaram. Falta comprovar os resultados com duas réplicas, MongoDB e armazenamento reais. [Sessão P-02](../../docs/sessoes/2026-11-22-p02.md)
+  - **Seguimento de 22/11.** A regressão local de F1 e a prova com duas réplicas, MongoDB e armazenamento reais passaram. Ambas as contagens devolveram zero, houve um commit, e ficaram dois resultados únicos e recuperáveis. [Sessão P-02](../../docs/sessoes/2026-11-22-p02.md)
 
 - [x] **P-03 — Check worker resource and failure behavior.**
   - **Depends on:** P-01 and P-02.
