@@ -77,6 +77,87 @@ test('out-of-order results wait for every result before committing once', async 
   assert.deepEqual(commits, ['video-a']);
 });
 
+test('simultaneous completion preserves both video results', { timeout: 2000 }, async (t) => {
+  const path = require('node:path');
+  const messaging = require('../utils/project_msg');
+  const storage = require('../utils/imageStorage');
+  const Project = require('../controllers/project');
+  const Process = require('../controllers/process');
+  const Result = require('../controllers/result');
+  const mediaIds = ['video-a', 'video-b'];
+  const pending = new Set(mediaIds);
+  const stored = new Map();
+  const files = new Set();
+  const counts = [];
+  const commits = [];
+  const project = {
+    activeToken: 4,
+    committedToken: 3,
+    prevCommittedToken: 2,
+    processingRun: startProcessingRun(4, mediaIds, new Date()),
+    imgs: mediaIds.map(_id => ({ _id, media_type: 'video' })),
+  };
+  const bothRemoved = Promise.withResolvers();
+  let receive;
+  t.mock.method(messaging, 'read_msg', callback => { receive = callback; });
+  t.mock.method(messaging, 'send_msg_client', () => {});
+  t.mock.method(messaging, 'send_msg_client_error', () => {});
+  t.mock.method(storage, 'post_image', async (_user, _project, _stage, form) => {
+    form.resume();
+    const imgKey = `out-${files.size}`;
+    files.add(imgKey);
+    return { data: { data: { imageKey: imgKey } } };
+  });
+  t.mock.method(storage, 'delete_image', async (_user, _project, _stage, key) => files.delete(key));
+  t.mock.method(Project, 'getOne', async () => ({ ...project }));
+  t.mock.method(Project, 'commitRunIfActive', async (_user, _project, token) => {
+    if (project.activeToken !== token || project.processingRun.state !== 'running') return null;
+    commits.push(token);
+    project.committedToken = token;
+    project.processingRun = { ...project.processingRun, state: 'completed' };
+    return { ...project };
+  });
+  t.mock.method(Project, 'failRunIfActive', async () => null);
+  t.mock.method(Process, 'getOneByMsgId', async id => pending.has(id) ? {
+    _id: id, img_id: id, user_id: 'owner', project_id: 'project', token: 4, cur_pos: 0,
+  } : null);
+  t.mock.method(Process, 'delete', async (_user, _project, id) => {
+    pending.delete(id);
+    if (pending.size === 0) bothRemoved.resolve();
+  });
+  t.mock.method(Process, 'countByProjectAndToken', async () => {
+    await bothRemoved.promise;
+    counts.push(pending.size);
+    return pending.size;
+  });
+  t.mock.method(Result, 'create', async result => stored.set(result.img_key, result));
+  t.mock.method(Result, 'getAllByToken', async (_user, _project, token) =>
+    [...stored.values()].filter(result => result.token === token));
+  t.mock.method(Result, 'deleteByToken', async (_user, _project, token) => {
+    for (const result of stored.values()) {
+      if (result.token === token) stored.delete(result.img_key);
+    }
+  });
+
+  const routePath = require.resolve('../routes/projects');
+  const { process_msg } = require(routePath);
+  t.after(() => { delete require.cache[routePath]; });
+  process_msg();
+  const deliver = correlationId => receive({ content: Buffer.from(JSON.stringify({
+    correlationId,
+    status: 'success',
+    output: { type: 'video', imageURI: path.resolve(__dirname, '..', 'package.json') },
+  })) });
+  await Promise.all(mediaIds.map(deliver));
+
+  assert.deepEqual(counts, [0, 0]);
+  assert.deepEqual(commits, [4]);
+  assert.equal(project.processingRun.state, 'completed');
+  assert.equal(pending.size, 0);
+  assert.deepEqual([...stored.values()].map(result => result.img_id).sort(), mediaIds);
+  assert.deepEqual(files, new Set(stored.keys()));
+});
+
 test('cancelled run removes stale result and never commits', async () => {
   let removed = false;
   let cleaned = false;
