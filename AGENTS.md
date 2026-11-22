@@ -120,6 +120,17 @@ cd Tools/video && python3 -m venv .venv && .venv/bin/pip install -r requirements
   (`depends_on: rabbitmq: service_healthy`, `image_data` volume), then expose it in `projects`
   and in the frontend toolbar.
 
+## Documenting changes
+
+- For every task that changes the repository, keep one session log at
+  `docs/sessoes/YYYY-MM-DD-<task>.md`. Update it as work progresses.
+- Record decisions and their rationale, the commands actually run and their
+  results, and anything still unverified or blocked. For pending checks, include
+  the commands or steps needed to reproduce them. Record only observed results.
+- Close the log with a short summary of what changed, the evidence, what remains
+  unverified, and the next steps. Update any existing documentation affected by
+  the change and keep the Phase 2 status above current when relevant.
+
 ## Known pitfalls
 
 - `JWT_SECRET_KEY` must be the same in `users`, `api_gateway` and `ws_gateway`.
