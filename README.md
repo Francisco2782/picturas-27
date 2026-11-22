@@ -284,9 +284,9 @@ ports are published only for **development and debugging**.
 | `11000` | Image Storage        | <http://localhost:11000>                        |
 | `15672` | RabbitMQ Management  | <http://localhost:15672> — `user` / `password`  |
 | `5672`  | RabbitMQ AMQP        | broker endpoint used by the tools               |
-| `10001` | User Service         | <http://localhost:10001>                        |
-| `11001` | Subscription Service | <http://localhost:11001>                        |
-| `9002`  | Project Service      | <http://localhost:9002> (container port `9001`) |
+| `10001` | User Service         | <https://localhost:10001>                        |
+| `11001` | Subscription Service | <https://localhost:11001>                        |
+| `9002`  | Project Service      | <https://localhost:9002> (container port `9001`) |
 | `4000`  | WebSocket Gateway    | <http://localhost:4000>                         |
 | `7860`  | Generative mock API  | <http://localhost:7860> (used by `expand_ai`)   |
 | `27018` | MongoDB (projects)   | `mongodb://localhost:27018`                     |
@@ -544,8 +544,7 @@ The orchestration tests for the video pipeline and frame extraction run inside `
 docker compose run --rm --no-deps projects sh -c "node --test tests/*.test.js"
 ```
 
-For manual tests, `samples/video/` has a valid 10 s 720p MP4, a MOV, a 90 s video that the free
-plan must reject and a corrupted file — see its `README.md` for the expected result of each.
+See [Sample videos](samples/video/README.md) for upload, editing and rejection cases, including the speech sample for subtitles.
 
 ### Adding a new tool
 
@@ -636,7 +635,9 @@ de Software_ at the **University of Minho**, from the original 2024/2025 impleme
 current year. The full history — who contributed what, and when — is in
 [AUTHORS.md](AUTHORS.md). Add your group there as you start working on the project.
 
-The latest contributions, from 2026/2027 (Phase 1), are:
+Group PL3-G5 continued the project in Phase 2. Its work covers video worker scaling and recoverable processing status. Final acceptance is pending. See the [Phase 2 audit](docs/fase-2-auditoria.md).
+
+The 2026/2027 Phase 1 contributions include:
 
 ### Video support — Group PL1-G4, 2026/2027
 

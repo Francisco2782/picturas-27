@@ -1,6 +1,6 @@
 # Runner CLI Contract
 
-The planned command is:
+Example command from the repository root.
 
 ```text
 python3 evaluation/run_scenario.py \
@@ -9,7 +9,7 @@ python3 evaluation/run_scenario.py \
   --api-base https://localhost:8080/api-gateway \
   --email "$PICTURAS_EMAIL" \
   --password-env PICTURAS_PASSWORD \
-  --rabbit-user-env RABBITMQ_MANAGEMENT_USER \
+  --rabbit-user "$RABBITMQ_MANAGEMENT_USER" \
   --rabbit-password-env RABBITMQ_MANAGEMENT_PASSWORD
 ```
 
@@ -18,8 +18,8 @@ print password values, JWTs, card data, or authorization headers.
 
 Options must support measured run count and warm-up count, API base URL and local
 certificate policy, sample paths, queue URL and name, RabbitMQ management
-credentials, video container, evidence output directory, sampling interval, and
-process/observation timeouts.
+credentials, Compose project and worker service, evidence output directory, sampling interval, and
+process/observation timeouts. The runner defaults to `user` if neither `--rabbit-user` nor `RABBITMQ_MANAGEMENT_USER` is set. It discovers workers by Compose labels.
 
 Exit status:
 

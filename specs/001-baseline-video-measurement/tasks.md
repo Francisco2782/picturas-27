@@ -20,7 +20,7 @@ implementation plan. No application code may be changed.
 safe evidence-output boundaries.
 
 - [X] T001 Create the evaluation harness file layout in `evaluation/run_scenario.py`, `evaluation/summarize.py`, `evaluation/README.md`, and `evaluation/tests/`
-- [X] T002 [P] Define environment-variable and CLI configuration defaults, including API base, sample paths, RabbitMQ URL, `RABBITMQ_MANAGEMENT_USER`, `RABBITMQ_MANAGEMENT_PASSWORD`, and `VIDEO_WORKER_CONTAINER`, in `evaluation/run_scenario.py`
+- [X] T002 [P] Define environment-variable and CLI configuration defaults, including API base, sample paths, RabbitMQ URL, `RABBITMQ_MANAGEMENT_USER`, `RABBITMQ_MANAGEMENT_PASSWORD`, `COMPOSE_PROJECT_NAME`, and `VIDEO_WORKER_SERVICE`, in `evaluation/run_scenario.py`
 - [X] T003 [P] Add ignored/local evidence-output guidance and secret-handling rules to `evaluation/README.md`
 - [X] T004 [P] Create the offline test entry points in `evaluation/tests/test_run_scenario.py` and `evaluation/tests/test_summarize.py`
 
@@ -37,7 +37,7 @@ user story.
 - [X] T006 Implement UTC wall-clock and monotonic timestamp helpers plus JSON/CSV serialization without emitting passwords, JWTs, authorization headers, card data, or other secrets in `evaluation/run_scenario.py`
 - [X] T007 Implement an HTTP client with local self-signed-certificate support, JSON/multipart requests, timeout handling, non-zero failure propagation, and explicit HTTP 409 diagnostics in `evaluation/run_scenario.py`
 - [X] T008 [P] Implement RabbitMQ management sampling of `messages_ready` and `messages_unacknowledged` from `/api/queues/%2F/video_queue` in `evaluation/run_scenario.py`
-- [X] T009 [P] Implement Docker resource sampling for `picturas-video_tool-1`, parsing CPU percent and memory bytes while allowing the container name to be overridden by `VIDEO_WORKER_CONTAINER`, in `evaluation/run_scenario.py`
+- [X] T009 [P] Implement Docker resource sampling for workers discovered by Compose project and service labels, keeping CPU and memory per replica and across the group, in `evaluation/run_scenario.py`
 - [X] T010 [P] Implement timestamped `docker logs --timestamps --since <run-start> <container>` collection and parsing for A (`tools=['subtitles']`) and B (`tools=['brightness']`) in `evaluation/run_scenario.py`
 - [X] T011 Implement sample-file validation, exclusion checks for `corrupted.mp4` and `too_long_90s.mp4`, and premium-account prerequisite validation in `evaluation/run_scenario.py`
 
@@ -98,9 +98,9 @@ contains all eight requested metrics.
 
 ### Implementation for User Story 2
 
-- [X] T025 [US2] Implement result polling through `GET /projects/{user}/{project}/process/url`, accepting completion only at expected result counts A=1 and B=3 in `evaluation/run_scenario.py`
+- [X] T025 [US2] Implement result polling through `GET /projects/{user}/{project}/process/url`. Current thresholds are A ≥ 1 and B ≥ 3. Exact counts and uniqueness are tracked in the Phase 2 audit in `evaluation/run_scenario.py`
 - [X] T026 [US2] Implement concurrent or interleaved one-second queue and Docker resource sampling while either project is active, retaining raw samples and malformed-sample errors in `evaluation/run_scenario.py`
-- [X] T027 [US2] Implement Docker log collection from `picturas-video_tool-1` with UTC `--timestamps`, matching A `preview=False tools=['subtitles']` and B `preview=False tools=['brightness']` in `evaluation/run_scenario.py`
+- [X] T027 [US2] Implement Docker log collection from the discovered worker replicas with UTC `--timestamps`, matching A `preview=False tools=['subtitles']` and B `preview=False tools=['brightness']` in `evaluation/run_scenario.py`
 - [X] T028 [US2] Implement per-run timing derivation for A duration, B duration, B log-based wait, and makespan, preserving the raw submission and log timestamps in `evaluation/run_scenario.py`
 - [X] T029 [US2] Implement per-run summary output for A duration, B duration, B wait, makespan, max ready, max unacked, peak CPU, and peak memory in `evaluation/run_scenario.py`
 - [X] T030 [US2] Implement raw evidence files for HTTP metadata, project version transitions, Docker log matches, queue samples, resource samples, and run status under the configured evaluation output directory in `evaluation/run_scenario.py`
@@ -124,12 +124,14 @@ minimum, and maximum for all eight metrics.
 - [ ] T031 [P] [US3] Test aggregate filtering, required valid-run count, and warm-up exclusion in `evaluation/tests/test_summarize.py`
 - [ ] T032 [P] [US3] Test mean/minimum/maximum calculations and stable table output for all eight metrics in `evaluation/tests/test_summarize.py`
 
+The existing test covers filtering and selected output. Full coverage for T031–T032 is por confirmar.
+
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Implement independent loading and validation of per-run summaries in `evaluation/summarize.py`, rejecting incomplete or invalid records
-- [ ] T034 [US3] Implement aggregate mean, minimum, and maximum over valid measured runs for A duration, B duration, B wait, makespan, max ready, max unacked, peak CPU, and peak memory in `evaluation/summarize.py`
-- [ ] T035 [US3] Implement per-run and aggregate terminal tables, including valid-run count and the clear conclusion whether B waited and by how many seconds, in `evaluation/summarize.py`
-- [ ] T036 [US3] Integrate `run_scenario.py` with `summarize.py` so warm-up is excluded, exactly the requested valid-run count is required, and insufficient evidence exits non-zero in `evaluation/run_scenario.py`
+- [X] T033 [US3] Implement independent loading and validation of per-run summaries in `evaluation/summarize.py`, rejecting incomplete or invalid records
+- [X] T034 [US3] Implement aggregate mean, minimum, and maximum over valid measured runs for A duration, B duration, B wait, makespan, max ready, max unacked, peak CPU, and peak memory in `evaluation/summarize.py`
+- [X] T035 [US3] Implement per-run and aggregate terminal tables, including valid-run count and the clear conclusion whether B waited and by how many seconds, in `evaluation/summarize.py`
+- [X] T036 [US3] Integrate `run_scenario.py` with `summarize.py` so warm-up is excluded, exactly the requested valid-run count is required, and insufficient evidence exits non-zero in `evaluation/run_scenario.py`
 
 **Checkpoint**: User Story 3 independently summarizes existing evidence and
 supports baseline-versus-refactored comparison without rerunning collection.
@@ -140,9 +142,9 @@ supports baseline-versus-refactored comparison without rerunning collection.
 
 **Purpose**: Complete reproducibility, documentation, and end-to-end validation.
 
-- [ ] T037 [P] Document prerequisites, premium requirement, environment variables, self-signed certificate behavior, configurable RabbitMQ/container settings, excluded files, and the warm-up plus three-run command in `evaluation/README.md`
+- [X] T037 [P] Document prerequisites, premium requirement, environment variables, self-signed certificate behavior, configurable RabbitMQ and worker discovery settings, excluded files, and the warm-up plus three-run command in `evaluation/README.md`
 - [ ] T038 [P] Document the exact API requests, log matching rule, UTC timestamp arithmetic, queue confirmation role, raw-output layout, and aggregate mean/min/max semantics in `evaluation/README.md`
-- [ ] T039 [P] Add a local evidence-output policy and verify no generated evidence or credentials are committed in `evaluation/README.md`
+- [X] T039 [P] Add a local evidence-output policy and verify no generated evidence or credentials are committed in `evaluation/README.md`
 - [ ] T040 Run the offline tests in `evaluation/tests/test_run_scenario.py` and `evaluation/tests/test_summarize.py`, then record the commands and results in the implementation handoff
 - [ ] T041 Run the documented warm-up plus three-run smoke scenario from `evaluation/README.md` against the baseline checkout and verify the printed per-run and aggregate tables
 - [ ] T042 Repeat T041 against the refactored checkout with identical workload, run parameters, sampling interval, and environment fields, then compare the evidence directories

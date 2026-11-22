@@ -41,7 +41,7 @@
 
 **Como é orquestrado o processamento em lote de imagens e de vídeos** *(5 a 8 linhas)*:
 
-No PictuRAS, o processamento em lote é desencadeado quando o utilizador aciona o comando *Apply* na interface (`POST /api-gateway/projects/:owner/:project/apply`). O orquestrador central `projects` consulta a lista de media associada ao projeto e identifica se existem itens de imagem ou vídeo (`media_type: "video"`). Para imagens, o processamento segue um modelo distribuído e passo-a-passo: o `projects` envia uma mensagem individual por par (imagem, ferramenta) para a fila específica `<tool>_queue` no RabbitMQ; quando a ferramenta responde na `project_queue`, o orquestrador avança para o passo seguinte da cadeia. Para vídeos, o sistema bifurca completamente: o `projects` envia uma única mensagem agregada por vídeo para a `video_queue`, contendo a especificação integral do pipeline. O worker `video_tool` efetua o decode único com `ffmpeg`, executa as transformações de fotogramas em memória (PIL), processa etapas adicionais como transcrição (`subtitles`) ou corte, e realiza um encode final único para MP4 (H.264 + áudio AAC).
+O botão `Apply` envia um pedido a `POST /api-gateway/projects/:user/:project/process`. Para cada imagem, o orquestrador envia uma mensagem por ferramenta à fila respetiva e avança quando recebe a resposta na `project_queue`. Para cada vídeo, identificado por `media_type`, envia o pipeline completo numa mensagem à `video_queue`. Os efeitos de fotograma contíguos partilham uma passagem de descodificação e codificação. As legendas podem introduzir etapas adicionais e a extração de fotogramas produz imagens. O worker publica progresso e resultados em `project_queue`. O orquestrador guarda o progresso aceite e publica as atualizações em `ws_queue`.
 
 ---
 
@@ -54,11 +54,11 @@ No PictuRAS, o processamento em lote é desencadeado quando o utilizador aciona 
 | `README.md` | Commit `0f6dbc5` / 2026-11 | Instruções de arranque, portas expostas, topologia de serviços e dependências de execução |
 | `AGENTS.md` | Commit `0f6dbc5` / 2026-11 | Arquitetura detalhada, bifurcação imagem/vídeo, convenções e restrições de pipeline |
 | `doc-ext-requisitos-2627.pdf` | PL1-G4 (2026) | Requisitos funcionais e não funcionais herdados da extensão de vídeo da Fase 1 |
-| Diretrizes da Fase 2 (`fase-2-guidelines.md`) | Versão 1.1 (2026-11) | Requisitos de refactoring, metodologia baseline-medição, critérios de não funcionalidade |
+| Diretrizes da Fase 2 (`fase-2-guidelines.md`) | Versão 1 (04/11/2026) | Requisitos de refactoring, metodologia baseline-medição, critérios de não funcionalidade |
 | `specs/002-nfr-improvement/spec.md` | 2026-11-17 | Especificação dos dois requisitos não funcionais (capacidade e operabilidade), protocolos e métricas |
 | `docs/fase-2-plano-decisoes.md` | 2026-11-21 | Matriz de decisão, definição de baselines oficiais, metas e testes de regressão |
 | `docs/fase-2-auditoria.md` | 2026-11-21 | Auditoria arquitetural, matriz de rastreabilidade e identificação de riscos de concorrência |
-| `RAS_support_doc_architectural_patterns_PT.md` | 2026-11-04 | Taxonomia de padrões arquiteturais (Camadas, Monolítico, Microserviços, Event-Driven, Pipeline) |
+| `RAS_support_doc_architectural_patterns_PT.html` | 2026-11-04 | Taxonomia de padrões arquiteturais (Camadas, Monolítico, Microserviços, Event-Driven, Pipeline) |
 | Slides da aula 11 (*Arch. Styles*) | 2026 | Fundamentação teórica dos estilos arquiteturais e das táticas de desenho de software |
 
 ### 1.2 Vista da arquitetura global
@@ -82,23 +82,23 @@ No PictuRAS, o processamento em lote é desencadeado quando o utilizador aciona 
 
 > Carregamento → definição do pipeline → *Apply* → progresso → resultado, para um projeto com vídeos.
 
-![Diagrama de sequência do processamento em lote de um projeto com vídeos](arquitetura_global_plantuml.svg)
+![Diagrama de sequência do processamento em lote de um projeto com vídeos](../src-doc-fase2-template/images/sequencia_pedido.svg)
 
 | **Passo** | **Origem → Destino** | **Mensagem / endpoint / fila** | **Evidência** |
 |-----------|----------------------|--------------------------------|---------------|
 | Carregamento do vídeo | Browser → `apiGateway` → `projects` → `imageStorageService` → SeaweedFS | `POST /api-gateway/projects/:owner/:project/video` (multipart/form-data) | `EV-04`, `projects/routes/projects.js` |
-| Definição do pipeline | Browser → `apiGateway` → `projects` | `PUT /api-gateway/projects/:owner/:project/pipeline` (JSON com lista ordenada de ferramentas) | `EV-04`, `projects/controllers/project.js` |
-| *Apply* | Browser → `apiGateway` → `projects` → RabbitMQ | `POST /api-gateway/projects/:owner/:project/apply` → publicação na `video_queue` (1 msg/vídeo com pipeline integral) | `EV-01`, `EV-04`, `projects/utils/processBatch.js` |
-| Progresso | `video_tool` → RabbitMQ (`project_queue` / `ws_queue`) → `projects` → `wsGateway` → Browser | Eventos `video-progress` tipados com percentagem e token de execução | `EV-03`, `EV-06`, `Tools/video/video.py` |
+| Definição do pipeline | Browser → `apiGateway` → `projects` | `POST /api-gateway/projects/:user/:project/tool` para adicionar e `POST …/reorder` para reordenar | `EV-04`, `projects/controllers/project.js` |
+| *Apply* | Browser → `apiGateway` → `projects` → RabbitMQ | `POST /api-gateway/projects/:user/:project/process` → publicação na `video_queue` (1 msg/vídeo com pipeline integral) | `EV-01`, `EV-04`, `projects/utils/processBatch.js` |
+| Progresso | `video_tool` → `project_queue` → `projects` → `ws_queue` → `wsGateway` → Browser | Eventos `video-progress` tipados com percentagem e token de execução | `EV-03`, `EV-06`, `Tools/video/video.py` |
 | Resultado | `video_tool` → RabbitMQ (`project_queue`) → `projects` → MongoDB (`Result`) e `ws_queue` | Mensagem de sucesso na `project_queue`, ack manual, commit de lote e notificação `process_completed` | `EV-01`, `EV-06`, `projects/utils/processBatch.js` |
 
 ### 1.4 Onde e porquê o sistema bifurca entre imagem e vídeo
 
 | **Ponto de bifurcação** | **Caminho de imagens** | **Caminho de vídeo** | **Evidência** | **Porquê** (facto ou hipótese) |
 |-------------------------|------------------------|----------------------|---------------|--------------------------------|
-| **Validação e Upload** | `POST /:user/:project/img` (validação de formato JPEG/PNG) | `POST /:user/:project/video` (validação de codecs H.264/AAC, resolução, duração e limites free/premium via ffprobe) | `EV-04`, `projects/utils/video.js:14-80` | **Facto:** Conteúdos de vídeo têm restrições rígidas de compatibilidade e exigem validação de streams áudio/vídeo ausentes em imagens estáticas. |
+| **Validação e Upload** | `POST /:user/:project/img` (validação de formato JPEG/PNG) | `POST /:user/:project/video` (validação de contentor, codec de vídeo, resolução, duração e limites free/premium via ffprobe) | `EV-04`, `projects/utils/video.js:14-80` | **Facto:** Conteúdos de vídeo têm restrições rígidas de compatibilidade e exigem validação de streams áudio/vídeo ausentes em imagens estáticas. |
 | **Despacho no Orquestrador** | Despacho passo-a-passo: 1 mensagem por cada par (imagem, ferramenta) enviada para `<tool>_queue` | Despacho em bloco: 1 mensagem por vídeo contendo todo o pipeline enviada para a `video_queue` | `EV-04`, `projects/utils/processBatch.js:88-142` | **Facto:** Evitar re-codificações e descodificações repetidas de vídeo por ferramenta, que causariam sobrecarga incomportável de I/O e tempo de CPU. |
-| **Execução dos Workers** | Microsserviços PIL/IA independentes e especializados (16 contentores dedicados) | Worker monolítico único `video_tool` que executa todas as operações (PIL por frame, trim, speed, Faster-Whisper) | `EV-01`, `EV-02`, `docker-compose.yaml:255-260` | **Facto:** Manter a descodificação e codificação limitadas a uma passagem (*single-pass decode/encode*). |
+| **Execução dos Workers** | Microsserviços PIL/IA independentes e especializados (16 contentores dedicados) | Serviço `video_tool` que executa o pipeline completo, com uma réplica por omissão | `EV-01`, `EV-02`, `docker-compose.yaml:255-260` | **Facto:** Os efeitos de fotograma contíguos partilham uma passagem. A legendagem pode introduzir etapas adicionais. |
 | **Confirmação AMQP (*Ack*)** | Confirmação automática imediata na receção (`auto_ack=True`) em `Tools/utils/rabbit_mq.py` | Confirmação manual explícita (`ack`) apenas no final do processamento com sucesso ou falha tratada | `EV-01`, `EV-07`, `Tools/video/video.py:169-176` | **Facto:** Vídeos são computacionalmente pesados; se o worker falhar a meio, a mensagem não pode ser confirmada antes de tempo. |
 | **Interface / Frontend** | Filtros de IA (remoção de fundo, upgrade, etc.) e exportação PDF ativos | Ferramentas de IA desativadas; adição de ferramentas vídeo (trim, speed, legendas); sem exportação PDF | `EV-05`, `frontend/app/dashboard/[pid]/page.tsx` | **Facto:** Algoritmos de IA de imagem atuais não suportam vídeo no backend do sistema e vídeo não é convertível para formato PDF. |
 
@@ -195,17 +195,17 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 | EV-02 | Configuração | `docker-compose.yaml:255-260` | Serviço `video_tool` configurado com uma única réplica por omissão, sem política de escalabilidade automática. |
 | EV-03 | Código | `Tools/video/subtitles.py:15-21, 60-63` | Execução síncrona do Faster-Whisper em CPU (int8) para deteção de idioma e transcrição, bloqueando o worker durante a totalidade do processamento. |
 | EV-04 | Código | `projects/utils/processBatch.js:88-142` e `projects/routes/projects.js` | Despacho bifurcado: imagens processadas passo-a-passo através de mensagens individuais para `<tool>_queue`; vídeos despachados com pipeline completo para `video_queue`. |
-| EV-05 | Código | `frontend/app/dashboard/[pid]/page.tsx:89-94, 894-904` | Estado de progresso mantido exclusivamente na memória volátil do componente React e sobreposição de modal (`overlay`) que bloqueia a interação durante o lote. |
+| EV-05 | Código | `frontend/app/dashboard/[pid]/page.tsx` na tag `phase2-base` | Estado de progresso mantido exclusivamente na memória volátil do componente React e sobreposição de modal (`overlay`) que bloqueia a interação durante o lote. |
 | EV-06 | Código | `projects/models/project.js:35-65` e `projects/utils/processingRun.js` | Definição do subdocumento `processingRun` para persistir o snapshot autorizado de execução, token, estado e progresso monotónico no MongoDB. |
 | EV-07 | Código | `Tools/utils/rabbit_mq.py:28-35` | Ferramentas de imagem ativam `auto_ack=True` na subscrição da fila, arriscando perda de trabalhos em caso de falha a meio da execução. |
 | EV-08 | Código | `projects/utils/rabbit_mq.js:11-30` | Abertura e fecho de ligações e canais AMQP individuais por mensagem de despacho com encerramento forçado por `setTimeout(500)`. |
 | EV-09 | Configuração / Código | `apiGateway/app.js` e `docker-compose.yaml` | Serviços internos utilizam certificados TLS autoassinados com bypass de validação (`rejectUnauthorized: false`). |
-| EV-10 | Código | `projects/routes/projects.js:210-265` | Endpoint autenticado `GET /projects/:owner/:project/processing-status` expondo a projeção segura do snapshot de processamento. |
+| EV-10 | Código | `apiGateway/routes/projects.js` e `projects/routes/projects.js` | Endpoint autenticado `GET /projects/:owner/:project/processing-status` expondo a projeção segura do snapshot de processamento. |
 
 | **ID** | **Hipótese** | **Como confirmar ou refutar** | **Estado** |
 |--------|--------------|-------------------------------|------------|
-| H-01 | A execução de duas réplicas de `video_tool` sob a mesma fila `video_queue` reduzirá o tempo de espera de trabalhos rápidos concorrentes (`b_wait_seconds`) para menos de 15 segundos. | Executar o cenário de medição A/B automatizado (`evaluation/run_scenario.py`) comparando a baseline com o sistema com 2 réplicas. | Confirmada |
-| H-02 | A persistência do snapshot da execução no MongoDB associada à remoção do overlay bloqueante no frontend garantirá operabilidade contínua (12/12) e recuperação total após refresh e navegação. | Executar ensaios no Chromium com utilizador premium, alternando entre projetos durante a legendagem de A e testando recarregamento de página. | Confirmada |
+| H-01 | A execução de duas réplicas de `video_tool` sob a mesma fila `video_queue` reduzirá a média do tempo de espera de B (`b_wait_seconds`) para 15 segundos ou menos. | Executar o cenário de medição A/B automatizado (`evaluation/run_scenario.py`) comparando a baseline com o sistema com 2 réplicas. | por confirmar |
+| H-02 | A persistência do snapshot da execução no MongoDB associada à remoção do overlay bloqueante no frontend garantirá operabilidade contínua (12/12) e recuperação total após refresh e navegação. | Executar ensaios no Chromium com utilizador premium, alternando entre projetos durante a legendagem de A e testando recarregamento de página. | por confirmar |
 | H-03 | Finalizações concorrentes de trabalhos do mesmo lote por réplicas distintas podem gerar condições de corrida e perda de resultados no orquestrador `projects`. | Executar testes de concorrência com finalizações simultâneas de jobs de vídeo (conforme auditoria F1 em P-02). | Confirmada |
 
 ---
@@ -218,9 +218,9 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 
 | **ID** | **Nome / padrão** | **Descrição breve** | **Mantém ou altera o padrão global?** | **Fonte** |
 |--------|-------------------|---------------------|---------------------------------------|-----------|
-| ALT-1 | **Consumidores Concorrentes (*Competing Consumers*) com Réplicas do Worker Monolítico de Vídeo** | Escalar horizontalmente o serviço `video_tool` para múltiplas réplicas idênticas (e.g. 2 réplicas), mantendo uma única fila `video_queue` partilhada e `prefetch_count=1`. | **Mantém** o padrão global da solução e preserva integralmente o contrato de despacho. | `RAS_support_doc_architectural_patterns_PT.md` (Secção 7) |
-| ALT-2 | **Decomposição em Microserviços Distribuídos de Vídeo (*Pipes and Filters* Distribuído)** | Decompor o processamento de vídeo em múltiplos microsserviços autónomos por ferramenta (um contentor para corte, outro para cor, outro para legendas), encadeados passo-a-passo como nas imagens. | **Altera** o padrão do vídeo para convergir com o padrão distribuído de imagens; mantém o estilo global. | `RAS_support_doc_architectural_patterns_PT.md` (Secção 3 e 6) |
-| ALT-3 *(opcional)* | **Filas Separadas por Tipo de Carga (*Workload-Specific Queues*)** | Criar filas AMQP dedicadas consoante o perfil computacional: uma fila para filtros rápidos de fotogramas (`video_light_queue`) e outra para tarefas CPU-bound intensivas (`video_heavy_queue` para legendagem e extração de frames). | **Mantém** o padrão global assíncrono, mas afasta-se parcialmente ao alterar a topologia de mensageria e o contrato de despacho de `projects`. | Slides da aula 11 e `RAS_support_doc_architectural_patterns_PT.md` (Secção 4 e 7) |
+| ALT-1 | **Consumidores Concorrentes (*Competing Consumers*) com Réplicas do Worker Monolítico de Vídeo** | Escalar horizontalmente o serviço `video_tool` para múltiplas réplicas idênticas (e.g. 2 réplicas), mantendo uma única fila `video_queue` partilhada e `prefetch_count=1`. | **Mantém** o padrão global da solução e preserva integralmente o contrato de despacho. | `RAS_support_doc_architectural_patterns_PT.html` (Secção 7) |
+| ALT-2 | **Decomposição em Microserviços Distribuídos de Vídeo (*Pipes and Filters* Distribuído)** | Decompor o processamento de vídeo em múltiplos microsserviços autónomos por ferramenta (um contentor para corte, outro para cor, outro para legendas), encadeados passo-a-passo como nas imagens. | **Altera** o padrão do vídeo para convergir com o padrão distribuído de imagens; mantém o estilo global. | `RAS_support_doc_architectural_patterns_PT.html` (Secção 3 e 6) |
+| ALT-3 *(opcional)* | **Filas Separadas por Tipo de Carga (*Workload-Specific Queues*)** | Criar filas AMQP dedicadas consoante o perfil computacional: uma fila para filtros rápidos de fotogramas (`video_light_queue`) e outra para tarefas CPU-bound intensivas (`video_heavy_queue` para legendagem e extração de frames). | **Mantém** o padrão global assíncrono, mas afasta-se parcialmente ao alterar a topologia de mensageria e o contrato de despacho de `projects`. | Slides da aula 11 e `RAS_support_doc_architectural_patterns_PT.html` (Secção 4 e 7) |
 
 ### 3.2 Análise de cada alternativa
 
@@ -233,7 +233,7 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 | **Coerência com o padrão global** | Totalmente coerente. Utiliza a semântica nativa de balanceamento de carga do RabbitMQ sobre a mesma fila `video_queue` e o mesmo volume partilhado. |
 | **Efeito nos atributos de qualidade** | Melhora drasticamente a **capacidade** e o **comportamento temporal** em cenários de concorrência de lotes; mantém a fiabilidade com ack manual; aumenta ligeiramente o consumo de RAM/CPU no host. |
 | **Vantagens potenciais** | Simplicidade de implementação (*refactoring* puro de infraestrutura/orquestração sem quebra de contratos funcionais); eliminação imediata do bloqueio de cabeça de fila (*head-of-line blocking*). |
-| **Desvantagens ou riscos** | Risco de condições de corrida no orquestrador `projects` quando múltiplos vídeos de um lote terminam em simultâneo (mitigado por P-02); duplicação de modelos Whisper na memória sem partilha. |
+| **Desvantagens ou riscos** | Risco de condições de corrida no orquestrador `projects` quando múltiplos vídeos de um lote terminam em simultâneo (P-02 foi reaberta após a auditoria reproduzir perda de resultados); duplicação de modelos Whisper na memória sem partilha. |
 | **Custo e risco de migração** (a funcionalidade existente tem de ser preservada) | **Baixo custo e risco muito reduzido**. Não altera código de clientes nem formatos de mensagem. |
 
 **ALT-2 — Decomposição em Microserviços Distribuídos de Vídeo**

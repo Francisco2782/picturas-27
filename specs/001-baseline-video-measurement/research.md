@@ -133,6 +133,7 @@ Verified in source and local evaluation configuration:
   premium accounts allow 600 seconds and 1024 MB. The 177-second A video
   therefore requires a premium account.
 
-Por verificar before implementation:
-
-- Whether configured environment variables override the source-code video limits.
+The video validator reads the profile limit environment variables at startup and
+falls back to its built-in defaults. The original single-container observations
+above describe the initial baseline setup. The [current evaluation guide](../../evaluation/README.md)
+documents the worker-group discovery and sampling added in `afb84e5`.

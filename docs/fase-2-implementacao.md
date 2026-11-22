@@ -87,7 +87,7 @@ falhas. P-02 e P-03 continuam pendentes.
 
 ## Incremento P-02 — Segurança de resultados em lotes concorrentes
 
-**Estado: concluído.**
+**Estado atual: reaberto.** O incremento abaixo registou proteção para vários caminhos de falha. A auditoria reproduziu perda de resultados quando duas respostas do mesmo lote tentam concluir em simultâneo. A correção e o teste de regressão estão por confirmar. [Auditoria F1](fase-2-auditoria.md)
 
 ### Alterações
 
@@ -166,7 +166,7 @@ desse consumidor não faz parte desta tarefa e fica registada para acompanhament
 ## Incrementos pendentes
 
 - Ordem acordada em 2026-11-17: concluir Desempenho antes de retomar
-  Usabilidade. P-01, P-02 e P-03 estão concluídas; U-01 também está concluída.
+  Usabilidade. P-01 e P-03 estão concluídas. P-02 foi reaberta e o fecho concorrente ainda requer correção e regressão.
 - U-01, U-02 e U-03 estão concluídas. A implementação da U-04 está feita;
   falta o ensaio manual A/B no Chromium. R-01 a R-04, M-01 a M-04 e D-01 a
   D-02 continuam pendentes.

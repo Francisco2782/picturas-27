@@ -58,7 +58,7 @@
   <!-- Step 2: Pipeline -->
   <text x="40" y="180" font-size="10" font-weight="bold" fill="#4B5563">2. Definição do Pipeline</text>
   <line x1="80" y1="190" x2="365" y2="190" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <text x="220" y="185" text-anchor="middle" font-size="9" fill="#374151">PUT .../pipeline (JSON com efeitos ordenados)</text>
+  <text x="220" y="185" text-anchor="middle" font-size="9" fill="#374151">POST .../tool e POST .../reorder</text>
 
   <line x1="365" y1="205" x2="515" y2="205" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
   <text x="440" y="200" text-anchor="middle" font-size="9" fill="#374151">Persiste pipeline no Project</text>
@@ -66,7 +66,7 @@
   <!-- Step 3: Apply -->
   <text x="40" y="235" font-size="10" font-weight="bold" fill="#C2410C">3. Submissão (Apply)</text>
   <line x1="80" y1="245" x2="365" y2="245" stroke="#C2410C" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
-  <text x="220" y="240" text-anchor="middle" font-size="9" font-weight="bold" fill="#C2410C">POST .../apply</text>
+  <text x="220" y="240" text-anchor="middle" font-size="9" font-weight="bold" fill="#C2410C">POST .../process</text>
 
   <line x1="365" y1="260" x2="515" y2="260" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
   <text x="440" y="255" text-anchor="middle" font-size="9" fill="#374151">Cria Process e inicia processingRun</text>

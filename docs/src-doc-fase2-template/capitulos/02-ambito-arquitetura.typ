@@ -30,17 +30,15 @@
   tabela-campos(
     [Commit de partida], [`052310226c51fa57a17101c7bd1ad795674aac95` (tag `phase2-base`), checkout `afb84e5c818820f807bb504a8ed9f0a3162cc9dd`],
     [Comando(s) de arranque], [`docker compose up -d --build` (e escala com `docker compose up -d --no-build --scale video_tool=2 video_tool`)],
-    [Ambiente (SO, CPU, RAM, versões de Docker e Compose)], [#preencher[…]],
-    [Projetos de teste e amostras], [Amostras em `samples/video/`: Projeto A (#preencher[…]); Projeto B (#preencher[…])],
+    [Ambiente (SO, CPU, RAM, versões de Docker e Compose)], [Consultar o manifesto local da baseline. Condições finais por confirmar.],
+    [Projetos de teste e amostras], [Capacidade: A usa `speech_mandela_177s_1080p.webm`; B usa dois `sample_10s_720p.mp4` e um `sample_6s.mov`, em `samples/video/`. Operabilidade: amostra local de 10 s com fala.],
     [Problemas e notas de arranque], [Necessidade de `docker compose down -v --remove-orphans` ao migrar volumes legados do SeaweedFS (S3); certificados TLS internos com bypass `rejectUnauthorized: false`],
   ),
 )
 
 *Como é orquestrado o processamento em lote de imagens e de vídeos* (5 a 8 linhas):
 
-#preencher[Descrição, com palavras da equipa, do que acontece desde o _Apply_ até ao resultado, para um projeto com imagens e vídeos, e de como o sistema distingue os dois tipos de _media_.]
-
-No PictuRAS, o processamento em lote inicia-se quando o utilizador aciona o comando _Apply_ na interface (`POST /api-gateway/projects/:owner/:project/apply`). O orquestrador central `projects` consulta os _media_ do projeto e identifica se existem itens de imagem ou vídeo (`media_type: "video"`). Para imagens, o processamento segue um modelo distribuído e passo-a-passo: o orquestrador envia uma mensagem por par (imagem, ferramenta) para a respetiva fila `<tool>_queue` no RabbitMQ, avançando na cadeia quando a ferramenta responde na `project_queue`. Para vídeos, o sistema bifurca completamente: o `projects` envia uma única mensagem agregada por vídeo para a `video_queue`, contendo a especificação integral do _pipeline_. O _worker_ `video_tool` descodifica o vídeo uma só vez com `ffmpeg`, aplica os filtros de fotogramas em memória (PIL), processa legendas Faster-Whisper ou corte se presentes, e efetua uma codificação final única para MP4 (H.264 + AAC).
+O botão `Apply` envia um pedido a `POST /api-gateway/projects/:user/:project/process`. Para cada imagem, o orquestrador envia uma mensagem por ferramenta à fila respetiva e avança quando recebe a resposta na `project_queue`. Para cada vídeo, identificado por `media_type`, envia o pipeline completo numa mensagem à `video_queue`. Os efeitos de fotograma contíguos partilham uma passagem de descodificação e codificação. As legendas podem introduzir etapas adicionais e a extração de fotogramas produz imagens. O worker publica progresso e resultados em `project_queue`. O orquestrador guarda o progresso aceite e publica as atualizações em `ws_queue`.
 
 == Fontes consultadas
 
@@ -56,9 +54,9 @@ No PictuRAS, o processamento em lote inicia-se quando o utilizador aciona o coma
     [Fonte], [Versão / data], [Usada para],
     [`README.md`, `AGENTS.md`], [Commit `0f6dbc5` ], [Instruções de arranque, portas, topologia de serviços, convenções e regras de bifurcação imagem/vídeo.],
     [`doc-ext-requisitos-2627.pdf`], [PL1-G4 (2026)], [Requisitos funcionais e não funcionais herdados da extensão de vídeo da Fase 1 (`REQ-VID-*`).],
-    [`doc-sol-arquitetural.pdf`], [Fase 1 (2026)], [Solução arquitetural de base do PictuRAS e decomposição em microsserviços.],
+    [`doc-sol-arquitetural.pdf`], [por confirmar], [Documento referido, ausente da árvore auditada.],
     [Slides da aula 11 (_Arch. Styles_) e documento de apoio de padrões arquiteturais], [2026-11-04], [Taxonomia de estilos arquiteturais (Camadas, Monolítico, Microserviços, Event-Driven, Pipeline).],
-    [Diretrizes da Fase 2 (`fase-2-guidelines.md`)], [Versão 1.1 / 2026-11], [Regras de refactoring, restrições metodológicas e critérios de aceitação.],
+    [Diretrizes da Fase 2 (`fase-2-guidelines.md`)], [Versão 1 / 04-11-2026], [Regras de refactoring, restrições metodológicas e critérios de aceitação.],
        [#preencher[outra fonte]], [#preencher[…]], [#preencher[…]],
 
   ),
@@ -130,10 +128,10 @@ O processamento completo de um projeto com vídeos articula-se em cinco fases es
   tabela(
     colunas: (2.8cm, 3.4cm, 1fr, 3.8cm),
     [Passo], [Origem → Destino], [Mensagem / _endpoint_ / fila], [Evidência],
-    [Carregamento do vídeo], [Browser → Gateway → `projects` → S3], [`POST /api-gateway/projects/:owner/:project/video` (multipart/form-data)], [`EV-04`: `projects/routes/projects.js:95-150` — valida codecs H.264/AAC, resolução e guarda em S3.],
-    [Definição do _pipeline_], [Browser → Gateway → `projects`], [`PUT /api-gateway/projects/:owner/:project/pipeline` (JSON com ferramentas)], [`EV-04`: `projects/controllers/project.js:180-210` — atualiza filtros ordenados no projeto.],
-    [_Apply_], [Browser → Gateway → `projects` → RabbitMQ], [`POST /api-gateway/projects/:owner/:project/apply` → publica em `video_queue`], [`EV-01`: `Tools/video/video.py:53-54` e `EV-04`: `projects/utils/processBatch.js:88-142` — 1 msg por vídeo com pipeline integral.],
-    [Progresso], [`video_tool` → `project_queue` → `projects` → `ws_queue`], [Mensagens `video-progress` tipadas com token e percentagem], [`EV-03`: `Tools/video/subtitles.py` e `EV-06`: `projects/models/project.js` — validação e snapshot atómico no Mongo.],
-    [Resultado], [`video_tool` → `project_queue` → `projects` → UI], [Mensagem de sucesso, ack manual, criação de `Result` e evento `process_completed`], [`EV-01`: `Tools/video/video.py:169-176` e `EV-06`: `processBatch.js` — escrita atómica `.part.mp4` e commit.],
+    [Carregamento do vídeo], [Browser → Gateway → `projects` → S3], [`POST /api-gateway/projects/:owner/:project/video` (multipart/form-data)], [`EV-04`: `projects/routes/projects.js` e `projects/utils/video.js` — validam contentor, codec de vídeo, duração, tamanho e resolução.],
+    [Definição do _pipeline_], [Browser → Gateway → `projects`], [`POST …/tool` para adicionar e `POST …/reorder` para reordenar], [`EV-04`: `apiGateway/routes/projects.js` e `projects/routes/projects.js`.],
+    [_Apply_], [Browser → Gateway → `projects` → RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` → publica em `video_queue`], [`EV-01`: `Tools/video/video.py:53-54` e `EV-04`: `projects/utils/processBatch.js:88-142` — 1 msg por vídeo com pipeline integral.],
+    [Progresso], [`video_tool` → `project_queue` → `projects` → `ws_queue`], [Mensagens `video-progress` tipadas com token e percentagem], [`EV-03`: `Tools/video/video.py` e `EV-06`: `projects/utils/videoProgress.js` — validação e persistência antes de publicar.],
+    [Resultado], [`video_tool` → `project_queue` → `projects` → UI], [Mensagem de sucesso, ack manual, criação de `Result` e evento `process_completed`], [`EV-01`: `Tools/video/video.py:169-176` e `EV-06`: `projects/utils/processBatch.js` — commit de lote. A segurança do fecho simultâneo está por confirmar em P-02.],
   ),
 ) <tab-passos-pedido>

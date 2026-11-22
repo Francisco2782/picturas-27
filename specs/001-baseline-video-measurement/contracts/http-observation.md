@@ -2,10 +2,10 @@
 
 ## Project mutation protocol
 
-Every project mutation must send:
+Versioned project mutations must send these headers. Project creation returns its initial version.
 
 ```text
-Authorization: <JWT>
+Authorization: Bearer <JWT>
 X-Project-Version: <integer>
 ```
 
@@ -21,10 +21,13 @@ The runner polls:
 GET /projects/{user}/{project}/process/url
 ```
 
-and accepts completion only when the returned result list contains the expected
-number of results. Processing start for B is estimated from the first qualifying
-RabbitMQ ready-count transition after its three messages are enqueued. The
-transition timestamp and sampling interval must be retained with the estimate.
+and currently accepts completion when the result count reaches or exceeds the
+expected count (one for A, three for B). Exact counts and uniqueness for final
+acceptance are por confirmar (see [audit F6](../../../docs/fase-2-auditoria.md)).
+
+B's processing start is the earliest matching UTC brightness log timestamp across
+observed worker replicas. The runner retains the matching logs and submission time.
+Queue depth corroborates the observation.
 
 ## Sampling protocol
 
@@ -37,5 +40,6 @@ RabbitMQ management response fields:
 }
 ```
 
-Docker statistics must be normalized to numeric CPU percent and memory bytes.
-Malformed or missing samples are errors in the raw record, not zero values.
+Docker statistics use CPU percent and memory bytes. Each observation retains
+per-replica values and group sums. Malformed or missing samples are recorded as
+errors in the raw evidence.

@@ -45,8 +45,9 @@ self-signed local HTTPS; explicit HTTP 409 handling; no secrets in versioned fil
 exclude `corrupted.mp4` and `too_long_90s.mp4`.
 
 **Scale/Scope**: Two projects and four video uploads per run, one warm-up plus three
-valid runs by default, one video worker log stream and queue, and one aggregate
-summary with mean, minimum, and maximum.
+valid runs by default, one video queue and one aggregate summary with mean,
+minimum, and maximum. The runner discovers worker replicas by Compose labels and
+collects logs and resource observations for the group.
 
 ## Constitution Check
 

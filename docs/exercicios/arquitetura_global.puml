@@ -36,7 +36,7 @@ package "Camada de acesso" as access {
 }
 
 package "Serviços de negócio" as business {
-  component "projects :9001\nORQUESTRADOR\npipelines · Process/Result · tokens\n(routes/projects.js, 2732 linhas)" as projects #FFFFFF
+  component "projects :9001\nORQUESTRADOR\npipelines · Process/Result · tokens\n(routes/projects.js)" as projects #FFFFFF
   component "users :10001" as users
   component "subscriptions :11001" as subscriptions
   component "img_storage :11000\nfaçade S3\nmulter.memoryStorage" as img_storage
@@ -56,7 +56,7 @@ package "RabbitMQ · exchange direto «picturas» · filas duráveis" as rmq #FF
 
 package "Workers (consomem filas)" as workers {
   component "16 ferramentas de imagem\n1 contentor por fila · auto-ack\nPIL / IA" as img_tools
-  component "video_tool (1 contentor, sem réplicas)\nffmpeg + PIL por frame + Faster-Whisper\nprefetch = 1 · ack no fim" as video_tool #FDE7D3
+  component "video_tool (1 réplica por omissão)\nffmpeg + PIL por frame + Faster-Whisper\nprefetch = 1 · ack no fim" as video_tool #FDE7D3
 }
 
 folder "volume partilhado\nimage_data (/app/images)" as vol
@@ -89,8 +89,7 @@ api_gateway -[#C2410C,thickness=2]-> projects : POST …/video\n(buffer em memó
 projects -[#C2410C,thickness=2]-> img_storage
 projects -[#C2410C,thickness=2]-> video_q : 1 msg por vídeo\n(pipeline completo)
 video_q -[#C2410C,thickness=2]-> video_tool
-video_tool -[#C2410C,thickness=2]-> project_q : resultado
-video_tool -[#C2410C,thickness=2]-> ws_q : video-progress (%)
+video_tool -[#C2410C,thickness=2]-> project_q : progresso e resultado
 video_tool -[#C2410C,dashed,thickness=2]-> vol
 
 legend bottom

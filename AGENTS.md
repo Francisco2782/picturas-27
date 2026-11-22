@@ -3,6 +3,13 @@
 Guidance for AI coding agents (and humans) working on this repository. `README.md` is the
 user-facing documentation; this file is the short version an agent needs before changing code.
 
+## Phase 2 status
+
+- The official baseline is recorded. Compose defaults to one video worker. The capacity scenario uses two.
+- The processing panel and status API are implemented. Chromium validation and final measurements are pending.
+- Next: fix P-02 and add a simultaneous-completion regression, validate U-04 in Chromium, then run the integrated
+  regression and final capacity and operability measurements. See the [audit](docs/fase-2-auditoria.md).
+
 ## What the app is
 
 PictuRAS is a web editor for images and videos, built as Docker Compose microservices. Users
@@ -45,9 +52,9 @@ Behind the gateway:
 - **Images**: `projects` sends one message per (image, tool) step and advances the chain when
   the tool replies on `project_queue`. Progress goes to the browser through `ws_queue`.
 - **Videos**: `projects` sends **one** message per video carrying the whole pipeline to
-  `video_queue`. The worker probes with ffprobe, decodes once, applies the frame effects
-  (`Tools/video/effects.py`, same PIL operations as the image tools), and encodes once to
-  MP4/H.264 + AAC, keeping the audio. It reports typed progress to `project_queue`.
+  `video_queue`. The worker probes with ffprobe and shares one decode/encode pass across
+  contiguous frame effects (`Tools/video/effects.py`). Ordinary video output is MP4/H.264 + AAC
+  with audio retained. The worker reports typed progress to `project_queue`.
   For an active run, `projects` persists accepted updates and publishes them to
   `ws_queue`. The worker acks at the end and removes partial output on failure. Preview mode
   renders only the first `VIDEO_PREVIEW_SECONDS` (3 s).
@@ -125,5 +132,4 @@ cd Tools/video && python3 -m venv .venv && .venv/bin/pip install -r requirements
 - The users service answers errors with a non-standard 701 status (including "daily limit
   reached"); `projects` maps that case to 403 before replying.
 - Image/video handling is branched in the orchestrator, PIL effects are duplicated in
-  `Tools/video/effects.py`. The Phase 2 capacity scenario runs two replicas of
-  `video_tool` on the same queue. See the [audit](docs/fase-2-auditoria.md) for outstanding concurrency checks.
+  `Tools/video/effects.py`.

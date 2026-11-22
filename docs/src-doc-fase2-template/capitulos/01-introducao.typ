@@ -17,31 +17,26 @@
 ]
 
 == Propósito e âmbito
-#preencher[Que RNF se pretende melhorar, em que parte da solução (extensão de vídeo, enquadrada no padrão global) e com que restrições (_refactoring_ que preserva o comportamento funcional).]
-
 O presente relatório documenta o trabalho desenvolvido na Fase 2 da unidade curricular de Requisitos e Arquiteturas de Software, centrado na melhoria orientada de Requisitos Não Funcionais (RNF) do sistema PictuRAS. Partindo da solução integrada herdada da Fase 1 (desenvolvida pelo grupo PL1-G4), o objetivo fulcral consiste em diagnosticar, intervir e quantificar empiricamente a melhoria de atributos de qualidade sobre o subsistema de processamento de vídeo, enquadrado no padrão arquitetural global da plataforma.
 
-A intervenção rege-se estritamente pelo princípio de _refactoring_ arquitetural: otimizar a estrutura interna e a eficiência operacional do sistema sem introduzir novas funcionalidades ao utilizador e preservando integralmente o comportamento funcional preexistente (pipelines de edição, formatos suportados, integridade de codecs e regras de autorização). Foram selecionados dois requisitos não funcionais prioritários:
+O _refactoring_ procura melhorar a capacidade e a operabilidade do sistema, preservando os pipelines de edição, os formatos suportados e as regras de autorização. Foram selecionados dois requisitos não funcionais.
 
-
-
-1. *Eficiência de Desempenho — Capacidade*: mitigar o estrangulamento severo provocado pelo processamento serializado e síncrono de vídeo (`video_queue`), no qual tarefas computacionalmente intensivas executadas em CPU (nomeadamente a legendagem automática com Faster-Whisper) bloqueiam o avanço de pedidos concorrentes;
-
-2. NOTA: Falta preencher
+1. *Eficiência de Desempenho — Capacidade*: mitigar o estrangulamento severo provocado pelo processamento serializado e síncrono de vídeo (`video_queue`), no qual tarefas computacionalmente intensivas executadas em CPU (nomeadamente a legendagem automática com Faster-Whisper) bloqueiam o avanço de pedidos concorrentes.
+2. *Usabilidade — Operabilidade*: permitir trabalhar noutro projeto e recuperar o estado do processamento depois de navegar ou recarregar a página. O painel está implementado e a validação integrada em Chromium está por confirmar.
 
 
 == _Baseline_ e repositório
 
-O ponto de partida do sistema assenta na versão oficial disponibilizada no repositório GitHub do projeto, marcada com a _tag_ `phase2-base`. Todas as medições de referência (_baseline_) foram recolhidas nesse estado inicial sem modificações aplicacionais, garantindo que os resultados finais obtidos traduzem exclusivamente o impacto das decisões arquiteturais adotadas.
+O ponto de partida do sistema assenta na versão oficial disponibilizada no repositório GitHub do projeto, marcada com a _tag_ `phase2-base`. A medição inicial usou o checkout do instrumento `afb84e5`, com código aplicacional equivalente à base oficial. As medições finais de capacidade e operabilidade estão por confirmar.
 
 #tab([Artefactos de partida],
   tabela(
     colunas: (5.5cm, 1fr),
     [Artefacto], [Versão / referência],
     [Documento de requisitos de base], [doc-ext-requisitos-2627.pdf (Extensão de Requisitos PL1-G4)],
-    [Documento de solução arquitetural de base], [doc-sol-arquitetural.pdf],
+    [Documento de solução arquitetural de base], [doc-sol-arquitetural.pdf — por confirmar],
     [Repositório de partida], [https://github.com/picturas-um/picturas-27 · tag `phase2-base` (`0523102`), checkout de medição `afb84e5`],
-    [Repositório entregue], [#preencher[URL e _commit_ da entrega]],
+    [Repositório entregue], [por confirmar],
     [Diretrizes da Fase 2], [Versão 1 ],
   ),
 )

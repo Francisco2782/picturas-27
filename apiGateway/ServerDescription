@@ -1,0 +1,15 @@
+PictuRAS API Gateway
+
+Nginx forwards https://localhost:8080/api-gateway/ to Express and strips the
+/api-gateway prefix. The gateway mounts /projects, /users and /subscriptions.
+Protected routes read Authorization: Bearer <JWT>.
+
+For a project under /projects/:user/:project:
+- POST /img and /video accept multipart fields image and video, respectively.
+- POST /tool adds an effect and POST /reorder changes the pipeline order.
+- POST /process starts a run. GET /processing-status returns the authorized
+  snapshot, and GET /process/url lists available result URLs.
+- Versioned mutations send X-Project-Version. A stale version can return 409.
+
+The handlers in routes/projects.js, routes/users.js and routes/subscriptions.js
+define the request and response behavior.

@@ -62,10 +62,13 @@ output:
 - **PG64044** — Vítor Hugo Inácio Mina
 - **PG65418** — João Pedro Belece Bernardo
 
-## Continuation — Group PL?-?, 2026/2027
+## Phase 2 — Group PL3-G5, 2026/2027
 
-That is you. Add your names here as you start working on the project:
+The group worked on video processing capacity and recoverable processing status.
 
-- **PG?????** — _name_
+- **PG63920** — Alice Soares
+- **PG63981** — João Azevedo
+- **PG65409** — Francisco Barros
+- **PG65441** — Samuel Ferreira
 
 _Note: minor improvements and adjustments have also been introduced by the course lecturers._

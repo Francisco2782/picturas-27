@@ -1,8 +1,8 @@
-# PictuRAS · RAS 2026/2027 — Template do Relatório da Fase 2 (Typst)
+# PictuRAS · RAS 2026/2027 — Relatório da Fase 2 (Typst)
 
-Proposta de *template* para o relatório da Fase 2 (melhoria de requisitos não funcionais por *refactoring*). A sua
-utilização é **opcional**. Mantém o formato, os componentes e a convenção de marcadores do template da Fase 1; o conteúdo
-reúne os contributos pedidos nos Exercícios 6 (Blocos 1 e 2) e 7.
+Fonte do relatório do grupo PL3-G5, ainda em preparação. A introdução e a vista de arquitetura já têm texto do grupo. Os marcadores identificam secções a completar. Os resultados finais estão por confirmar e o estado dos ensaios está na [auditoria](../fase-2-auditoria.md).
+
+O [PDF de pré-visualização](../template-fase2-preview.pdf) é um exemplo do template original. Para ver o relatório atual, compila `main.typ`.
 
 
 ## Compilar

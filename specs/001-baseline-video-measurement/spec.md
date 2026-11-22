@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-10
 
-**Status**: Draft
+**Status**: Harness implemented. Final comparison and evidence acceptance are tracked in the [Phase 2 specification](../002-nfr-improvement/spec.md).
 
 **Input**: User description: "Create a reproducible baseline measurement harness for
 video processing NFR evidence. Run a subtitles job and a brightness workload against
@@ -38,7 +38,7 @@ intervention.
 2. **Given** a run is starting, **When** project A and project B are prepared,
    **Then** project A contains the 177-second speech video with subtitles and project
    B contains two copies of the 10-second video plus the 6-second video with
-   brightness, and A processing starts before B processing.
+   brightness, and A is submitted before B.
 3. **Given** a project version conflict or transient request failure occurs, **When**
    the runner handles the response, **Then** it reports the affected run and
    operation clearly and does not silently treat an incomplete run as valid.
@@ -127,14 +127,14 @@ maximum for every requested timing and resource metric.
 - **FR-004**: The harness MUST prepare project B with two uploads of
   `sample_10s_720p.mp4`, one upload of `sample_6s.mov`, and the `[brightness]`
   pipeline.
-- **FR-005**: The harness MUST start processing A before B and MUST start B 1–2
-  seconds after A, recording the actual timestamps.
+- **FR-005**: The harness MUST submit A first and wait 1–2 seconds before
+  submitting B, recording the submission timestamps. Worker logs identify actual starts.
 - **FR-006**: The harness MUST record start, end, and duration for both projects,
   B's wait before its job starts, and the overall makespan.
 - **FR-007**: The harness MUST sample video queue ready and unacknowledged depth at
   approximately one-second intervals while the scenario is active.
-- **FR-008**: The harness MUST sample video-worker CPU and memory at approximately
-  one-second intervals while the scenario is active.
+- **FR-008**: The harness MUST sample CPU and memory for each observed worker replica
+  at approximately one-second intervals, and record worker-group totals.
 - **FR-009**: The harness MUST write timestamped raw observations and a per-run
   summary containing all metrics required by FR-006 through FR-008.
 - **FR-010**: The harness MUST calculate and print mean, minimum, and maximum over
