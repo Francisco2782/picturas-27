@@ -77,7 +77,7 @@ test('out-of-order results wait for every result before committing once', async 
   assert.deepEqual(commits, ['video-a']);
 });
 
-test('simultaneous completion preserves both video results', { timeout: 2000 }, async (t) => {
+async function completeTwoVideos(t, { afterCommit, afterPersist } = {}) {
   const path = require('node:path');
   const messaging = require('../utils/project_msg');
   const storage = require('../utils/imageStorage');
@@ -115,6 +115,7 @@ test('simultaneous completion preserves both video results', { timeout: 2000 }, 
     commits.push(token);
     project.committedToken = token;
     project.processingRun = { ...project.processingRun, state: 'completed' };
+    afterCommit?.(project);
     return { ...project };
   });
   t.mock.method(Project, 'failRunIfActive', async () => null);
@@ -130,7 +131,10 @@ test('simultaneous completion preserves both video results', { timeout: 2000 }, 
     counts.push(pending.size);
     return pending.size;
   });
-  t.mock.method(Result, 'create', async result => stored.set(result.img_key, result));
+  t.mock.method(Result, 'create', async result => {
+    stored.set(result.img_key, result);
+    afterPersist?.(project);
+  });
   t.mock.method(Result, 'getAllByToken', async (_user, _project, token) =>
     [...stored.values()].filter(result => result.token === token));
   t.mock.method(Result, 'deleteByToken', async (_user, _project, token) => {
@@ -149,13 +153,49 @@ test('simultaneous completion preserves both video results', { timeout: 2000 }, 
     output: { type: 'video', imageURI: path.resolve(__dirname, '..', 'package.json') },
   })) });
   await Promise.all(mediaIds.map(deliver));
+  await deliver(mediaIds[0]);
+  return { counts, commits, project, pending, stored, files, mediaIds };
+}
 
+test('simultaneous completion preserves both video results', { timeout: 2000 }, async (t) => {
+  const { counts, commits, project, pending, stored, files, mediaIds } = await completeTwoVideos(t);
   assert.deepEqual(counts, [0, 0]);
   assert.deepEqual(commits, [4]);
   assert.equal(project.processingRun.state, 'completed');
+  assert.equal(project.committedToken, 4);
   assert.equal(pending.size, 0);
   assert.deepEqual([...stored.values()].map(result => result.img_id).sort(), mediaIds);
   assert.deepEqual(files, new Set(stored.keys()));
+});
+
+test('a late finalizer preserves results reserved for rollback', { timeout: 2000 }, async (t) => {
+  const { counts, commits, project, pending, stored, files, mediaIds } = await completeTwoVideos(t, {
+    afterCommit(project) {
+      project.prevCommittedToken = project.committedToken;
+      project.committedToken = 5;
+      project.activeToken = 5;
+      project.processingRun = { ...project.processingRun, runToken: 5 };
+    },
+  });
+  assert.deepEqual(counts, [0, 0]);
+  assert.deepEqual(commits, [4]);
+  assert.equal(project.prevCommittedToken, 4);
+  assert.equal(pending.size, 0);
+  assert.deepEqual([...stored.values()].map(result => result.img_id).sort(), mediaIds);
+  assert.deepEqual(files, new Set(stored.keys()));
+});
+
+test('completion still cleans up results of an invalidated run', { timeout: 2000 }, async (t) => {
+  const { commits, pending, stored, files } = await completeTwoVideos(t, {
+    afterPersist(project) {
+      project.activeToken = 5;
+      project.processingRun = { ...project.processingRun, state: 'cancelled' };
+    },
+  });
+  assert.deepEqual(commits, []);
+  assert.equal(pending.size, 0);
+  assert.equal(stored.size, 0);
+  assert.equal(files.size, 0);
 });
 
 test('cancelled run removes stale result and never commits', async () => {

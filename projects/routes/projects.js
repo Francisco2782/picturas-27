@@ -171,11 +171,22 @@ function toolsEqual(a, b) {
 
 // TODO process message according to type of output
 async function discardRunResults(userId, projectId, token) {
+  const project = await Project.getOne(userId, projectId);
+  if (project) {
+    const run = project.processingRun;
+    const canStillCommit = (project.activeToken ?? 0) === token
+      && (!run || (run.runToken === token && run.state === "running"));
+    if (canStillCommit || (project.committedToken ?? 0) === token || project.prevCommittedToken === token) {
+      return null;
+    }
+  }
+
   const results = await Result.getAllByToken(userId, projectId, token);
   await Promise.allSettled(results.map((result) =>
     delete_image(userId, projectId, "out", result.img_key)
   ));
   await Result.deleteByToken(userId, projectId, token);
+  return results.length;
 }
 
 async function failRunAndCleanup(userId, projectId, token) {
@@ -2200,19 +2211,12 @@ router.delete(
           console.error("Error clearing previews on tool delete:", err);
         }
 
-        // 3)  apagar apenas outputs do token "mais recente" (oldTok),
-        // para não destruir o token para onde fizemos rollback.
+        // Only discard the old token once it is no longer published or reserved.
         try {
-          // results por token (como no cancel):
-          const resultsOld = await Result.getAllByToken(req.params.user, req.params.project, oldTok);
-          for (const r of resultsOld) {
-            try {
-              await delete_image(req.params.user, req.params.project, "out", r.img_key);
-            } catch (_) {}
+          const deleted = await discardRunResults(req.params.user, req.params.project, oldTok);
+          if (deleted !== null) {
+            console.log(`[UNDO-ROLLBACK][RESULTS-CLEAN] token=${oldTok} deleted=${deleted}`);
           }
-          await Result.deleteByToken(req.params.user, req.params.project, oldTok);
-
-          console.log(`[UNDO-ROLLBACK][RESULTS-CLEAN] token=${oldTok} deleted=${resultsOld.length}`);
         } catch (err) {
           console.error("Error clearing token results on tool delete:", err);
         }
@@ -2404,13 +2408,10 @@ router.delete(
 
       // apagar apenas resultados da execução cancelada
       try {
-        const toDelete = await Result.getAllByToken(ownerId, projectId, cancelTok);
-        for (const r of toDelete) {
-          try { await delete_image(ownerId, projectId, "out", r.img_key); } catch (_) {}
+        const deleted = await discardRunResults(ownerId, projectId, cancelTok);
+        if (deleted !== null) {
+          console.log(`[CANCEL][RESULTS-CLEAN] token=${cancelTok} deleted=${deleted}`);
         }
-        await Result.deleteByToken(ownerId, projectId, cancelTok);
-
-        console.log(`[CANCEL][RESULTS-CLEAN] token=${cancelTok} deleted=${toDelete.length}`);
       } catch (err) {
         console.error("Error deleting cancelled run results:", err);
       }
