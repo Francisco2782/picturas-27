@@ -118,7 +118,7 @@ start application changes before the official baseline gate is complete.
     até ao vídeo longo terminar. O mesmo token ficou concluído com os dois
     resultados e sem trabalhos pendentes. O teste também encontrou e corrigiu
     um estado Mongoose que permanecia em `running` depois do commit.
-  - **Reaberta em 21/11.** Duas finalizações simultâneas podem apagar os resultados do token confirmado. Corrigir e testar F1 da auditoria antes de fechar P-02.
+  - **Seguimento de 22/11.** A correção e a regressão local de F1 passaram. Falta comprovar os resultados com duas réplicas, MongoDB e armazenamento reais. [Sessão P-02](../../docs/sessoes/2026-11-22-p02.md)
 
 - [x] **P-03 — Check worker resource and failure behavior.**
   - **Depends on:** P-01 and P-02.
@@ -213,6 +213,7 @@ start application changes before the official baseline gate is complete.
   - **Estado (2026-11-20):** implementação concluída e build/testes locais
     aprovados. Falta o ensaio manual no Chromium com os projetos A/B e vídeo com
     fala; manter pendente até essa validação.
+  - **Seguimento de 22/11.** Build, TypeScript, lint e testes de estado passaram novamente. A revisão confirmou os caminhos de recuperação no código e detalhou os casos a observar no browser. [Sessão U-04](../../docs/sessoes/2026-11-22-u04.md)
 
 ## 3. Regression and integrated validation
 

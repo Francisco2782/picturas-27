@@ -6,9 +6,9 @@ user-facing documentation; this file is the short version an agent needs before 
 ## Phase 2 status
 
 - The official baseline is recorded. Compose defaults to one video worker. The capacity scenario uses two.
-- The processing panel and status API are implemented. Chromium validation and final measurements are pending.
-- Next: fix P-02 and add a simultaneous-completion regression, validate U-04 in Chromium, then run the integrated
-  regression and final capacity and operability measurements. See the [audit](docs/fase-2-auditoria.md).
+- P-02 cleanup protection passed the local concurrency regression. Two replicas with real persistence are pending.
+- U-04 passed the local build and status tests. Chromium validation is pending.
+- Next: run the [P-02](docs/sessoes/2026-11-22-p02.md) and [U-04](docs/sessoes/2026-11-22-u04.md) acceptance checks, then the integrated regression and final measurements. See the [audit](docs/fase-2-auditoria.md).
 
 ## What the app is
 

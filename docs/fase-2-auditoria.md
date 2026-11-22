@@ -1,5 +1,7 @@
 # Auditoria do PictuRAS em 21 de novembro de 2026
 
+**Seguimento de 22/11/2026.** A análise abaixo descreve a revisão auditada. A proteção de limpeza proposta em F1 foi aplicada e passou a regressão com barreira. A prova integrada P-02 continua por confirmar. Ver [sessão P-02](sessoes/2026-11-22-p02.md).
+
 ## 1. Resumo executivo
 
 **Em progresso com riscos para a entrega.** A equipa escolheu dois requisitos mensuráveis, registou as condições iniciais e implementou as alterações. Falta demonstrar que a configuração final atinge sequer os mínimos. Há ainda uma falha de concorrência que pode deixar um lote concluído sem resultados. A prioridade é corrigir P-02 antes de usar resultados do sistema como evidência final.
