@@ -8,6 +8,8 @@
 
 **Âmbito do seguimento.** QS-03 verificou a preservação do processamento em lote com duas réplicas, como regressão de QS-01. A correção complementar F8 foi ensaiada com contas gratuitas e confirmou um único reembolso à conta que pagou, mesmo em projetos partilhados. [Registo da preparação dos commits](sessoes/2026-11-23-commits-fase2.md)
 
+**Seguimento de F2 e F3.** A regressão em MongoDB reproduziu a reposição de estado antigo após uma edição e a perda de progresso válido entre vídeos. A correção limita cada edição aos campos modificados e aceita progresso pela ordem de cada vídeo, mantendo a data do lote monotónica. [Registo da regressão](sessoes/2026-11-23-f2-f3.md)
+
 ## 1. Resumo executivo
 
 **Estado à data da auditoria, 21/11.** A configuração final ainda precisava de demonstrar os mínimos. A prioridade era corrigir a falha de concorrência antes das medições. Os seguimentos acima registam a validação da P-02 e o cumprimento dos dois alvos.

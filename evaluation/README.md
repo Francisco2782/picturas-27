@@ -114,3 +114,14 @@ python3 evaluation/measure_status_polling.py --output evaluation/evidence/pollin
 ```
 
 The polling test needs the exact 10 s input from the official usability baseline in the D-01 archive. It compares one active status observer at 1 Hz against zero periodic requests in a matched four-second window, with identical probes at the window boundaries and after it. Response size is the decoded HTTP body. Timing is measured from the local client. The test measures marginal HTTP cost for this observer and workload.
+
+## Project concurrency regressions
+
+Run from the repository root against the updated `projects` image on the dedicated validation stack. The test creates synthetic projects in the `picturas_concurrency_test` MongoDB database and removes those documents after the checks.
+
+```sh
+docker exec -i --workdir /app/tests picturas-validation-projects-1 node \
+  < projects/tests/project-concurrency.integration.js
+```
+
+The checks cover progress from two videos delivered out of order, and edits that were read before a worker completed or failed the run. See the [F2 and F3 verification log](../docs/sessoes/2026-11-23-f2-f3.md).
