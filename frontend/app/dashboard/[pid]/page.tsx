@@ -1,7 +1,6 @@
 "use client";
 
 import { Download, LoaderCircle, OctagonAlert, Play } from "lucide-react";
-import { resolveShareLink } from "@/lib/projects";
 import { ProjectImageList } from "@/components/project-page/project-image-list";
 import { ViewToggle } from "@/components/project-page/view-toggle";
 import { AddImagesDialog } from "@/components/project-page/add-images-dialog";
@@ -13,6 +12,7 @@ import {
   useGetProjectResults,
   useGetProjectProcessingStatus,
   useGetSocket,
+  useResolveShareLink,
 } from "@/lib/queries/projects";
 import { useTrackProcessingProject } from "@/components/dashboard-processing-status";
 import Loading from "@/components/loading";
@@ -91,13 +91,6 @@ export default function Project({
   // Progress of each video being edited, as a percentage
   const [videoProgress, setVideoProgress] = useState<Record<string, number>>({});
   const [waitingForPreview, setWaitingForPreview] = useState<string>("");
-  const [canEdit, setCanEdit] = useState(true);
-
-  // estado para saber se o link de partilha foi revogado
-  const [shareRevoked, setShareRevoked] = useState(false);
-
-  // flag para ignorar updates depois de cancelar
-  const ignoreUpdatesRef = useRef(false);
   const trackedRunRef = useRef<number | null>(null);
 
   // início do processamento
@@ -149,11 +142,29 @@ export default function Project({
     shareId,
   );
   const processingStatusData = processingStatus.data;
+  const share = useResolveShareLink(shareId, true);
+  const shareRevoked = !!shareId && share.isError;
+  const canEdit = shareId
+    ? !share.isError && share.data?.permission === "edit" &&
+      share.data.ownerId === ownerId && share.data.projectId === pid
+    : session.user._id === ownerId;
   const refetchProcessingStatus = processingStatus.refetch;
   const currentProjectVersion = project.data?.version;
   const refetchProjectResults = projectResults.refetch;
   const trackProcessingProject = useTrackProcessingProject();
   const qc = useQueryClient();
+  const activeRunToken = processingStatusData?.state === "running" ? processingStatusData.runToken : null;
+
+  useEffect(() => {
+    if (activeRunToken === null) return;
+    trackProcessingProject({
+      userId: session.user._id,
+      projectId: pid,
+      ownerId,
+      shareId,
+      projectVersion: currentProjectVersion,
+    });
+  }, [activeRunToken, currentProjectVersion, ownerId, pid, session.user._id, shareId, trackProcessingProject]);
 
   useLayoutEffect(() => {
     if (
@@ -163,70 +174,6 @@ export default function Project({
       router.replace(path);
     }
   }, [mode, view, path, router, projectResults.data]);
-
-  useEffect(() => {
-  let cancelled = false;
-
-  async function loadSharePermission() {
-    if (!shareId) {
-      setCanEdit(true);
-      return;
-    }
-
-    try {
-      const info = await resolveShareLink(shareId);
-      // ajusta o campo conforme o teu backend devolve
-      // exemplos comuns: info.permission === "edit" | "read"
-      const perm = (info as any)?.permission ?? (info as any)?.access ?? (info as any)?.mode;
-
-      const editable = perm === "edit" || perm === "write";
-      if (!cancelled) setCanEdit(editable);
-    } catch (err: any) {
-      // se falhar, joga pelo seguro: read-only
-      if (!cancelled) setCanEdit(false);
-    }
-  }
-
-  loadSharePermission();
-
-  return () => {
-    cancelled = true;
-  };
-}, [shareId]);
-
-  // link de partilha enquanto o editor está aberto em modo "edit"
-  useEffect(() => {
-    if (mode !== "edit") return;
-    if (!shareId) return;
-    if (!session.token) return;
-
-    const sid = shareId;          // ← narrowing definitivo
-    const token = session.token;
-
-    let cancelled = false;
-
-    async function pingShare() {
-      try {
-        await resolveShareLink(shareId!);
-        setShareRevoked(false);
-      } catch (err: any) {
-        const status = err?.response?.status;
-        // 410 = revogado → true
-        if (status === 410) setShareRevoked(true);
-        // outros erros: podes decidir
-        else setShareRevoked(true); // ou false se preferires "falha de rede não revoga"
-      }
-    }
-
-    pingShare();
-
-    const interval = setInterval(pingShare, 10000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [mode, shareId, session.token]);
 
   // heartbeat de presença (editores ativos) enquanto estiver em mode=edit
   useEffect(() => {
@@ -326,13 +273,6 @@ useEffect(() => {
     if (trackedRunRef.current !== snapshot.runToken) {
       trackedRunRef.current = snapshot.runToken;
       seenProcessEventsRef.current.clear();
-      trackProcessingProject({
-        userId: session.user._id,
-        projectId: pid,
-        ownerId,
-        shareId,
-        projectVersion: currentProjectVersion,
-      });
     }
     return;
   }
@@ -345,14 +285,16 @@ useEffect(() => {
   handledRunRef.current = snapshot.runToken;
 
   const startedAt = processStartTimeRef.current;
+  const observedRun = trackedRunRef.current === snapshot.runToken || startedAt !== null;
   const isAiProcess = processIsAiRef.current;
   processStartTimeRef.current = null;
   processIsAiRef.current = false;
   setProcessingSteps(1);
   if (snapshot.state === "completed") {
     setProcessingProgress(100);
-    setWaitingForPreview("__APPLY_DONE__");
     refetchProjectResults();
+    if (!observedRun) return;
+    setWaitingForPreview("__APPLY_DONE__");
     if (!isMobile) sidebar.setOpen(true);
     if (startedAt !== null) {
       const durationMs = performance.now() - startedAt;
@@ -371,14 +313,17 @@ useEffect(() => {
       params.set("view", "grid");
       router.push(`?${params.toString()}`);
     }
-  } else if (snapshot.state === "failed") {
+  } else if (snapshot.state === "cancelled") {
+    setProcessingProgress(0);
+    setWaitingForPreview("");
+  } else if (observedRun && snapshot.state === "failed") {
     toast({
       title: "Processing failed",
       description: "The processing run failed. You can review the project and try again.",
       variant: "destructive",
     });
   }
-}, [processingStatusData, refetchProjectResults, mode, searchParams, router, toast, trackProcessingProject, session.user._id, pid, ownerId, shareId, hasVideos, isMobile, sidebar, currentProjectVersion]);
+}, [processingStatusData, refetchProjectResults, mode, searchParams, router, toast, hasVideos, isMobile, sidebar]);
 
 useEffect(() => {
   function matchesCurrentRun(payload: { projectId?: string; runToken?: number }) {
@@ -390,7 +335,7 @@ useEffect(() => {
   function onProcessUpdate(payload: {
     projectId?: string; runToken?: number; timestamp?: string; messageId?: string;
   }) {
-    if (ignoreUpdatesRef.current || !processing || !matchesCurrentRun(payload)) return;
+    if (!processing || !matchesCurrentRun(payload)) return;
     const eventTime = Date.parse(payload.timestamp ?? "");
     const runStartedAt = Date.parse(processingStatusData?.startedAt ?? "");
     if (!Number.isFinite(eventTime) || eventTime < runStartedAt) return;
@@ -568,34 +513,14 @@ if (project.isError) {
     );
 
 const handleCancel = () => {
-  // ignorar updates vindos do socket
-  ignoreUpdatesRef.current = true;
-
-  // cancelar medição de tempo e tipo
-  processStartTimeRef.current = null;
-  processIsAiRef.current = false;
-
-  // parar tudo no UI
-  setProcessing(false);
-  setProcessingProgress(0);
-  setProcessingSteps(1);
-    setVideoProgress({});
-
-  // reabrir a sidebar em desktop 
-  if (!isMobile) {
-    sidebar.setOpen(true);
-  }
-
-  // limpar estado de preview (se alguma tool estava a fazer preview)
-  setWaitingForPreview("");
-
-  // cancelar no backend
+  if (!canEdit || processingStatus.isError || processingStatusData?.state !== "running") return;
   cancelProcess.mutate(
     {
       projectVersion: project.data.version
     },
     {
       onSuccess: () => {
+        if (!isMobile) sidebar.setOpen(true);
 
       qc.invalidateQueries({
         queryKey: ["projectImages", session.user._id, pid, session.token, ownerId, shareId],
@@ -674,7 +599,6 @@ const handleCancel = () => {
                     className="inline-flex"
                     onClick={() => {
                       // começa a contar o tempo
-                      ignoreUpdatesRef.current = false;
                       requestedRunTokenRef.current = processingStatusData?.runToken ?? 0;
                       awaitingRunStartRef.current = true;
                       processStartTimeRef.current = performance.now();
@@ -704,7 +628,6 @@ const handleCancel = () => {
                         },
                         {
                           onSuccess: async (result) => {
-                            ignoreUpdatesRef.current = false;
                             if (result.completed) {
                               awaitingRunStartRef.current = false;
                               await projectResults.refetch();
@@ -803,7 +726,7 @@ const handleCancel = () => {
                 )}
                 </>
               )}
-              {processing && (
+              {canEdit && !processingStatus.isError && processingStatusData?.state === "running" && (
                 <Button
                   variant="outline"
                   disabled={cancelProcess.isPending}

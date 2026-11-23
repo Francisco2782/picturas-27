@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import {
   fetchProjects,
   fetchProject,
@@ -34,6 +35,10 @@ export const useGetProjectProcessingStatus = (
       );
     },
     enabled: !!uid && !!pid && !!token,
+    retry: (count, error) => {
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      return ![401, 403, 404, 410].includes(status ?? 0) && count < 3;
+    },
     refetchInterval: (query) => query.state.data?.state === "running" ? 1000 : false,
     refetchOnReconnect: true,
     refetchOnWindowFocus: true,
@@ -123,12 +128,13 @@ export const useGetSharedProject = (shareId: string, token: string) => {
   });
 };
 
-export const useResolveShareLink = (shareId?: string | null) => {
+export const useResolveShareLink = (shareId?: string | null, watch = false) => {
   return useQuery({
     queryKey: ["resolveShareLink", shareId],
     queryFn: () => resolveShareLink(shareId as string),
     enabled: !!shareId,
     staleTime: 30_000,
+    refetchInterval: watch ? 10_000 : false,
     retry: false,
   });
 };

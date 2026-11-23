@@ -446,6 +446,12 @@ export const useCancelProjectProcess = (
         refetchType: "all",
       });
     },
+    onError: () => {
+      qc.invalidateQueries({ queryKey: projectKey });
+    },
+    onSettled: () => qc.invalidateQueries({
+      queryKey: ["projectProcessingStatus", uid, pid, token, ownerId, shareId],
+    }),
   });
 };
 

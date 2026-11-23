@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isAxiosError } from "axios";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, LoaderCircle, X } from "lucide-react";
@@ -8,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useGetProjectProcessingStatus, useGetSocket } from "@/lib/queries/projects";
+import { useGetProjectProcessingStatus, useGetSocket, useResolveShareLink } from "@/lib/queries/projects";
 import { useCancelProjectProcess } from "@/lib/mutations/projects";
 import { applyVideoProgressEvent, shouldRefreshProcessingStatus } from "@/lib/processing-status";
 import type { ProcessingRunStatus } from "@/lib/projects";
@@ -46,6 +47,8 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
   const pathname = usePathname();
   const [tracked, setTracked] = useState<TrackedProject | null>(null);
   const [cancelError, setCancelError] = useState(false);
+  const isTrackedProjectOpen = tracked && pathname === `/dashboard/${tracked.projectId}`;
+  const share = useResolveShareLink(isTrackedProjectOpen ? undefined : tracked?.shareId, true);
   const status = useGetProjectProcessingStatus(
     tracked?.userId ?? "",
     tracked?.projectId ?? "",
@@ -60,6 +63,10 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
     tracked?.ownerId,
     tracked?.shareId,
   );
+  const canEdit = tracked && tracked.userId === session.user._id && (tracked.shareId
+    ? !share.isError && share.data?.permission === "edit" &&
+      share.data.ownerId === tracked.ownerId && share.data.projectId === tracked.projectId
+    : tracked.ownerId === session.user._id);
 
   useEffect(() => {
     if (!session.user?._id) return;
@@ -78,12 +85,12 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
   }, [session.user?._id]);
 
   const trackProject = useCallback((project: TrackedProject) => {
-    setTracked((current) => ({
-      ...project,
-      projectVersion: current?.projectId === project.projectId && current.ownerId === project.ownerId
-        ? Math.max(current.projectVersion ?? 0, project.projectVersion ?? 0) || undefined
-        : project.projectVersion,
-    }));
+    setTracked((current) => {
+      if (current?.projectId !== project.projectId || current.ownerId !== project.ownerId ||
+          current.userId !== project.userId || current.shareId !== project.shareId) return project;
+      const version = Math.max(current.projectVersion ?? 0, project.projectVersion ?? 0) || undefined;
+      return version === current.projectVersion ? current : { ...project, projectVersion: version };
+    });
   }, []);
 
   useEffect(() => {
@@ -96,14 +103,17 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
   }, []);
 
   const cancelTrackedRun = () => {
-    if (!tracked || !Number.isFinite(tracked.projectVersion)) return;
+    if (!tracked || !canEdit || status.isError || status.data?.state !== "running" ||
+        tracked.projectVersion === undefined || !Number.isFinite(tracked.projectVersion)) return;
     setCancelError(false);
-    cancelProcess.mutate({ projectVersion: tracked.projectVersion! }, {
-      onSuccess: () => {
-        qc.invalidateQueries({ queryKey });
-        status.refetch();
+    cancelProcess.mutate({ projectVersion: tracked.projectVersion }, {
+      onError: (error) => {
+        setCancelError(true);
+        if (!isAxiosError(error) || error.response?.status !== 409) return;
+        const version = error.response.data?.serverVersion;
+        if (typeof version !== "number" || !Number.isFinite(version)) return;
+        setTracked((current) => current === tracked ? { ...current, projectVersion: version } : current);
       },
-      onError: () => setCancelError(true),
     });
   };
 
@@ -158,7 +168,6 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
   const projectHref = tracked
     ? `/dashboard/${tracked.projectId}${hrefQuery ? `?${hrefQuery}` : ""}`
     : "#";
-  const isTrackedProjectOpen = tracked && pathname === `/dashboard/${tracked.projectId}`;
 
   const contextValue = useMemo(() => ({ trackProject }), [trackProject]);
   const running = visibleStatus?.state === "running";
@@ -199,7 +208,7 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
               {status.isError && <div className="text-xs text-muted-foreground">Open the project to check access and retry.</div>}
               {cancelError && <div className="text-xs text-destructive">Could not cancel processing. Reopen the project and try again.</div>}
               <Link href={projectHref} className="text-xs underline underline-offset-2">Open project</Link>
-              {running && !isTrackedProjectOpen && Number.isFinite(tracked?.projectVersion) && (
+              {running && canEdit && !isTrackedProjectOpen && Number.isFinite(tracked.projectVersion) && (
                 <Button
                   variant="outline"
                   size="sm"
