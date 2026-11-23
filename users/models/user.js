@@ -4,6 +4,14 @@ const { encrypt, decrypt, hashEmail } = require("../utils/fieldCrypto");
 const daySchema = new mongoose.Schema({
   day: { type: Date, required: true },
   processed: { type: Number, default: 0, required: true },
+  reservations: {
+    type: [new mongoose.Schema({
+      id: { type: String, required: true },
+      count: { type: Number, required: true },
+      refunded: { type: Boolean, default: false },
+    }, { _id: false })],
+    default: undefined,
+  },
 });
 
 const userSchema = new mongoose.Schema({
@@ -34,6 +42,7 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
   operations: { type: [daySchema], required: true, default: [] },
+  quotaRevision: { type: Number, default: 0 },
 });
 
 // Virtual "email" para aceder ao valor desencriptado
@@ -62,6 +71,8 @@ userSchema.set("toJSON", {
     delete ret.email_encrypted;
     delete ret.email_hash;
     delete ret.password_hash;
+    delete ret.quotaRevision;
+    for (const day of ret.operations ?? []) delete day.reservations;
     return ret;
   },
 });

@@ -82,6 +82,16 @@ const projectSchema = new mongoose.Schema({
   // nº de operações avançadas reservadas numa execução em curso
   // (serve só para saber quanto refund fazer em caso de cancel)
   pendingAdvancedOps: { type: Number, default: 0 },
+  processingQuota: {
+    type: new mongoose.Schema({
+      id: { type: String, required: true },
+      payerId: { type: String, required: true },
+      runToken: { type: Number, required: true },
+      previousChargedAdvancedTools: { type: Number, required: true },
+    }, { _id: false }),
+    default: undefined,
+    select: false,
+  },
   
   // campo de partilhas
   sharedLinks: [

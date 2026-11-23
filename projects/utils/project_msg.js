@@ -52,7 +52,8 @@ async function send_rabbit_msgConfirmed(msg, queue) {
         try {
             await channel.assertExchange('picturas', 'direct', { durable: true });
             await new Promise((resolve, reject) => {
-                channel.publish('picturas', queue, Buffer.from(JSON.stringify(msg)), {}, (error) => {
+                const options = queue === queues.video ? { persistent: true } : {};
+                channel.publish('picturas', queue, Buffer.from(JSON.stringify(msg)), options, (error) => {
                     if (error) reject(error);
                     else resolve();
                 });

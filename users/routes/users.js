@@ -74,6 +74,74 @@ function check_process(user, op, op_num) {
   );
 }
 
+function currentQuotaDay() {
+  const { year, month, day } = get_cur_date();
+  return new Date(year, month, day);
+}
+
+function chargeDailyOperations(user, count, day, reservationId) {
+  if (reservationId) {
+    const existing = user.operations.flatMap((entry) => entry.reservations ?? [])
+      .find((reservation) => reservation.id === reservationId);
+    if (existing) return !existing.refunded && existing.count === count ? "ok" : "conflict";
+    if (user.type === "premium") return "unlimited";
+  }
+
+  const current = user.operations.find((entry) => entry.day.getTime() === day.getTime())
+    ?? { day, processed: 0 };
+  if (!check_process(user, current, count)) return "limit";
+  if (count === 0) return "ok";
+
+  current.processed += count;
+  if (reservationId) {
+    current.reservations ??= [];
+    current.reservations.push({ id: reservationId, count, refunded: false });
+  }
+  user.operations = user.operations.filter((entry) => entry.day.getTime() !== day.getTime());
+  user.operations.push(current);
+  return "updated";
+}
+
+router.post("/:user/process/reservations/:reservationId", async (req, res) => {
+  const { reservationId } = req.params;
+  const { count } = req.body ?? {};
+  if (!/^[a-f0-9-]{36}$/.test(reservationId) || !Number.isSafeInteger(count) || count <= 0) {
+    return res.status(400).jsonp("Invalid operation reservation");
+  }
+  try {
+    const day = currentQuotaDay();
+    const outcome = await User.updateDailyOperations(req.params.user,
+      (user) => chargeDailyOperations(user, count, day, reservationId));
+    if (outcome === "missing") return res.sendStatus(404);
+    if (outcome === "limit") return res.status(403).jsonp("No more daily_operations available");
+    if (outcome === "conflict") return res.sendStatus(409);
+    return res.json({ reserved: outcome !== "unlimited" });
+  } catch (error) {
+    console.error("Error reserving processing operations:", error);
+    return res.sendStatus(503);
+  }
+});
+
+router.delete("/:user/process/reservations/:reservationId", async (req, res) => {
+  try {
+    await User.updateDailyOperations(req.params.user, (user) => {
+      for (const day of user.operations) {
+        const reservation = day.reservations?.find((entry) => entry.id === req.params.reservationId);
+        if (!reservation) continue;
+        if (reservation.refunded) return "ok";
+        day.processed = Math.max(0, day.processed - reservation.count);
+        reservation.refunded = true;
+        return "updated";
+      }
+      return "ok";
+    });
+    return res.sendStatus(204);
+  } catch (error) {
+    console.error("Error refunding processing operations:", error);
+    return res.sendStatus(503);
+  }
+});
+
 // Get list of all users
 router.get("/", function (req, res, next) {
   User.getAll()
@@ -130,41 +198,12 @@ router.get("/:user/type/", function (req, res, next) {
 // Test if we can process a project based on the number of advanced tools
 router.get("/:user/process/:advanced_tools", async function (req, res, next) {
   try {
-    const user = await User.getOne(req.params.user);
-
-    if (!user) {
-      return res.status(404).jsonp("Error acquiring user's information.");
-    }
-
     const op_num = parseInt(req.params.advanced_tools, 10) || 0;
-
-    const { year, month, day } = get_cur_date();
-    const process_date = new Date(year, month, day);
-
-    // procurar operações de hoje
-    let op =
-      user.operations.find((o) => o.day.getTime() === process_date.getTime()) ||
-      { day: process_date, processed: 0 };
-
-    // verificar se pode processar
-    const can_process = check_process(user, op, op_num);
-
-    if (!can_process) {
-      // aqui é o caso de ficar sem operações
-      return res.status(701).jsonp("No more daily_operations available");
-    }
-
-    // se pode processar, reservar as operações
-    op.processed += op_num;
-
-    // remover registo antigo de hoje (se existir) e voltar a pôr atualizado
-    user.operations = user.operations.filter(
-      (o) => o.day.getTime() !== process_date.getTime(),
-    );
-    user.operations.push(op);
-
-    await User.update(req.params.user, user);
-
+    const day = currentQuotaDay();
+    const outcome = await User.updateDailyOperations(req.params.user,
+      (user) => chargeDailyOperations(user, op_num, day));
+    if (outcome === "missing") return res.status(404).jsonp("Error acquiring user's information.");
+    if (outcome === "limit") return res.status(701).jsonp("No more daily_operations available");
     return res.status(200).jsonp(true);
   } catch (err) {
     console.error("Error in GET /:user/process/:advanced_tools:", err);
@@ -240,20 +279,21 @@ router.post("/:email/login", function (req, res, next) {
 router.put("/:user", function (req, res, next) {
   User.getOne(req.params.user)
     .then((user) => {
-      user.name = req.body.name || user.name;
-      user.email = req.body.email || user.email;
-      user.type = req.body.type || user.type;
+      const profile = {
+        name: req.body.name || user.name,
+        email: req.body.email || user.email,
+        type: req.body.type || user.type,
+      };
 
       if (req.body.password != null) {
-        user.password = req.body.password || user.password;
-
-        User.updatePassword(req.params.user, user)
+        profile.password = req.body.password || user.password;
+        User.updatePassword(req.params.user, profile)
           .then((_) => res.sendStatus(204))
           .catch((_) =>
             res.status(703).jsonp(`Error updating user's information`),
           );
       } else {
-        User.update(req.params.user, user)
+        User.update(req.params.user, profile)
           .then((_) => res.sendStatus(204))
           .catch((_) =>
             res.status(704).jsonp(`Error updating user's information`),
@@ -264,99 +304,38 @@ router.put("/:user", function (req, res, next) {
 });
 
 // Update number of advanced tools used
-router.put("/:user/process/:advanced_tools", function (req, res, next) {
-  User.getOne(req.params.user)
-    .then((user) => {
-      const date = get_cur_date();
-      const process_date = new Date(date.year, date.month, date.day);
-      const op_num = parseInt(req.params.advanced_tools);
-
-      let op = {};
-      let rem_prev_op = false;
-
-      if (
-        user.operations.filter(
-          (o) => o.day.getTime() === process_date.getTime(),
-        ).length > 0
-      ) {
-        op = user.operations.filter(
-          (o) => o.day.getTime() === process_date.getTime(),
-        )[0];
-        rem_prev_op = true;
-      } else {
-        op = {
-          day: process_date,
-          processed: 0,
-        };
-      }
-
-      let can_process = check_process(user, op, op_num);
-
-      if (!can_process) {
-        res.status(799).jsonp("Cannot perform desired operation");
-        return;
-      }
-
-      if (rem_prev_op) user.operations.remove(op);
-
-      let new_op = {
-        day: op.day,
-        processed: op.processed + op_num,
-      };
-
-      user.operations.push(new_op);
-
-      User.update(req.params.user, user)
-        .then((_) => res.sendStatus(204))
-        .catch((_) =>
-          res.status(704).jsonp(`Error updating user's information`),
-        );
-    })
-    .catch((_) => res.status(701).jsonp(`Error acquiring user's information.`));
+router.put("/:user/process/:advanced_tools", async (req, res) => {
+  const count = parseInt(req.params.advanced_tools, 10);
+  if (!Number.isSafeInteger(count) || count < 0) return res.status(400).jsonp("Invalid operations number");
+  try {
+    const day = currentQuotaDay();
+    const outcome = await User.updateDailyOperations(req.params.user,
+      (user) => chargeDailyOperations(user, count, day));
+    if (outcome === "missing") return res.status(701).jsonp("Error acquiring user's information.");
+    if (outcome === "limit") return res.status(799).jsonp("Cannot perform desired operation");
+    return res.sendStatus(204);
+  } catch (error) {
+    return res.status(704).jsonp("Error updating user's information");
+  }
 });
 
 // Refund de operações quando um processamento é cancelado
 router.post("/:user/process/refund/:advanced_tools", async function (req, res) {
   try {
-    const user = await User.getOne(req.params.user);
     const op_num = parseInt(req.params.advanced_tools, 10);
 
     if (!Number.isFinite(op_num) || op_num <= 0) {
       return res.status(400).jsonp("Invalid operations number");
     }
 
-    // premium não precisa de refund (não tem limite diário)
-    if (user.type === "premium") {
-      return res.status(200).jsonp(true);
-    }
-
-    const { year, month, day } = get_cur_date();
-    const process_date = new Date(year, month, day);
-
-    // procurar operações de hoje
-    const opToday = user.operations.find(
-      (o) => o.day.getTime() === process_date.getTime(),
-    );
-
-    // se não havia registo para hoje, não há nada para devolver
-    if (!opToday) {
-      return res.status(200).jsonp(true);
-    }
-
-    // tirar as operações gastas, sem ir abaixo de 0
-    opToday.processed = Math.max(0, opToday.processed - op_num);
-
-    // recriar o array de operações sem o registo antigo de hoje
-    user.operations = user.operations.filter(
-      (o) => o.day.getTime() !== process_date.getTime(),
-    );
-
-    // se ainda sobrar algo processado hoje, voltamos a inserir
-    if (opToday.processed > 0) {
-      user.operations.push(opToday);
-    }
-
-    await User.update(req.params.user, user);
+    const day = currentQuotaDay();
+    const outcome = await User.updateDailyOperations(req.params.user, (user) => {
+      const current = user.operations.find((entry) => entry.day.getTime() === day.getTime());
+      if (user.type === "premium" || !current) return "ok";
+      current.processed = Math.max(0, current.processed - op_num);
+      return "updated";
+    });
+    if (outcome === "missing") return res.status(701).jsonp("Error acquiring user's information.");
     return res.status(200).jsonp(true);
   } catch (err) {
     console.error("Error refunding operations:", err);

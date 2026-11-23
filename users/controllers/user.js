@@ -62,6 +62,27 @@ module.exports.update = async (user_id, user) => {
   return User.updateOne({ _id: user_id }, user);
 };
 
+module.exports.updateDailyOperations = async (userId, change) => {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const user = await User.findById(userId).select("type operations quotaRevision").lean().exec();
+    if (!user) return "missing";
+
+    const outcome = change(user);
+    if (outcome !== "updated") return outcome;
+
+    const saved = await User.updateOne({
+      _id: user._id,
+      type: user.type,
+      quotaRevision: user.quotaRevision ?? { $exists: false },
+    }, {
+      $set: { operations: user.operations },
+      $inc: { quotaRevision: 1 },
+    });
+    if (saved.matchedCount === 1) return outcome;
+  }
+  throw new Error("Could not update daily operations after concurrent changes");
+};
+
 module.exports.delete = (user_id) => {
   return User.deleteOne({ _id: user_id });
 };

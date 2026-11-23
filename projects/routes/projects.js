@@ -88,6 +88,19 @@ const httpsAgent = new https.Agent({
 
 const users_ms = "https://users:10001/";
 
+function processingQuotaUrl(quota) {
+  return `${users_ms}${quota.payerId}/process/reservations/${quota.id}`;
+}
+
+async function refundProcessingQuota(quota) {
+  await axios.delete(processingQuotaUrl(quota), { httpsAgent, timeout: 5000 });
+}
+
+function getRunQuota(project) {
+  const quota = project.processingQuota;
+  return quota && quota.runToken === project.processingRun?.runToken ? quota : null;
+}
+
 const enforcePresenceLimit = require("../middleware/enforcePresenceLimit");
 
 const advanced_tools = [
@@ -1601,8 +1614,15 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
   caller: getCallerId(req),
 });
 
-  Project.getOne(ownerId, req.params.project)
+  Project.getOne(ownerId, req.params.project, { includeQuota: true })
     .then(async (project) => {
+      if (!project) return res.status(404).jsonp("Project not found");
+      if (project.version !== req.expectedVersion) {
+        return res.status(409).jsonp({ message: "Project version conflict", serverVersion: project.version });
+      }
+      if (project.processingRun?.state === "running") {
+        return res.status(409).jsonp({ message: "Project is already processing", serverVersion: project.version });
+      }
       try {
 
       } catch (_) {
@@ -1636,6 +1656,16 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
       const vid_ops = videoOps(project);
 
       const { adv_ops, totalAdv, charged, newTools } = advanced_tool_num(project);
+
+      const previousQuota = getRunQuota(project);
+      if (project.processingRun?.state === "cancelled" && previousQuota) {
+        try {
+          await refundProcessingQuota(previousQuota);
+        } catch (error) {
+          console.error("Error retrying cancelled processing quota refund:", error.message);
+          return res.status(503).jsonp("Could not refund the previous processing run. Please try again.");
+        }
+      }
 
       console.log(
         "[ADV DEBUG] project:",
@@ -1795,6 +1825,7 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
             project.chargedAdvancedTools = charged;
           }
           project.pendingAdvancedOps = 0;
+          project.processingQuota = null;
 
           const updated = await Project.updateIfVersion(
             ownerId,
@@ -1825,80 +1856,60 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
         return;
       }
 
-      // Caso 2: com advanced tools -> verificar quota no users-ms
-      const callerId = getCallerId(req);
-      axios
-        .get(users_ms + `${callerId}/process/${adv_ops + vid_ops}`, { httpsAgent: httpsAgent })
-        .then(async (resp) => {
-          const can_process = resp.data;
+      // Keep the exact debit and its payer tied to this attempt.
+      const quota = { id: uuidv4(), payerId: runnerUserId, previousChargedAdvancedTools: charged };
+      let reserved;
+      try {
+        const response = await axios.post(processingQuotaUrl(quota), { count: adv_ops + vid_ops },
+          { httpsAgent, timeout: 5000 });
+        reserved = response.data?.reserved;
+        if (typeof reserved !== "boolean") throw new Error("Invalid processing quota response");
+      } catch (error) {
+        if (error.response?.status === 403) {
+          return res.status(403).jsonp("No more daily_operations available");
+        }
+        try {
+          await refundProcessingQuota(quota);
+        } catch (refundError) {
+          console.error("Error reconciling processing quota reservation:", refundError.message);
+        }
+        return res.status(503).jsonp("Could not reserve processing quota. Please try again.");
+      }
 
-          if (!can_process) {
-            res.status(404).jsonp("No more daily_operations available");
-            return;
-          }
+      try {
+        project.chargedAdvancedTools = charged + newTools;
+        project.pendingAdvancedOps = 0;
+        project.prevCommittedToken = project.committedToken || 0;
+        project.activeToken = (project.activeToken || 0) + 1;
+        project.processingQuota = reserved ? { ...quota, runToken: project.activeToken } : null;
+        project.processingRun = startProcessingRun(
+          project.activeToken,
+          project.imgs.filter(isVideoMedia).map((img) => String(img._id))
+        );
 
+        const updated = await Project.updateIfVersion(ownerId, req.params.project, project, req.expectedVersion);
+        if (!updated) {
+          if (reserved) await refundProcessingQuota(quota);
+          const fresh = await Project.getOne(ownerId, req.params.project);
+          return res.status(409).jsonp({ message: "Project version conflict", serverVersion: fresh?.version ?? null });
+        }
+
+        res.set("X-Project-Version", String(updated.version));
+        runToken = updated.activeToken;
+        await startProcessing();
+      } catch (error) {
+        console.error("Error starting processing with quota:", error);
+        if (runToken !== null) await failRunAndCleanup(ownerId, req.params.project, runToken);
+        else if (reserved) {
           try {
-            // Marcamos que já pagámos todas as tools avançadas atuais
-            // (charged + newTools === totalAdv)
-            project.chargedAdvancedTools = charged + newTools;
-            project.pendingAdvancedOps = adv_ops;
-
-            project.prevCommittedToken = project.committedToken || 0;
-
-            // abrir uma execução nova
-            project.activeToken = (project.activeToken || 0) + 1;
-            project.processingRun = startProcessingRun(
-              project.activeToken,
-              project.imgs.filter(isVideoMedia).map((img) => String(img._id))
-            );
-
-            const updated = await Project.updateIfVersion(
-              ownerId,
-              req.params.project,
-              project,
-              req.expectedVersion
-            );
-
-            if (!updated) {
-              const fresh = await Project.getOne(ownerId, req.params.project);
-              return res.status(409).jsonp({
-                message: "Project version conflict",
-                serverVersion: fresh?.version ?? null,
-              });
-            }
-
-            res.set("X-Project-Version", String(updated.version));
-
-            runToken = updated.activeToken; // token desta execução
-
-            await startProcessing();
-          } catch (e) {
-            console.error("Error starting processing (advanced tools):", e);
-            if (runToken !== null) await failRunAndCleanup(ownerId, req.params.project, runToken);
-            res.status(500).jsonp("Error processing project");
+            const fresh = await Project.getOne(ownerId, req.params.project, { includeQuota: true });
+            if (fresh?.processingQuota?.id !== quota.id) await refundProcessingQuota(quota);
+          } catch (refundError) {
+            console.error("Error reconciling unattached processing quota:", refundError.message);
           }
-        })
-        .catch((err) => {
-          console.error("Error calling users-ms /process:", {
-            message: err.message,
-            status: err.response?.status,
-            data: err.response?.data,
-            url: users_ms + `${callerId}/process/${adv_ops + vid_ops}`,
-            callerId,
-            adv_ops,
-          });
-
-          if (err.response) {
-            // users-ms answers 701 when there are no operations left; 7xx is not a
-            // valid HTTP status and the proxy drops the message, so map it to 403
-            const raw = err.response.status || 500;
-            const status = raw >= 600 ? 403 : raw;
-            const data = err.response.data || "Error checking if can process";
-            return res.status(status).jsonp(data);
-          }
-
-          return res.status(500).jsonp("Error checking if can process");
-        });
+        }
+        return res.status(500).jsonp("Error processing project");
+      }
     })
     .catch((_) => res.status(501).jsonp(`Error acquiring user's project`));
 });
@@ -2342,13 +2353,35 @@ router.delete(
       const ownerId = req.params.user;
       const projectId = req.params.project;
 
-      const project = await Project.getOne(ownerId, projectId);
+      const project = await Project.getOne(ownerId, projectId, { includeQuota: true });
       if (!project) return res.status(404).jsonp("Project not found");
+      if (project.version !== req.expectedVersion) {
+        return res.status(409).jsonp({ message: "Project version conflict", serverVersion: project.version });
+      }
+
+      const quota = getRunQuota(project);
+      if (project.processingRun && project.processingRun.state !== "running") {
+        res.set("X-Project-Version", String(project.version));
+        if (project.processingRun.state === "cancelled" && quota) {
+          try {
+            await refundProcessingQuota(quota);
+          } catch (error) {
+            console.error("Error retrying cancelled processing quota refund:", error.message);
+            return res.status(503).jsonp("Could not refund the processing run. Please try again.");
+          }
+        }
+        return res.sendStatus(204);
+      }
 
       const callerId = getCallerId(req);
       const adv_ops = project.pendingAdvancedOps || 0;
 
       const cancelTok = project.activeToken || 0;
+      const conditions = project.processingRun ? {
+        activeToken: cancelTok,
+        "processingRun.runToken": cancelTok,
+        "processingRun.state": "running",
+      } : {};
 
       project.processingRun = finishProcessingRun(
         project.processingRun,
@@ -2361,6 +2394,7 @@ router.delete(
 
       // reset pending
       project.pendingAdvancedOps = 0;
+      if (quota) project.chargedAdvancedTools = quota.previousChargedAdvancedTools;
 
       // rollback committed antes de persistir 
       const prev = project.prevCommittedToken ?? (project.committedToken || 0);
@@ -2377,25 +2411,13 @@ router.delete(
           project.committedTools = Array.isArray(prevTools) ? prevTools : [];
       }
 
-      // refund se necessário
-      if (adv_ops > 0) {
-        try {
-          await axios.post(
-            users_ms + `${callerId}/process/refund/${adv_ops}`,
-            {},
-            { httpsAgent }
-          );
-        } catch (err) {
-          console.error("Error refunding operations on cancel:", err);
-        }
-      }
-
       // persistir alterações (inclui committedToken rollback)
       const updated = await Project.updateIfVersion(
         ownerId,
         projectId,
         project,
-        req.expectedVersion
+        req.expectedVersion,
+        conditions
       );
 
       if (!updated) {
@@ -2405,6 +2427,8 @@ router.delete(
           serverVersion: fresh?.version ?? null,
         });
       }
+
+      res.set("X-Project-Version", String(updated.version));
 
       // apagar apenas resultados da execução cancelada
       try {
@@ -2416,19 +2440,17 @@ router.delete(
         console.error("Error deleting cancelled run results:", err);
       }
 
-      res.set("X-Project-Version", String(updated.version));
+      await Process.deleteByProjectAndToken(ownerId, projectId, cancelTok);
 
-      // limpar processos em curso
-      const processes = await Process.getProject(ownerId, projectId);
-      for (const p of (processes || [])) {
-        await Process.delete(p.user_id, p.project_id, p._id);
-      }
-
-      // limpar dirs temporários (opcional)
-      const basePath = `/../images/users/${ownerId}/projects/${projectId}`;
-      for (const dir of ["src", "preview"]) {
-        const full = path.join(__dirname, `${basePath}/${dir}`);
-        if (fs.existsSync(full)) fs.rmSync(full, { recursive: true, force: true });
+      try {
+        if (quota) await refundProcessingQuota(quota);
+        else if (adv_ops > 0) {
+          // Active runs created before reservations only recorded advanced operations.
+          await axios.post(`${users_ms}${callerId}/process/refund/${adv_ops}`, {}, { httpsAgent, timeout: 5000 });
+        }
+      } catch (error) {
+        console.error("Error refunding operations on cancel:", error.message);
+        return res.status(503).jsonp("Could not refund the processing run. Please try again.");
       }
 
       return res.sendStatus(204);

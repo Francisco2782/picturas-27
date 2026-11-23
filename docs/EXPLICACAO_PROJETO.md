@@ -11,7 +11,7 @@ O trabalho técnico principal está concluído e validado: a capacidade foi aume
 No ensaio de desempenho final, a espera do segundo projeto desceu de 61,727 segundos para 0,113 segundos, superando a meta de 15 segundos.
 No ensaio de usabilidade em Chromium, a interface atingiu 12 em 12 ações concluídas (100%), eliminando as falhas observadas na linha de base inicial.
 O defeito crítico de concorrência F1 (perda de ficheiros em finalizações simultâneas) e as falhas de interface F5 (recarregamento com a tecla F5 e permissões de partilha) foram integralmente corrigidos e verificados.
-Falta preencher os capítulos pendentes do relatório no formato Typst (capítulos 3 a 12), uma vez que a maioria do conteúdo apenas existe nos rascunhos em Markdown dos exercícios 6 e 7.
+O rascunho Typst incorpora os exercícios, as medições e o registo de IA. Falta a revisão da equipa e a reprodução independente. [Estado da entrega](sessoes/2026-11-23-d01-d02.md)
 Falta igualmente confirmar a situação administrativa da entrega da Fase 2, cuja data oficial no enunciado inicial era 20 de novembro de 2026.
 O sistema encontra-se tecnicamente funcional, com testes verdes e medições finais recolhidas e consolidadas.
 
@@ -230,7 +230,7 @@ Aqui responde-se obrigatoriamente às 5 perguntas exigidas pelas regras de estil
 3. **O que acontece agora:** O trabalhador escreve sempre para ficheiros com a extensão `.part` (por exemplo, `output_video.mp4.part`). Se ocorrer uma exceção ou erro durante o processamento, um bloco de tratamento de erros apaga imediatamente o ficheiro parcial e os diretórios temporários de legendas. O ficheiro só é renomeado para a extensão final `.mp4` após a codificação ser bem-sucedida a 100%. Adicionalmente, a pasta com os modelos de inteligência artificial do Whisper é partilhada através do volume Docker `whisper_models`, evitando que cada réplica transfira novamente centenas de megabytes da Internet ao arrancar.
 4. **Porque foi feito assim:** Garante atomicidade no sistema de ficheiros (ou o ficheiro existe completo ou não existe) e poupa memória e largura de banda através de uma cache partilhada entre contentores.
 5. **Onde está no código:** No microsserviço de vídeo em `Tools/video/video_processor.py` (métodos de limpeza no bloco `finally` e renomeação atómica) e nos testes de integração em `Tools/video/tests/test_video_effects.py`.
-- **Exemplo concreto:** Durante o processamento de um vídeo de 60 segundos com brilho, o trabalhador atingiu um pico de **271,6% de CPU** e **1,85 GiB de memória RAM**. Quando o RabbitMQ foi reiniciado forçadamente a meio do processo, o contentor foi reiniciado pelo Docker Compose (`restart: on-failure`), eliminou o ficheiro `.part` órfão e retomou o trabalho sem deixar lixo no disco partilhado (`docs/fase-2-implementacao.md#L140-L160`).
+- **Exemplo concreto:** P-03 mediu um pico de **271,6% de CPU** e **1,85 GiB de RAM** num vídeo de 60 s com brilho e verificou o regresso dos consumidores após reiniciar RabbitMQ. No seguimento QS-03, um trabalho de legendagem ativo retomou após reiniciar o worker ou o broker, ficou descarregável e deixou zero novos artefactos parciais. [Registo dos ensaios](sessoes/2026-11-23-recuperacao-e-polling.md)
 - **Como foi testado:** Execução de 76 testes em pytest com `.venv/bin/python -m pytest -q Tools/video/tests` e inspeção manual do volume Docker `image_data`.
 
 ---
@@ -301,8 +301,8 @@ Durante a auditoria profunda realizada a 21 de novembro de 2026 (`docs/fase-2-au
 | **F4** | Identidade e Autorização — **Alta** | Serviço interno `projects` confiava em cabeçalhos HTTP sem validação estrita de assinatura JWT em todas as rotas internas. | **[FEITO MAS POR CONFIRMAR]** Mitigado na rota `processing-status` com verificação de permissões do dono e links de partilha. Revisão global de portas do Compose continua como dívida técnica. |
 | **F5** | Cliente e Permissões — **Alta** | Recarregamento com a tecla F5 abria resultados antigos prematuramente; botões de cancelamento ficavam visíveis a utilizadores que eram apenas leitores. | **[FEITO E VERIFICADO]** Corrigido na sessão de fecho da Fase 2 (`docs/sessoes/2026-11-22-fecho-fase-2.md`). Distingue snapshot inicial de transição observada e oculta botões a quem não tem permissão de escrita. |
 | **F6** | Instrumento de Avaliação — **Alta** | O script de teste `evaluation/run_scenario.py` esperava pelo fim do vídeo A antes de olhar para o vídeo B, inflacionando artificialmente a duração de B quando B acabava primeiro. | **[FEITO E VERIFICADO]** Script reescrito para observar A e B em simultâneo em cada ronda de amostragem (`evaluation/run_scenario.py#L210-L245`). |
-| **F7** | Mensageria e Resiliência — **Alta** | Ferramentas de imagem usavam confirmação automática imediata (`auto_ack=True`), e o serviço `projects` caía se o RabbitMQ fosse reiniciado. | **[FEITO MAS POR CONFIRMAR]** A recuperação de vídeo foi validada em P-03. A recuperação automática da ligação do serviço `projects` sem necessidade de reinício manual pelo Compose permanece por implementar. |
-| **F8** | Quotas e Perfis — **Média** | Reembolso de operações debitadas em caso de cancelamento devolvia apenas operações avançadas de imagem, retendo indevidamente as operações de vídeo. | **[POR FAZER]** Identificado como dívida técnica herdada da Fase 1; não afeta os ensaios da Fase 2 (que correm sob perfil premium com quota ilimitada). |
+| **F7** | Mensageria e Resiliência — **Alta** | As ferramentas de imagem usam confirmação automática imediata (`auto_ack=True`). O consumidor de `projects` perdia a subscrição após reiniciar RabbitMQ. | QS-03 verificou a reconexão automática de `projects` e a reentrega do trabalho de vídeo. A confirmação automática das ferramentas de imagem continua como dívida. |
+| **F8** | Quotas e Perfis — **Média** | O cancelamento devolvia operações avançadas de imagem e retinha as operações de vídeo. | Corrigida e verificada em separado com contas gratuitas. As campanhas dos requisitos escolhidos usaram contas premium. |
 | **F9** | Ambiente e Empacotamento — **Média** | O ficheiro `frontend/Dockerfile` instalava o gestor Bun e dependências antes de copiar o ficheiro de bloqueio `bun.lockb`. | **[FEITO E VERIFICADO]** O build de produção foi gerado e validado localmente, gerando as 13 páginas estáticas sem falhas de compilação. |
 
 ---
@@ -344,7 +344,9 @@ A medição avalia o comportamento da interface no navegador Google Chrome 157.0
 | **Recuperação após corte temporário de rede** | Não medido | **3 / 3 (100%)** | 3 / 3 (100%) | Aprovado |
 | Conclusões falsas ou prematuras | Não registado | **0 em todos os ensaios** | 0 | Critério de qualidade cumprido |
 | Duração média da legendagem | 6,029 s | 6,153 s | Informativa | Desempenho equivalente (+0,12 s) |
-| Pedidos HTTP à API por ensaio | 28 | 40 (inclui 8 de status) | Informativa | Custo controlado de polling |
+| Pedidos HTTP à API por ensaio | 28 | 40 (inclui 8 de status) | Informativa | Tráfego total observado, incluindo navegação e reconexão |
+
+Num ensaio complementar, um observador de status a 1 Hz acrescentou quatro pedidos e 1 048 bytes de corpo de resposta em quatro segundos, com mediana de 7,75 ms por pedido. [Medição de polling](sessoes/2026-11-23-recuperacao-e-polling.md)
 
 *Explicação dos números de usabilidade:* Na versão antiga, o utilizador ficava bloqueado pelo modal. Se tentasse contornar navegando na barra de endereços, nunca mais conseguia ver o progresso de A (0 de 3 ações bem-sucedidas) e o recarregamento com a tecla F5 quebrava a aplicação. Na versão final, nos três ensaios formais (`trial-1`, `trial-2` e `trial-3`), o utilizador conseguiu executar as 4 ações sem qualquer impedimento (12 de 12), a recuperação após F5 e corte de rede foi perfeita (3 de 3), e a interface nunca exibiu um estado de conclusão antes de o servidor confirmar a gravação real dos ficheiros no disco.
 
@@ -368,7 +370,7 @@ A equipa elaborou os trabalhos práticos intercalares que servem de alicerce ao 
 
 ### 4.8 Estado do Relatório Final em Typst (`docs/src-doc-fase2-template/`)
 
-O relatório final da unidade curricular é redigido na ferramenta moderna de tipografia **Typst** (uma alternativa moderna e mais rápida ao LaTeX). Encontra-se na pasta `docs/src-doc-fase2-template/capitulos/`. A auditoria revela uma discrepância importante: **a maioria dos capítulos do relatório final ainda se encontra por preencher**, contendo apenas as caixas de orientação e os marcadores `#preencher[...]`, apesar de a informação já ter sido redigida nos ficheiros Markdown dos exercícios.
+O rascunho Typst foi preenchido e compilado para revisão. A árvore abaixo regista o estado anterior à sessão D-01/D-02. [Rascunho e instruções](src-doc-fase2-template/README.md)
 
 ```
 Estado dos Capítulos do Relatório Typst
@@ -388,13 +390,13 @@ Estado dos Capítulos do Relatório Typst
 └── 99-anexos.typ             ── [POR FAZER] (Instruções de execução e glossário em falta)
 ```
 
-- **Capítulo 12 (Utilização de Agentes de IA)**: É um dos capítulos mais valorizados pela equipa docente. O ficheiro `12-agentes-ia.typ` está atualmente no estado de esqueleto. É estritamente obrigatório preencher a tabela de ferramentas (indicando modelos como Claude 3.5 Sonnet, GPT-4o, Cursor e Gemini), detalhar as tarefas apoiadas (e.g., criação dos scripts de teste em Playwright, elaboração dos testes unitários de barreira do Mongoose) e, acima de tudo, redigir a **reflexão crítica**: demonstrar que a IA sugeriu código com falhas graves de concorrência (como a eliminação de ficheiros em F1) que tiveram de ser detetadas e corrigidas manualmente pela equipa humana.
+- **Capítulo 12 (Utilização de Agentes de IA)**: O rascunho reúne as ferramentas identificadas nos exercícios e nas sessões. A equipa precisa de confirmar os modelos, skills e atribuições pendentes e registar a revisão humana.
 
 ---
 
 ## 5. O Que Falta Fazer (Por Ordem de Prioridade)
 
-A tabela e os pontos seguintes detalham as tarefas pendentes para fechar o projeto com distinção:
+A tabela regista o plano de escrita original. P2 a P7 foram realizados para o rascunho. Faltam a revisão humana, a reprodução independente e a confirmação administrativa de P1.
 
 | Prioridade | Tarefa a Realizar | Critério de Aceitação Objetivo | Dependência / Responsável |
 |---|---|---|---|
@@ -413,12 +415,12 @@ A tabela e os pontos seguintes detalham as tarefas pendentes para fechar o proje
 Uma postura de engenharia de software rigorosa exige identificar sem reservas as fragilidades e limitações da solução atual:
 
 1. **Risco de Conformidade com Prazos Docentes**: O prazo oficial de 20 de novembro de 2026 encontra-se ultrapassado. Não existe recibo no repositório. Este é o risco mais grave para a nota do projeto caso a equipa docente aplique penalizações por atraso.
-2. **Degradação de Desempenho no Trabalho Monopolizador (Projeto A)**: A duplicação de réplicas de vídeo resolveu de forma brilhante a espera do projeto B (caiu para 0,113 s), mas fez aumentar a duração do projeto A em **26,7%** (de 63,888 s para 80,961 s). Este fenómeno acontece porque os dois processos competem pelo mesmo barramento de memória e pelos mesmos núcleos do processador físico da máquina. Em servidores com poucos núcleos, esta degradação pode ser ainda mais severa.
+2. **Variação da duração de A entre campanhas**: A duração média de A foi 63,888 s na baseline oficial, 85,048 s na repetição com uma réplica e 80,961 s no final. As revisões, imagens e instrumentos das campanhas diferiram. A variação de A não se pode atribuir isoladamente à escala. [Comparação](sessoes/2026-11-22-fecho-fase-2.md#final-capacity-and-same-instrument-baseline)
 3. **Consumo Acrescido de Memória RAM**: A presença de duas instâncias do trabalhador de vídeo elevou o pico de consumo de memória de 3,05 GB para **4,29 GB de RAM** (um acréscimo de 1,24 GB). Em ambientes de alojamento na nuvem (*cloud*) com restrições orçamentais, isto representa custos operacionais acrescidos.
 4. **Certificados TLS Internos Autoassinados e Expirados**: Os certificados criptográficos que protegem o tráfego HTTPS entre os microsserviços internos estão expirados e são ignorados na configuração do código (`rejectUnauthorized: false`). Embora aceitável em contexto de laboratório universitário, é uma vulnerabilidade grave para qualquer cenário de produção real.
 5. **Segredos e Senhas Hardcoded no Repositório**: As chaves criptográficas (`JWT_SECRET_KEY`) e as senhas do MongoDB e RabbitMQ encontram-se escritas diretamente em texto claro nos ficheiros `docker-compose.yaml` e no código fonte. Qualquer pessoa com acesso ao repositório obtém credenciais de administrador.
-6. **Falta de Reconexão Automática do Serviço `projects`**: Se o intermediário de mensagens RabbitMQ falhar e for reiniciado, os trabalhadores de vídeo recuperam automaticamente, mas o orquestrador `projects` encerra o seu processo e requer um comando manual do administrador (`docker compose restart projects`) para voltar ao ativo.
-7. **Dívida Técnica no Reembolso de Quotas (F8)**: Se um utilizador do plano gratuito cancelar uma execução que continha vídeos, a rota de cancelamento devolve as quotas debitadas para operações de imagem, mas não reembolsa as operações debitadas para os vídeos, prejudicando o utilizador sem saldo diário.
+6. **Âmbito da recuperação de vídeo**: QS-03 verificou um trabalho ativo em cada interrupção, com duas réplicas. A recuperação de outras cargas ou de falhas repetidas continua por caracterizar.
+7. **Débitos de vídeo lançados antes da correção F8**. A versão anterior guardava apenas o débito das operações avançadas para reembolso. As reservas das novas execuções identificam a conta que pagou e o total debitado.
 
 ---
 
@@ -492,7 +494,6 @@ Para garantir que o leitor compreende todos os identificadores que surgem no có
 Em cumprimento escrupuloso da regra de integridade de não inventar factos, listam-se as informações que não foi possível comprovar por ausência de evidência física nos ficheiros do repositório:
 
 1. **Estado Administrativo da Submissão Docente**: Não foi encontrado nenhum ficheiro de confirmação, recibo de entrega ou mensagem docente referente à submissão da Fase 2, cuja data limite oficial no documento `docs/fase-2-guidelines.md` era 20 de novembro de 2026. A equipa necessita de confirmar junto do corpo docente se o prazo foi formalmente estendido.
-2. **Capítulos do Relatório Final em Typst**: Os ficheiros de capítulo `03-padroes-atuais.typ` até `12-agentes-ia.typ` continuam no estado de esqueletos com caixas `#preencher[...]`. Todo o conteúdo analítico existe nos documentos Markdown dos exercícios 6 e 7, mas a sua transposição para Typst ainda não foi realizada.
+2. **Revisão do relatório Typst**: O rascunho foi preenchido e compilado. A equipa ainda precisa de rever o conteúdo e registar a reprodução independente das medições.
 3. **Registo Humano da Utilização de Inteligência Artificial**: Não foram encontrados ficheiros de registo onde os elementos do grupo tenham anotado individualmente que prompts exatos de IA foram submetidos, que blocos de código foram gerados por IA e quais foram rejeitados por intervenção humana (lacuna necessária para preencher a tabela de prestação de contas do capítulo 12).
-4. **Resiliência do Serviço Projects perante Falha de RabbitMQ**: O incremento P-03 provou que os trabalhadores de vídeo recuperam de uma reinicialização forçada do RabbitMQ, mas o serviço `projects` cai e exige intervenção manual do operador. A implementação de um ciclo de reconexão automática com tentativas limitadas ficou por demonstrar.
-5. **Reembolso de Quotas para Utilizadores Gratuitos (F8)**: Não existe teste de integração a demonstrar a devolução correta de quotas diárias de vídeo em caso de cancelamento para utilizadores gratuitos, mantendo-se a limitação identificada na auditoria.
+4. **Custo de polling sob outras cargas**: O ensaio complementar mediu o custo HTTP de um observador a 1 Hz. O custo em CPU e memória e o comportamento com múltiplos observadores ficam por medir.

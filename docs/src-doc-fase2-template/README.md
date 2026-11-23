@@ -1,6 +1,6 @@
 # PictuRAS · RAS 2026/2027 — Relatório da Fase 2 (Typst)
 
-Fonte do relatório do grupo PL3-G5, ainda em preparação. A introdução e a vista de arquitetura já têm texto do grupo. Os marcadores identificam secções a completar. Os resultados finais estão por confirmar e o estado dos ensaios está na [auditoria](../fase-2-auditoria.md).
+Fonte do rascunho do relatório do grupo PL3-G5. Inclui as medições finais, os testes de preservação funcional e o registo de utilização de IA. A revisão humana e a reprodução independente ficam por registar. [Sessão D-01 e D-02](../sessoes/2026-11-23-d01-d02.md)
 
 O [PDF de pré-visualização](../template-fase2-preview.pdf) é um exemplo do template original. Para ver o relatório atual, compila `main.typ`.
 
@@ -42,17 +42,11 @@ capitulos/       um ficheiro por capítulo
 images/          ee-um.png (capa); acrescentar aqui os diagramas da equipa
 ```
 
-## Como usar
+## Como rever o rascunho
 
-1. Preencher cada capítulo **copiando o conteúdo já preenchido dos templates dos exercícios**, *mantendo os IDs*
-   (`EV-nn`, `H-nn`, `ALT-n`, `QS-nn`, `CAND-n`, `TAT-nn`, `DA-n`). Os IDs encadeiam os capítulos. O relatório *não tem um registo
-   separado* de evidências e hipóteses: descrevam cada `EV-nn` onde o usam pela primeira vez (ver a orientação da secção 2.4).
-2. Substituir todos os marcadores a vermelho `{…}` (macro `#preencher[...]`).
-3. As caixas laranja **Orientação** explicam cada secção. Antes de entregar, em `main.typ`:
-   `#mostrar-orientacoes.update(false)`.
-4. Substituir as caixas tracejadas ("Figura a produzir") por imagens em `images/`
-   (e.g., `#figure(image("../images/arquitetura_global.png", width: 100%), caption: [...])`).
-5. **Não inventar valores** de *baseline*, alvo ou mínimo aceitável: fixam-se após a medição inicial.
+1. Conferir as referências aos exercícios e preservar os IDs durante a revisão.
+2. Recontar os resultados e repetir os cenários com o arquivo D-01. [Guia de reprodução](../../evaluation/phase2-reproduction.md)
+3. Registar a revisão humana dos testes e da utilização de IA. Em `main.typ`, `#mostrar-orientacoes.update(true)` mostra as orientações do template.
 
 ## Componentes úteis
 

@@ -14,8 +14,5 @@
 #tabela(
   colunas: (1.5cm, 2.3cm, 1fr, 3.5cm),
   [Versão], [Data], [Alterações], [Autores],
-  [v1.0], [2026-11-#preencher[dd]], [#preencher[e.g., Diagnóstico arquitetural (Exercício 6, Bloco 1)]], [#preencher[iniciais]],
-  [v1.1], [2026-11-#preencher[dd]], [#preencher[e.g., Cenários de qualidade e candidatos a RNF (Exercício 6, Bloco 2)]], [#preencher[…]],
-  [v1.2], [2026-11-#preencher[dd]], [#preencher[e.g., Táticas e decisões arquiteturais (Exercício 7)]], [#preencher[…]],
-  [v2.0], [2026-11-27], [#preencher[Versão entregue da Fase 2]], [#preencher[…]],
+  [Rascunho], [23/11/2026], [Integração dos exercícios, medições, regressões e registo de IA.], [PL3-G5, com apoio de Codex],
 )

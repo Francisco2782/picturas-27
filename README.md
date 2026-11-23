@@ -153,12 +153,14 @@ exchange:
 > (`prcsousa/picturas-watermark-tool-ms`) instead of being built from this repository — it is a
 > deliberate example of integrating a third-party service.
 
-**Videos** are handled by a single worker, `video_tool` (`Tools/video/`), instead of the image
-tools. For each video, `projects` sends **one** message with the whole pipeline to
+**Videos** are handled by the dedicated `video_tool` worker service (`Tools/video/`). For each
+video, `projects` sends **one** message with the whole pipeline to
 `video_queue`; the worker probes the file with `ffprobe`, decodes it once, applies the frame
 effects (`Tools/video/effects.py`, the same PIL operations as the image tools), encodes once to
-MP4/H.264 + AAC and reports progress as `video-progress` events on `ws_queue`. It acknowledges
-the message only at the end and leaves no partial output on failure. `ffmpeg` is installed only
+MP4/H.264 + AAC. The worker sends progress to `projects`, which forwards accepted events to
+`ws_queue`. Video jobs and terminal replies are persistent. The worker acknowledges a job after
+the broker confirms its terminal reply. A retry clears that output's abandoned staging files.
+`ffmpeg` is installed only
 inside this container. Automatic subtitles and frame extraction run as ordered stages of the
 same worker (`Tools/video/subtitles.py`, `Tools/video/frame_extraction.py`).
 

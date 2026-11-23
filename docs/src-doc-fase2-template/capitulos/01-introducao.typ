@@ -22,12 +22,12 @@ O presente relatório documenta o trabalho desenvolvido na Fase 2 da unidade cur
 O _refactoring_ procura melhorar a capacidade e a operabilidade do sistema, preservando os pipelines de edição, os formatos suportados e as regras de autorização. Foram selecionados dois requisitos não funcionais.
 
 1. *Eficiência de Desempenho — Capacidade*: mitigar o estrangulamento severo provocado pelo processamento serializado e síncrono de vídeo (`video_queue`), no qual tarefas computacionalmente intensivas executadas em CPU (nomeadamente a legendagem automática com Faster-Whisper) bloqueiam o avanço de pedidos concorrentes.
-2. *Usabilidade — Operabilidade*: permitir trabalhar noutro projeto e recuperar o estado do processamento depois de navegar ou recarregar a página. O painel está implementado e a validação integrada em Chromium está por confirmar.
+2. *Usabilidade — Operabilidade*: permitir trabalhar noutro projeto e recuperar o estado do processamento depois de navegar ou recarregar a página. A validação integrada em Chromium atingiu 12/12 ações.
 
 
 == _Baseline_ e repositório
 
-O ponto de partida do sistema assenta na versão oficial disponibilizada no repositório GitHub do projeto, marcada com a _tag_ `phase2-base`. A medição inicial usou o checkout do instrumento `afb84e5`, com código aplicacional equivalente à base oficial. As medições finais de capacidade e operabilidade estão por confirmar.
+O ponto de partida do sistema assenta na versão oficial disponibilizada no repositório GitHub do projeto, marcada com a _tag_ `phase2-base`. A medição inicial usou o checkout do instrumento `afb84e5`, com código aplicacional equivalente à base oficial. As duas campanhas finais atingiram os respetivos alvos.
 
 #tab([Artefactos de partida],
   tabela(
@@ -60,10 +60,7 @@ O ponto de partida do sistema assenta na versão oficial disponibilizada no repo
 )
 
 == Organização do documento
-#preencher[Resumo, em poucas linhas, do que contém cada Parte e de como os IDs encadeiam os capítulos (`EV`/`H` → `ALT` → `QS`/`CAND` → `TAT` → `DA`).]
-
-NOTA: REVER ISTO NO FIM
-
+As evidências arquiteturais (EV) fundamentam as alternativas (ALT), os cenários de qualidade (QS) e os requisitos escolhidos (CAND). As táticas (TAT) suportam as decisões (DA). O relatório termina com a comparação das medições, os testes de preservação funcional e o registo de utilização de IA.
 
 O relatório encontra-se estruturado em cinco partes que refletem o ciclo metodológico completo _Diagnóstico → Decisão → Implementação → Avaliação_:
 

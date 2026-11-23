@@ -53,6 +53,8 @@ class VideoWorker:
         self._channel.queue_bind(queue=VIDEO_QUEUE, exchange=EXCHANGE, routing_key=VIDEO_QUEUE)
         # one video at a time per replica; parallelism comes from replicas
         self._channel.basic_qos(prefetch_count=1)
+        self._result_channel = self._connection.channel()
+        self._result_channel.confirm_delivery()
 
     @staticmethod
     def _connect():
@@ -74,12 +76,18 @@ class VideoWorker:
         self._channel.basic_publish(exchange=EXCHANGE, routing_key=queue,
                                     body=json.dumps(msg))
 
+    def _publish_result(self, msg):
+        self._result_channel.basic_publish(
+            exchange=EXCHANGE, routing_key=PROJECT_QUEUE, body=json.dumps(msg),
+            properties=pika.BasicProperties(delivery_mode=2), mandatory=True,
+        )
+
     def _reply_success(self, msg_id, started, output_uri, video_info):
         output = {"type": video_info.get("output_type", "video"),
                   "imageURI": video_info.get("output_path", output_uri)}
         if output["type"] == "frames":
             output["frames"] = video_info["frames"]
-        self._publish(PROJECT_QUEUE, {
+        self._publish_result({
             "messageId": f"video-{uuid.uuid4()}",
             "correlationId": msg_id,
             "timestamp": now().isoformat(),
@@ -93,7 +101,7 @@ class VideoWorker:
         })
 
     def _reply_error(self, msg_id, started, code, message, input_uri):
-        self._publish(PROJECT_QUEUE, {
+        self._publish_result({
             "messageId": f"video-{uuid.uuid4()}",
             "correlationId": msg_id,
             "timestamp": now().isoformat(),
@@ -156,6 +164,9 @@ class VideoWorker:
                 self._reply_error(msg_id, started, CODES["invalid_speed"], str(e), input_uri)
             except InvalidVideo as e:
                 self._reply_error(msg_id, started, CODES["invalid_video"], str(e), input_uri)
+            except pika.exceptions.AMQPError:
+                # Closing the failed connection leaves the delivery for the broker to retry.
+                raise
             except Exception as e:  # noqa: BLE001 - any other failure is reported
                 self._reply_error(msg_id, started, CODES["error_processing"], str(e), input_uri)
 

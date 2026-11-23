@@ -149,6 +149,25 @@ def test_failure_leaves_no_partial_output(sample_video, tmp_path):
     assert not os.path.exists(out + ".part.mp4")
 
 
+def test_retry_cleans_only_its_abandoned_workspace(sample_video, tmp_path):
+    output = tmp_path / "retry.mp4"
+    workspace = tmp_path / "retry.mp4.video-work"
+    workspace.mkdir()
+    stage = workspace / "speech-orphan"
+    stage.mkdir()
+    (stage / "captions.srt").write_text("partial stage")
+    (workspace / "encoded.part.mp4").write_bytes(b"partial output")
+    unrelated = tmp_path / "other.mp4.video-work"
+    unrelated.mkdir()
+    (unrelated / "encoded.part.mp4").write_bytes(b"other job")
+
+    process_video(str(sample_video), str(output), [])
+
+    assert output.is_file()
+    assert not workspace.exists()
+    assert (unrelated / "encoded.part.mp4").read_bytes() == b"other job"
+
+
 # Progress increases up to 100 %
 def test_progress_reported(sample_video, tmp_path):
     seen = []

@@ -30,7 +30,7 @@
   tabela-campos(
     [Commit de partida], [`052310226c51fa57a17101c7bd1ad795674aac95` (tag `phase2-base`), checkout `afb84e5c818820f807bb504a8ed9f0a3162cc9dd`],
     [Comando(s) de arranque], [`docker compose up -d --build` (e escala com `docker compose up -d --no-build --scale video_tool=2 video_tool`)],
-    [Ambiente (SO, CPU, RAM, versões de Docker e Compose)], [Consultar o manifesto local da baseline. Condições finais por confirmar.],
+    [Ambiente (SO, CPU, RAM, versões de Docker e Compose)], [Linux 7.0.0-43-generic x86_64, i7-13650HX, 20 CPUs lógicos, cerca de 33,36 GB disponíveis ao Docker, Engine 29.9.3 e Compose 5.7.1. Os manifestos registam as diferenças entre as campanhas.],
     [Projetos de teste e amostras], [Capacidade: A usa `speech_mandela_177s_1080p.webm`; B usa dois `sample_10s_720p.mp4` e um `sample_6s.mov`, em `samples/video/`. Operabilidade: amostra local de 10 s com fala.],
     [Problemas e notas de arranque], [Necessidade de `docker compose down -v --remove-orphans` ao migrar volumes legados do SeaweedFS (S3); certificados TLS internos com bypass `rejectUnauthorized: false`],
   ),
@@ -57,7 +57,7 @@ O botão `Apply` envia um pedido a `POST /api-gateway/projects/:user/:project/pr
     [`doc-sol-arquitetural.pdf`], [por confirmar], [Documento referido, ausente da árvore auditada.],
     [Slides da aula 11 (_Arch. Styles_) e documento de apoio de padrões arquiteturais], [2026-11-04], [Taxonomia de estilos arquiteturais (Camadas, Monolítico, Microserviços, Event-Driven, Pipeline).],
     [Diretrizes da Fase 2 (`fase-2-guidelines.md`)], [Versão 1 / 04-11-2026], [Regras de refactoring, restrições metodológicas e critérios de aceitação.],
-       [#preencher[outra fonte]], [#preencher[…]], [#preencher[…]],
+    [Arquivo de evidência D-01], [Medições de 17 e 22–23/11/2026], [Versões do ambiente, métricas, eventos e condições dos ensaios.],
 
   ),
 )
@@ -130,8 +130,8 @@ O processamento completo de um projeto com vídeos articula-se em cinco fases es
     [Passo], [Origem → Destino], [Mensagem / _endpoint_ / fila], [Evidência],
     [Carregamento do vídeo], [Browser → Gateway → `projects` → S3], [`POST /api-gateway/projects/:owner/:project/video` (multipart/form-data)], [`EV-04`: `projects/routes/projects.js` e `projects/utils/video.js` — validam contentor, codec de vídeo, duração, tamanho e resolução.],
     [Definição do _pipeline_], [Browser → Gateway → `projects`], [`POST …/tool` para adicionar e `POST …/reorder` para reordenar], [`EV-04`: `apiGateway/routes/projects.js` e `projects/routes/projects.js`.],
-    [_Apply_], [Browser → Gateway → `projects` → RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` → publica em `video_queue`], [`EV-01`: `Tools/video/video.py:54` e `EV-04`: `projects/routes/projects.js:1564-1671` — 1 msg por vídeo com pipeline integral.],
-    [Progresso], [`video_tool` → `project_queue` → `projects` → `ws_queue`], [Mensagens `video-progress` tipadas com token e percentagem], [`EV-03`: `Tools/video/video.py` e `EV-06`: `projects/utils/videoProgress.js` — validação e persistência antes de publicar.],
-    [Resultado], [`video_tool` → `project_queue` → `projects` → UI], [Mensagem de sucesso, ack manual, criação de `Result` e evento `process-update`], [`EV-01`: `Tools/video/video.py:170` e `EV-06`: `projects/utils/processBatch.js` — commit de lote. A segurança do fecho simultâneo está por confirmar em P-02.],
+    [_Apply_], [Browser → Gateway → `projects` → RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` → publica em `video_queue`], [`EV-01`: `Tools/video/video.py:53-54` e `EV-04`: `projects/utils/processBatch.js:88-142` — 1 msg por vídeo com pipeline integral.],
+    [Progresso], [`video_tool` → `project_queue` → `projects` → `ws_queue`], [Eventos de progresso. Na revisão final, o orquestrador aceita e persiste o progresso antes da publicação.], [EV-06, `projects/models/project.js` e `projects/utils/processingRun.js`. O snapshot é consultável pela rota `processing-status` (EV-10, rotas de `apiGateway` e `projects`).],
+    [Resultado], [`video_tool` → `project_queue` → `projects` → UI], [Mensagem de sucesso, ack manual, criação de `Result` e evento `process-update`], [EV-01 e `projects/utils/processBatch.js`. P-02 verificou dois resultados descarregáveis após fecho simultâneo.],
   ),
 ) <tab-passos-pedido>

@@ -16,17 +16,17 @@
 == Antes
 
 #figure(kind: image,
-  figura-pendente[vista arquitetural antes das decisões (`images/vista_antes.png`)],
+  raw("Browser [overlay, estado React] ← Socket.IO ← projects\nprojects → video_queue → video_tool [uma réplica]\nvideo_tool → project_queue → projects → armazenamento", block: true),
   caption: [Vista arquitetural antes das decisões DA-1 e DA-2],
 )
 
 == Depois
 
 #figure(kind: image,
-  figura-pendente[vista arquitetural depois das decisões, com os elementos alterados destacados (`images/vista_depois.png`)],
+  raw("Browser [painel no layout] ← Socket.IO ← projects ↔ MongoDB [snapshot]\nBrowser → gateway → projects [consulta autenticada de estado]\nprojects → video_queue → video_tool [duas réplicas no ensaio]\nworkers → project_queue → projects [fecho seguro] → armazenamento", block: true),
   caption: [Vista arquitetural depois das decisões DA-1 e DA-2],
 )
 
 == Legenda e notas
 
-#preencher[Legenda dos destaques (cores, estereótipos) e notas sobre o que mudou entre as duas vistas.]
+As setas indicam a direção das chamadas ou mensagens. Os rótulos entre parênteses retos mostram as opções de implantação ou os pontos do refactoring. DA-1 intervém no consumo e no fecho do lote. DA-2 intervém na persistência e na leitura do estado.

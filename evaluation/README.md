@@ -100,3 +100,17 @@ summarize existing evidence independently, use
 
 No evidence files, credentials, JWTs, or authorization headers are committed.
 Keep generated evidence under `evaluation/evidence/`; it is ignored by Git.
+
+For the Phase 2 delivery archive, see the [reproduction guide](phase2-reproduction.md).
+
+## Infrastructure recovery and status polling
+
+Use the dedicated `picturas-validation` Compose stack at `https://localhost:8080` with two idle video workers, real MongoDB and object storage, an initialized Whisper cache and the updated `video_tool` and `projects` images. The host needs Docker CLI access, Python with `requests`, and `ffprobe`. Run these sequentially. The recovery probe restarts one validation worker or the validation broker during a live test job. It checks redelivery of the same message, one downloadable output with video and audio, restored consumers and no new staging artifacts.
+
+```sh
+python3 evaluation/run_video_recovery.py --fault worker --output evaluation/evidence/qs03-worker.json
+python3 evaluation/run_video_recovery.py --fault broker --output evaluation/evidence/qs03-broker.json
+python3 evaluation/measure_status_polling.py --output evaluation/evidence/polling.json
+```
+
+The polling test needs the exact 10 s input from the official usability baseline in the D-01 archive. It compares one active status observer at 1 Hz against zero periodic requests in a matched four-second window, with identical probes at the window boundaries and after it. Response size is the decoded HTTP body. Timing is measured from the local client. The test measures marginal HTTP cost for this observer and workload.
