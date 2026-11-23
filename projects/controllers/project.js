@@ -73,14 +73,15 @@ module.exports.getOneByShareId = (shareId) =>
   Project.findOne({ "sharedLinks.id": shareId }).exec();
 
 module.exports.updateIfVersion = async (user_id, project_id, project, expectedVersion, conditions = {}) => {
-  const raw = project.toObject ? project.toObject() : project;
-
-  // remove campos que não se quer "setar"
-  const { _id, user_id: _uid, version, __v, sharedLinks, ...rest } = raw;
+  // Worker updates do not increment the editor's version. Copy only the
+  // fields changed by this request so stale snapshots cannot overwrite them.
+  const modified = new Set(project.directModifiedPaths().map(path => path.split(".", 1)[0]));
+  const { _id, user_id: _uid, version, __v, sharedLinks, ...fields } = project.toObject();
+  const changes = Object.fromEntries(Object.entries(fields).filter(([name]) => modified.has(name)));
 
   return await Project.findOneAndUpdate(
     { user_id: user_id, _id: project_id, version: expectedVersion, ...conditions },
-    { $set: rest, $inc: { version: 1 } },
+    { $set: changes, $inc: { version: 1 } },
     { new: true } // devolve documento já com versão incrementada
   ).exec();
 };
@@ -102,7 +103,6 @@ module.exports.updateVideoProgressIfActive = async ({
       activeToken: runToken,
       "processingRun.runToken": runToken,
       "processingRun.state": "running",
-      "processingRun.updatedAt": { $lte: timestamp },
       "processingRun.videos": {
         $elemMatch: {
           mediaId: String(mediaId),
@@ -111,12 +111,14 @@ module.exports.updateVideoProgressIfActive = async ({
         },
       },
     },
-    { $set: {
-      "processingRun.updatedAt": timestamp,
-      "processingRun.videos.$.progress": percent,
-      "processingRun.videos.$.preview": preview,
-      "processingRun.videos.$.updatedAt": timestamp,
-    } },
+    {
+      $max: { "processingRun.updatedAt": timestamp },
+      $set: {
+        "processingRun.videos.$.progress": percent,
+        "processingRun.videos.$.preview": preview,
+        "processingRun.videos.$.updatedAt": timestamp,
+      },
+    },
     { new: true }
   ).exec();
 };

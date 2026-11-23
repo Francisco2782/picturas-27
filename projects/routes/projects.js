@@ -2154,12 +2154,24 @@ router.delete(
           if (project.tools[i].position > tool.position) project.tools[i].position--;
         }
 
+        const conditions = {};
+        if (typeof project.prevCommittedToken === "number" &&
+            Array.isArray(project.prevCommittedTools) &&
+            toolsEqual(project.tools, project.prevCommittedTools)) {
+          // Keep the undo and its result pointer in the same versioned write.
+          conditions.committedToken = oldTok === 0 ? { $in: [0, null] } : oldTok;
+          project.committedToken = project.prevCommittedToken;
+          project.resultsToken = project.prevCommittedToken;
+          project.committedTools = project.prevCommittedTools;
+        }
+
         // Persistir com controlo de versão
         const updated = await Project.updateIfVersion(
           req.params.user,
           req.params.project,
           project,
-          req.expectedVersion
+          req.expectedVersion,
+          conditions
         );
 
         if (!updated) {
@@ -2168,30 +2180,6 @@ router.delete(
             message: "Project version conflict",
             serverVersion: fresh?.version ?? null,
           });
-        }
-
-        // ----------------------------
-        // (rollback de results)
-        // ----------------------------
-        const canRollback =
-          typeof updated.prevCommittedToken === "number" &&
-          Array.isArray(updated.prevCommittedTools);
-
-        // Se o estado atual (tools após undo) == prevCommittedTools,
-        // então voltamos ao token anterior imediatamente.
-        if (canRollback && toolsEqual(updated.tools, updated.prevCommittedTools)) {
-          const rollbackTok = updated.prevCommittedToken;
-
-          updated.committedToken = rollbackTok;
-          updated.resultsToken = rollbackTok;
-          updated.committedTools = updated.prevCommittedTools;
-
-          // opcional (mas normalmente boa ideia): como já voltaste ao "commit anterior",
-          // podes limpar o prevCommitted* para evitar encadear rollbacks errados
-          // updated.prevCommittedToken = 0;
-          // updated.prevCommittedTools = [];
-
-          await updated.save();
         }
 
         res.set("X-Project-Version", String(updated.version));

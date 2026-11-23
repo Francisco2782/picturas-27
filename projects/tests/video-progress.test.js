@@ -140,8 +140,11 @@ test('project progress update is conditional on the active token and a larger pe
     assert.equal(query._id, 'project');
     assert.equal(query.activeToken, 5);
     assert.equal(query['processingRun.state'], 'running');
+    assert.equal(query['processingRun.updatedAt'], undefined);
     assert.equal(query['processingRun.videos'].$elemMatch.mediaId, 'video-a');
     assert.deepEqual(query['processingRun.videos'].$elemMatch.progress, { $lt: 50 });
+    assert.deepEqual(query['processingRun.videos'].$elemMatch.updatedAt, { $lte: timestamp });
+    assert.equal(update.$max['processingRun.updatedAt'], timestamp);
     assert.deepEqual(update.$set['processingRun.videos.$.progress'], 50);
     assert.equal(update.$set['processingRun.videos.$.updatedAt'], timestamp);
   } finally {
