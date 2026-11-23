@@ -1,14 +1,16 @@
 # Auditoria do PictuRAS em 21 de novembro de 2026
 
-**Seguimento de 22/11/2026.** A análise abaixo descreve a revisão auditada. A correção F1 passou a regressão com barreira e a prova integrada P-02 com duas réplicas, MongoDB e armazenamento reais. Ver [sessão P-02](sessoes/2026-11-22-p02.md).
+**Seguimento de 22/11/2026.** A análise abaixo descreve a revisão auditada. A correção F1 passou a regressão com barreira e a prova integrada P-02 com duas réplicas, MongoDB e armazenamento reais. A aceitação A/B da U-04 em Chromium atingiu 4/4 ações nos três ensaios, recuperou após navegação, recarregamento e reconexão em 3/3 e registou zero conclusões prematuras. Os ensaios complementares reproduziram F5. A regressão integrada e as medições finais continuam pendentes. Ver [sessão P-02](sessoes/2026-11-22-p02.md) e [sessão U-04](sessoes/2026-11-22-u04.md).
+
+**Seguimento de 23/11/2026.** F5 passou os seis cenários complementares em Chromium. R-01 a R-04 passaram, e o instrumento passou a observar A e B em cada ronda, validar contagens e identidades e rejeitar amostras incompletas ou mudanças no ciclo de vida dos workers. As campanhas finais atingiram os dois alvos. A espera média de B foi 0,113 s com duas réplicas. Em Chromium passaram 12/12 ações, com recuperação em 3/3 por navegação, recarregamento e reconexão, e zero conclusões prematuras. A comparação e os limites de reprodução constam da [sessão de fecho](sessoes/2026-11-22-fecho-fase-2.md).
 
 ## 1. Resumo executivo
 
-**Em progresso com riscos para a entrega.** A equipa escolheu dois requisitos mensuráveis, registou as condições iniciais e implementou as alterações. Falta demonstrar que a configuração final atinge sequer os mínimos. Há ainda uma falha de concorrência que pode deixar um lote concluído sem resultados. A prioridade é corrigir P-02 antes de usar resultados do sistema como evidência final.
+**Estado à data da auditoria, 21/11.** A configuração final ainda precisava de demonstrar os mínimos. A prioridade era corrigir a falha de concorrência antes das medições. Os seguimentos acima registam a validação da P-02 e o cumprimento dos dois alvos.
 
 Âmbito auditado: árvore de `0f6dbc5`, histórico Git, documentação docente disponível, código, testes locais e evidência ignorada pelo Git presente nesta máquina. A referência docente é a [diretriz V1](fase-2-guidelines.md), em conjunto com a [extensão do PL1-G4](doc-ext-requisitos-2627.md). A V1 indica entrega a **20/11/2026** e defesa a **23–27/11/2026**. O recibo de submissão, uma eventual prorrogação, a versão posterior da grelha e os documentos de requisitos e arquitetura da base anterior não constam das fontes examinadas. A data já passou. O estado administrativo da entrega precisa de confirmação da equipa.
 
-**Evidência repetida nesta auditoria.** O sumarizador reproduziu as oito métricas do desempenho inicial. Os JSON dos ensaios 6–8 e as notas registam os resultados de usabilidade. Passaram 12 testes do instrumento, 28 de projetos, 7 de lógica do cliente e 76 do worker (um aviso de depreciação do Pillow). O build Docker da U-04 está documentado no registo anterior. Nesta auditoria foram executados testes locais e uma experiência de concorrência em memória. A experiência de navegação com o sistema integrado continua pendente.
+**Evidência repetida nesta auditoria.** O sumarizador reproduziu as oito métricas do desempenho inicial. Os JSON dos ensaios 6–8 e as notas registam a baseline de usabilidade. À data, passaram 12 testes do instrumento, 28 de projetos, 7 de lógica do cliente e 76 do worker. A validação integrada de navegação foi feita posteriormente e consta da sessão de fecho.
 
 ## 2. Matriz de rastreabilidade
 
@@ -65,7 +67,9 @@ As primeiras linhas traduzem a diretriz docente. Os IDs CAP e USE são da [espec
 | Usabilidade | U-01 define o modelo, U-02 persiste eventos e U-03 expõe snapshot. F2–F5 limitam as garantias. U-04 está em Git e tem build anterior, mas ainda não tem o ensaio A/B de aceitação. O painel acompanha um projeto de cada vez. A percentagem global do painel usa os vídeos, enquanto a página combina vídeos e passos de imagem. Validar o significado num lote misto e identificar explicitamente o que cada percentagem mede. |
 | Qualidade e gestão | B-01…04 têm registo. R-01…04, M-01…04 e D-01…02 têm critérios no plano e estão pendentes. O repositório contém skills mas não foi encontrada uma pipeline em .github/workflows. O histórico de testes não substitui a verificação das integrações alteradas. |
 
-## 5. Plano de ação e reprodução
+## 5. Plano de ação da auditoria e reprodução
+
+Esta sequência regista o plano definido na auditoria. Para o trabalho que falta e o comando de retoma, consultar a [nota de fecho](sessoes/2026-11-22-fecho-fase-2.md#session-handoff).
 
 Executar **uma tarefa de cada vez**. Registar revisão, comando, ambiente, esperado, observado e ficheiro de evidência antes de fechar cada tarefa.
 

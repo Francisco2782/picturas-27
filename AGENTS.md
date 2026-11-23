@@ -3,12 +3,14 @@
 Guidance for AI coding agents (and humans) working on this repository. `README.md` is the
 user-facing documentation; this file is the short version an agent needs before changing code.
 
-## Phase 2 status
+## Phase 2 status and next steps
 
 - The official baseline is recorded. Compose defaults to one video worker. The capacity scenario uses two.
-- P-02 passed the local concurrency regression and the two-replica check with MongoDB and real storage.
-- U-04 passed the local build and status tests. Chromium validation is pending.
-- Next: run the [U-04](docs/sessoes/2026-11-22-u04.md) Chromium acceptance check, then the integrated regression and final measurements. See the [audit](docs/fase-2-auditoria.md).
+- P-02 preserved two distinct, downloadable results in the local race regression and in the two-replica check with MongoDB and real storage. [P-02 evidence](docs/sessoes/2026-11-22-p02.md)
+- U-04 passed the Chromium A/B and F5 acceptance checks. R-01 through R-04 passed with 128 automated tests and the production frontend build. M-01 through M-04 met both targets: 0.113 s mean B wait, 12/12 usability actions and 3/3 recoveries for navigation, reload and reconnect. [Validation log](docs/sessoes/2026-11-22-fecho-fase-2.md) · [B wait definition and comparison](docs/sessoes/2026-11-23-espera-b.md)
+- Still open: independent reproduction from the evidence package, team review of the report and AI record, and confirmation of submission or deadline extension. Recovery from a mid-job infrastructure interruption (QS-03) needs its own test. The campaigns did not isolate polling costs.
+- Next, in order: (1) inventory and package the evidence for D-01, then have another team member reproduce both measurements, (2) complete D-02 using the verified evidence, (3) confirm submission status and the applicable deadline with the team. See the [handoff](docs/sessoes/2026-11-22-fecho-fase-2.md#session-handoff).
+- Resume D-01 from the repository root with `PYTHONDONTWRITEBYTECODE=1 python3 evaluation/summarize.py evaluation/evidence/phase2-final-2026-11-22/performance-retry --runs 3`. The evidence is local and Git-ignored.
 
 ## What the app is
 

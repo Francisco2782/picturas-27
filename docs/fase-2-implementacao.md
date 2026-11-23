@@ -1,6 +1,8 @@
 # Registo de implementação da Fase 2
 
-**Atualização de 22/11/2026.** A correção P-02 passou a regressão local com barreira e a validação integrada com duas réplicas. A U-04 passou o build e os testes locais e aguarda validação em Chromium. Consultar a [auditoria](fase-2-auditoria.md) e as sessões [P-02](sessoes/2026-11-22-p02.md) e [U-04](sessoes/2026-11-22-u04.md). Os registos datados abaixo descrevem o estado observado na altura.
+**Atualização de 22/11/2026.** A P-02 passou a regressão local com barreira e a validação integrada com duas réplicas. A U-04 passou o build, os testes locais e os critérios A/B em Chromium. Após a correção de F5, passaram também a primeira visita a estados terminais, os controlos por permissão, a revogação e o cancelamento com sucesso e conflito. Consultar a [auditoria](fase-2-auditoria.md) e a [sessão de fecho da Fase 2](sessoes/2026-11-22-fecho-fase-2.md). Os registos datados descrevem o estado observado na altura.
+
+**Medições finais de 22–23/11/2026.** Foram atingidos os dois alvos. A espera média de B foi de 0,113 s e completaram-se 12/12 ações de operabilidade em Chromium. A comparação com as duas baselines, as diferenças de memória e o tráfego de estado estão na [sessão de fecho](sessoes/2026-11-22-fecho-fase-2.md).
 
 Este documento regista cada incremento implementado, a respetiva validação e o
 trabalho ainda pendente. As evidências oficiais da baseline permanecem na pasta
@@ -82,8 +84,8 @@ worker. O snapshot autorizado e a interface recuperável pertencem a U-03 e U-04
 - Evidência local do smoke test:
   `evaluation/evidence/phase2-p01-smoke-2026-11-17/`.
 
-O ambiente fica com duas réplicas para os próximos testes de concorrência e
-falhas. P-02 e P-03 continuam pendentes.
+O ensaio P-01 deixou o ambiente com duas réplicas para os testes seguintes.
+P-02 e P-03 foram validadas entretanto.
 
 ## Incremento P-02 — Segurança de resultados em lotes concorrentes
 
@@ -164,13 +166,13 @@ Ao reiniciar RabbitMQ, os workers recuperaram pela política do Compose. O servi
 `projects` saiu e precisou de ser iniciado novamente; a recuperação automática
 desse consumidor não faz parte desta tarefa e fica registada para acompanhamento.
 
-## Incrementos pendentes
+## Estado dos incrementos
 
 - Ordem acordada em 2026-11-17: concluir Desempenho antes de retomar
   Usabilidade. P-01, P-02 e P-03 estão concluídas.
-- U-01, U-02 e U-03 estão concluídas. A implementação da U-04 está feita;
-  falta o ensaio manual A/B no Chromium. R-01 a R-04, M-01 a M-04 e D-01 a
-  D-02 continuam pendentes.
+- U-01 a U-04, R-01 a R-04 e M-01 a M-04 estão concluídas. D-01 e D-02
+  estão em aberto. A [nota de fecho](sessoes/2026-11-22-fecho-fase-2.md#session-handoff)
+  indica a ordem de retoma e as verificações pendentes.
 
 ## Incremento U-02 — Persistir o progresso enviado pelo worker
 
@@ -241,7 +243,7 @@ desse consumidor não faz parte desta tarefa e fica registada para acompanhament
 
 ## Incremento U-04 — Estado recuperável sem bloquear o dashboard
 
-**Estado: implementação concluída; ensaio manual A/B pendente.**
+**Estado atual.** A aceitação A/B e os seis cenários de regressão de F5 passaram em Chromium. [Evidência](sessoes/2026-11-22-fecho-fase-2.md)
 
 ### Alterações
 
@@ -274,7 +276,7 @@ desse consumidor não faz parte desta tarefa e fica registada para acompanhament
   WebSocket repetido/antigo, projeto errado e atualização do snapshot.
 - `node --test projects/tests/*.test.js`: **28 aprovados**. As verificações de
   sintaxe dos serviços alterados e `git diff --check` também passaram.
-- O ensaio manual completo (Projeto A com legendas, navegação e ferramentas no
-  Projeto B, regresso, atualização da página e reconexão) ainda não foi executado
-  no Chromium. Por isso a U-04 fica por validar antes de a dar como concluída.
+- Em Chromium, passaram 12/12 ações A/B e a recuperação em 3/3 por navegação,
+  recarregamento e reconexão, sem conclusões prematuras. Os [testes complementares](sessoes/2026-11-22-fecho-fase-2.md)
+  confirmaram a correção de F5.
 - `git diff --check` passou.

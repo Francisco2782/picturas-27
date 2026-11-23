@@ -194,7 +194,7 @@ start application changes before the official baseline gate is complete.
     campos internos do projeto. O gateway e os tipos/query do cliente também
     foram atualizados. Os 4 testes específicos passaram.
 
-- [ ] **U-04 — Replace blocking page state with recoverable status UI.**
+- [x] **U-04 — Replace blocking page state with recoverable status UI.**
   - **Depends on:** U-03.
   - **Components/files:** `frontend/app/dashboard/[pid]/page.tsx`, shared
     dashboard/navigation component, `frontend/lib/queries/projects.ts`, UI
@@ -213,11 +213,12 @@ start application changes before the official baseline gate is complete.
   - **Estado (2026-11-20):** implementação concluída e build/testes locais
     aprovados. Falta o ensaio manual no Chromium com os projetos A/B e vídeo com
     fala; manter pendente até essa validação.
-  - **Seguimento de 22/11.** Build, TypeScript, lint e testes de estado passaram novamente. A revisão confirmou os caminhos de recuperação no código e detalhou os casos a observar no browser. [Sessão U-04](../../docs/sessoes/2026-11-22-u04.md)
+  - **Seguimento de 22/11.** Build, TypeScript, lint e testes de estado passaram novamente. A prova A/B em Chromium passou com 12/12 ações, recuperação em 3/3 após navegação, recarregamento e reconexão, e zero conclusões prematuras. A tarefa fica aberta para corrigir os casos F5 reproduzidos nos testes de estado terminal, permissões e conflito de cancelamento. [Sessão U-04](../../docs/sessoes/2026-11-22-u04.md)
+  - **Fecho.** Os seis testes complementares passaram após a correção de F5. [Sessão de fecho](../../docs/sessoes/2026-11-22-fecho-fase-2.md)
 
 ## 3. Regression and integrated validation
 
-- [ ] **R-01 — Project orchestration regression.**
+- [x] **R-01 — Project orchestration regression.**
   - **Depends on:** P-02, U-03.
   - **Components/files:** `projects/tests/`, routes/models and process
     orchestration.
@@ -226,7 +227,7 @@ start application changes before the official baseline gate is complete.
     retain ordered pipeline, expected result counts, unique frames and token-safe
     commits.
 
-- [ ] **R-02 — Video worker regression.**
+- [x] **R-02 — Video worker regression.**
   - **Depends on:** P-03, U-02.
   - **Components/files:** `Tools/video/`.
   - **Tests:** `cd Tools/video && .venv/bin/python -m pytest -q tests/`.
@@ -234,7 +235,7 @@ start application changes before the official baseline gate is complete.
     subtitles, audio/no-audio handling, extraction and cleanup; progress
     reporting does not change output/result behavior.
 
-- [ ] **R-03 — Frontend and end-to-end regression.**
+- [x] **R-03 — Frontend and end-to-end regression.**
   - **Depends on:** U-04.
   - **Components/files:** `frontend/`, running Compose stack, project API and
     WebSocket path.
@@ -244,7 +245,7 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** frontend builds; core interactions and permissions work;
     progress, result refresh, errors and cancellation behavior remain correct.
 
-- [ ] **R-04 — Evaluation harness regression.**
+- [x] **R-04 — Evaluation harness regression.**
   - **Depends on:** B-01, P-01, U-02 if shared event observations changed.
   - **Components/files:** `evaluation/tests/`, runner and summarizer.
   - **Tests:** `python3 -m pytest evaluation/tests/ -q`.
@@ -253,7 +254,7 @@ start application changes before the official baseline gate is complete.
 
 ## 4. Final measurements
 
-- [ ] **M-01 — Freeze integrated final configuration.**
+- [x] **M-01 — Freeze integrated final configuration.**
   - **Depends on:** R-01 through R-04.
   - **Components/files:** final commit/image manifest, evaluation harness,
     Compose runtime configuration.
@@ -263,7 +264,7 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** configuration matches baseline except for the selected NFR
     refactorings and two-replica final scale; manifest contains no secrets.
 
-- [ ] **M-02 — Capture final performance measurements.**
+- [x] **M-02 — Capture final performance measurements.**
   - **Depends on:** M-01.
   - **Components/files:** `evaluation/run_scenario.py`, evidence output.
   - **Work:** one warm-up plus three valid A/B runs; retain invalid attempts.
@@ -272,8 +273,9 @@ start application changes before the official baseline gate is complete.
   - **Acceptance:** target mean `b_wait_seconds` ≤15 s; ≤30 s meets only the
     minimum. Report group/per-worker CPU and memory, queue maxima, duration,
     failures, OOMs and restarts; no loss of expected results.
+  - **Estado:** alvo atingido. A espera média de B foi 0,113 s nos três ensaios válidos com duas réplicas. [Sessão de fecho](../../docs/sessoes/2026-11-22-fecho-fase-2.md#final-capacity-and-same-instrument-baseline)
 
-- [ ] **M-03 — Capture final usability measurements.**
+- [x] **M-03 — Capture final usability measurements.**
   - **Depends on:** M-01.
   - **Components/files:** frontend/project status flow and redacted trial records.
   - **Work:** one warm-up plus three valid A/B trials in Chromium 1280×720; retain
@@ -282,8 +284,9 @@ start application changes before the official baseline gate is complete.
     recoveries; minimum at least 3/4 per trial and 3/3 recoveries for each path,
     with no false completion. Report subtitle duration, API/status request count,
     stale/duplicate events.
+  - **Estado:** alvo atingido, 12/12 ações, 3/3 por navegação e recarregamento e zero conclusões prematuras. A reconexão também passou em 3/3. [Sessão de fecho](../../docs/sessoes/2026-11-22-fecho-fase-2.md)
 
-- [ ] **M-04 — Compare integrated side effects.**
+- [x] **M-04 — Compare integrated side effects.**
   - **Depends on:** M-02 and M-03.
   - **Components/files:** baseline/final evidence sets and summary tables.
   - **Validation:** compare same metrics/conditions; explain outliers, invalid
@@ -291,6 +294,7 @@ start application changes before the official baseline gate is complete.
     regression against other NFRs.
   - **Acceptance:** each NFR is reported separately against its baseline, target
     and minimum; all secondary effects and limitations are explicit.
+  - **Estado:** as oito métricas foram comparadas com a baseline oficial e a repetição com o mesmo instrumento. Na repetição, a média dos picos agregados de RAM passou de 2,86 GB para 4,29 GB com duas réplicas. A comparação de operabilidade regista pedidos, eventos e limites da instrumentação. [Sessão de fecho](../../docs/sessoes/2026-11-22-fecho-fase-2.md)
 
 ## 5. Report and evidence documentation
 
