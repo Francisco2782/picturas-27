@@ -20,8 +20,8 @@
     colunas: (1.6cm, 2.6cm, 3cm, 2.4cm, 2.8cm, 2.6cm, 2cm, 3cm, 2.8cm),
     tamanho: 7.5pt,
     [\#], [Característica / subcaracterística (ISO/IEC 25010)], [Fragilidade na base (evidência)], [Origem (padrão global / vídeo / interação)], [Impacto nos stakeholders (pertinência)], [Exigência técnica (complexidade)], [Cenário (`QS-nn`, cap. 5)], [Escala e método de medição (esboço)], [Pré-requisitos / efeitos colaterais],
-    [CAND-1], [#preencher[…]], [#preencher[… (EV-nn)]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[QS-nn]], [#preencher[…]], [#preencher[…]],
-    [CAND-2], [#preencher[…]], [#preencher[… (EV-nn)]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[QS-nn]], [#preencher[…]], [#preencher[…]],
+    [CAND-1], [Eficiência de desempenho, capacidade], [EV-01 a EV-03. Uma legendagem longa ocupa o único consumidor.], [Trabalhos curtos ficam à espera.], [Utilizadores e operação], [Consumo concorrente da fila], [QS-01], [Alta, atraso comum a todos os projetos], [Selecionado],
+    [CAND-2], [Usabilidade, operabilidade], [EV-05, `frontend/app/dashboard/[pid]/page.tsx` na tag `phase2-base`. Overlay e estado volátil no browser.], [O utilizador perde acesso à edição ou ao acompanhamento.], [Utilizadores], [Estado recuperável e interface navegável], [QS-02], [Alta, afeta trabalhos longos], [Selecionado],
   ),
 )
 
@@ -40,20 +40,20 @@
   tabela(
     colunas: (4.2cm, 1fr, 1fr),
     [], [CAND-1], [CAND-2],
-    [Escala (o que se mede e em que unidade)], [#preencher[…]], [#preencher[…]],
-    [Cenário de medição], [#preencher[…]], [#preencher[…]],
-    [Carga], [#preencher[…]], [#preencher[…]],
-    [Ambiente], [#preencher[…]], [#preencher[…]],
-    [Instrumento], [#preencher[…]], [#preencher[…]],
-    [Valor medido na base], [#preencher[após a medição inicial]], [#preencher[após a medição inicial]],
-    [Valor-alvo (e origem)], [#preencher[…]], [#preencher[…]],
-    [Valor mínimo aceitável (e origem)], [#preencher[…]], [#preencher[…]],
+    [Escala], [Segundos até ao primeiro arranque de B a partir da submissão de B.], [Ações bem-sucedidas por ensaio, recuperações por percurso e conclusões prematuras.],
+    [Cenário de medição], [QS-01, sobreposição de uma legendagem longa e um lote de brilho.], [QS-02, alternar entre A e B durante a legendagem, depois recarregar.],
+    [Carga], [Um vídeo em A, três em B.], [Uma sessão premium, dois projetos, fala de 10 s em A.],
+    [Ambiente], [Docker Compose e RabbitMQ, uma réplica na base e duas no final.], [Chrome a 1280 × 720, HTTPS local.],
+    [Instrumento], [Runner, logs Docker, amostras RabbitMQ e Docker stats.], [Protocolo A/B e registos de browser. O driver final usa Playwright.],
+    [Valor medido na base], [61,727 s em média (61,390–61,936 s).], [6/12 ações. Navegação 0/3 e recarregamento 0/3.],
+    [Valor-alvo], [Média ≤ 15 s em três ensaios válidos.], [12/12 ações, navegação 3/3, recarregamento 3/3 e zero falsas conclusões.],
+    [Valor mínimo aceitável], [Média ≤ 30 s em três ensaios válidos.], [Pelo menos 3/4 ações por ensaio, navegação 3/3, recarregamento 3/3 e zero falsas conclusões.],
   ),
 )
 
 == Relação entre os dois candidatos
 
-#preencher[Um é condição do outro? A melhoria de um pode degradar o outro? Que outros RNF podem ser afetados? (3 a 6 linhas)]
+Os limiares constam da gate B-04 de 17/11/2026. Os dois requisitos permitem trabalhar durante uma execução longa. As réplicas reduzem a espera por processamento e o snapshot mantém o acompanhamento na interface. Os ensaios medem separadamente os dois efeitos. A amostragem de recursos e de tráfego documenta os custos observáveis.
 
 == Evidência exploratória (se existir)
 
@@ -61,7 +61,7 @@
   tabela(
     colunas: (4cm, 5cm, 1fr),
     [Descrição], [Localização (_scripts_, dados, resultados)], [Como repetir],
-    [#preencher[…]], [#preencher[…]], [#preencher[…]],
+    [Ensaio P-01 com duas réplicas.], [`docs/fase-2-implementacao.md` e registos P-01.], [Usar o cenário de capacidade com `--expected-workers 2`.],
   ),
 )
 ]

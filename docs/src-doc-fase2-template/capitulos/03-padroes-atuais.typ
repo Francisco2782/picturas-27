@@ -24,16 +24,16 @@
 ]
 
 #tabela-campos(
-  [Nome(s) do padrão / estilo], [#preencher[…]],
-  [Descrição], [#preencher[2 a 4 linhas]],
+  [Nome(s) do padrão / estilo], [Microsserviços orientados a eventos.],
+  [Descrição], [Serviços de negócio e ferramentas com execução assíncrona por RabbitMQ. Nginx, gateway REST e Socket.IO ligam o browser aos serviços.],
 )
 
 #tab([Decisões globais que condicionam o vídeo],
   tabela(
     colunas: (4.5cm, 2.6cm, 1fr),
     [Decisão global], [Evidência], [Efeito no vídeo],
-    [#preencher[…]], [#preencher[EV-nn]], [#preencher[…]],
-    [#preencher[…]], [#preencher[EV-nn]], [#preencher[…]],
+    [Filas e serviços por ferramenta], [EV-02, `docker-compose.yaml` e `rabbitMQ/definitions.json`], [O broker desacopla o despacho da execução.],
+    [Orquestração por tipo de media], [EV-04, `projects/utils/processBatch.js`], [Imagens avançam por efeito. O vídeo é despachado com o pipeline completo.],
   ),
 )
 
@@ -42,8 +42,8 @@
     colunas: (2cm, 1fr, 4.2cm, 2.4cm),
     tamanho: 8.5pt,
     [Tipo], [Descrição], [Característica / subcaracterística (ISO/IEC 25010)], [Facto / hipótese],
-    [Benefício], [#preencher[…]], [#preencher[…]], [#preencher[EV-nn / H-nn]],
-    [Desafio], [#preencher[…]], [#preencher[…]], [#preencher[EV-nn / H-nn]],
+    [Benefício], [Escala independente dos módulos.], [Manutenibilidade, modularidade], [EV-04],
+    [Desafio], [Coordenação de resultados entre RabbitMQ, MongoDB e S3.], [Fiabilidade, recuperabilidade], [EV-06 e auditoria F1],
   ),
 )
 
@@ -56,9 +56,9 @@
 ]
 
 #tabela-campos(
-  [Nome do padrão], [#preencher[…]],
-  [Descrição], [#preencher[2 a 4 linhas]],
-  [Contraste com o caminho de imagens], [#preencher[…]],
+  [Nome do padrão], [Pipeline de vídeo dentro de um worker assíncrono.],
+  [Descrição], [Um consumidor executa o pipeline por vídeo. Efeitos contíguos de fotograma partilham descodificação e codificação em `Tools/video/effects.py`.],
+  [Contraste com o caminho de imagens], [As ferramentas de imagem consomem filas próprias e o orquestrador encadeia as etapas (EV-04).],
 )
 
 #tab([Benefícios e desafios do padrão do vídeo],
@@ -66,11 +66,12 @@
     colunas: (2cm, 1fr, 4.2cm, 2.4cm),
     tamanho: 8.5pt,
     [Tipo], [Descrição], [Característica / subcaracterística (ISO/IEC 25010)], [Facto / hipótese],
-    [Benefício], [#preencher[…]], [#preencher[…]], [#preencher[EV-nn / H-nn]],
-    [Desafio], [#preencher[…]], [#preencher[…]], [#preencher[EV-nn / H-nn]],
+    [Benefício], [Reutiliza a passagem de descodificação e codificação.], [Eficiência de desempenho, utilização de recursos], [EV-01 e `Tools/video/effects.py`],
+    [Desafio], [A legendagem ocupa o único consumidor e atrasa trabalhos curtos.], [Eficiência de desempenho, capacidade], [EV-01 e EV-03, `Tools/video/subtitles.py`, e baseline oficial],
   ),
 )
 
+#pagebreak(weak: true)
 == Relação entre o padrão global e o padrão do vídeo
 
 #orientacao[
@@ -88,9 +89,9 @@
     colunas: (2.4cm, 3cm, 3cm, 1.9cm, 2.6cm, 1.8cm),
     tamanho: 8pt,
     [Aspeto], [O que o padrão global prescreve], [O que o vídeo faz], [Segue / afasta-se], [Consequência], [Evidência],
-    [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[Segue]], [#preencher[…]], [#preencher[EV-nn]],
-    [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[Afasta-se]], [#preencher[…]], [#preencher[EV-nn]],
+    [Mensageria], [Despacho assíncrono], [Consumo de `video_queue`], [Segue], [Mantém o desacoplamento entre cliente e execução.], [EV-01 e EV-04],
+    [Decomposição], [Um serviço por ferramenta de imagem], [Pipeline completo por worker de vídeo], [Afasta-se], [Reduz transições intermédias e concentra a carga.], [EV-01 e EV-04],
   ),
 )
 
-#preencher[O que o vídeo herda do padrão global, que restrições este lhe impõe e que fragilidades resultam do desvio (3 a 6 linhas).]
+O vídeo herda a mensageria e o armazenamento do sistema. O pipeline local evita transferências intermédias. Com um consumidor e `prefetch_count=1`, a duração do trabalho ativo afeta a espera dos restantes.

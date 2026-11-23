@@ -4,6 +4,10 @@
 
 **Seguimento de 23/11/2026.** F5 passou os seis cenários complementares em Chromium. R-01 a R-04 passaram, e o instrumento passou a observar A e B em cada ronda, validar contagens e identidades e rejeitar amostras incompletas ou mudanças no ciclo de vida dos workers. As campanhas finais atingiram os dois alvos. A espera média de B foi 0,113 s com duas réplicas. Em Chromium passaram 12/12 ações, com recuperação em 3/3 por navegação, recarregamento e reconexão, e zero conclusões prematuras. A comparação e os limites de reprodução constam da [sessão de fecho](sessoes/2026-11-22-fecho-fase-2.md).
 
+**Verificações complementares de 23/11/2026.** QS-03 passou uma interrupção do worker e uma do broker durante legendagem ativa após as correções de persistência, reconexão e limpeza. Um ensaio com controlo mediu o tráfego incremental de um observador de estado a 1 Hz. [Sessão de recuperação e polling](sessoes/2026-11-23-recuperacao-e-polling.md)
+
+**Âmbito do seguimento.** QS-03 verificou a preservação do processamento em lote com duas réplicas, como regressão de QS-01. A correção complementar F8 foi ensaiada com contas gratuitas e confirmou um único reembolso à conta que pagou, mesmo em projetos partilhados. [Registo da preparação dos commits](sessoes/2026-11-23-commits-fase2.md)
+
 ## 1. Resumo executivo
 
 **Estado à data da auditoria, 21/11.** A configuração final ainda precisava de demonstrar os mínimos. A prioridade era corrigir a falha de concorrência antes das medições. Os seguimentos acima registam a validação da P-02 e o cumprimento dos dois alvos.

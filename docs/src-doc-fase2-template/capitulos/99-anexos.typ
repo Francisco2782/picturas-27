@@ -12,12 +12,14 @@
   usados no relatório.
 ]
 
-#preencher[…]
+Extrair `picturas-phase2-d01.tar.gz` para um diretório vazio. O ficheiro `evaluation/phase2-reproduction.md`, incluído no arquivo, descreve a verificação SHA-256, a recontagem dos dois requisitos e a repetição dos cenários sobre o sistema. A verificação local confirmou 141 ficheiros do arquivo, três ensaios medidos em cada série de capacidade e os totais de operabilidade da base e do final. A reprodução independente está por registar.
 
 = Glossário
 
 #tabela(
   colunas: (4cm, 1fr),
   [Termo], [Definição],
-  [#preencher[e.g., Cenário de qualidade]], [#preencher[…]],
+  [QS], [Cenário de qualidade. Descreve o estímulo, o ambiente e uma resposta mensurável.],
+  [DA], [Decisão arquitetural associada a um cenário.],
+  [Snapshot], [Estado persistido da execução, usado para recuperar o acompanhamento.],
 )

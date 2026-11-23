@@ -4,6 +4,10 @@
 
 **Medições finais de 22–23/11/2026.** Foram atingidos os dois alvos. A espera média de B foi de 0,113 s e completaram-se 12/12 ações de operabilidade em Chromium. A comparação com as duas baselines, as diferenças de memória e o tráfego de estado estão na [sessão de fecho](sessoes/2026-11-22-fecho-fase-2.md).
 
+**Entrega em preparação.** O pacote D-01 passou a verificação e a recontagem local após extração limpa. O rascunho Typst incorpora a análise e o registo de IA. Faltam a reprodução independente e a revisão humana. [Guia de reprodução](../evaluation/phase2-reproduction.md) · [Sessão D-01 e D-02](sessoes/2026-11-23-d01-d02.md)
+
+**Seguimento técnico de 23/11/2026.** A interrupção de um worker e o reinício do RabbitMQ passaram com um trabalho de legendagem ativo após tornar as mensagens persistentes, recuperar a subscrição de `projects` e limpar o staging por saída. O ensaio complementar de polling mediu quatro pedidos e 1 048 bytes de corpo de resposta por janela de quatro segundos, com mediana de 7,75 ms por pedido. [Sessão de recuperação e polling](sessoes/2026-11-23-recuperacao-e-polling.md)
+
 Este documento regista cada incremento implementado, a respetiva validação e o
 trabalho ainda pendente. As evidências oficiais da baseline permanecem na pasta
 local `evaluation/evidence/`, ignorada pelo Git.
@@ -165,6 +169,8 @@ P-02 e P-03 foram validadas entretanto.
 Ao reiniciar RabbitMQ, os workers recuperaram pela política do Compose. O serviço
 `projects` saiu e precisou de ser iniciado novamente; a recuperação automática
 desse consumidor não faz parte desta tarefa e fica registada para acompanhamento.
+
+O [seguimento QS-03](sessoes/2026-11-23-recuperacao-e-polling.md) verificou a recuperação automática de `projects` com um trabalho em curso.
 
 ## Estado dos incrementos
 

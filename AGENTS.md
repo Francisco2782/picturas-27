@@ -8,9 +8,11 @@ user-facing documentation; this file is the short version an agent needs before 
 - The official baseline is recorded. Compose defaults to one video worker. The capacity scenario uses two.
 - P-02 preserved two distinct, downloadable results in the local race regression and in the two-replica check with MongoDB and real storage. [P-02 evidence](docs/sessoes/2026-11-22-p02.md)
 - U-04 passed the Chromium A/B and F5 acceptance checks. R-01 through R-04 passed with 128 automated tests and the production frontend build. M-01 through M-04 met both targets: 0.113 s mean B wait, 12/12 usability actions and 3/3 recoveries for navigation, reload and reconnect. [Validation log](docs/sessoes/2026-11-22-fecho-fase-2.md) · [B wait definition and comparison](docs/sessoes/2026-11-23-espera-b.md)
-- Still open: independent reproduction from the evidence package, team review of the report and AI record, and confirmation of submission or deadline extension. Recovery from a mid-job infrastructure interruption (QS-03) needs its own test. The campaigns did not isolate polling costs.
-- Next, in order: (1) inventory and package the evidence for D-01, then have another team member reproduce both measurements, (2) complete D-02 using the verified evidence, (3) confirm submission status and the applicable deadline with the team. See the [handoff](docs/sessoes/2026-11-22-fecho-fase-2.md#session-handoff).
-- Resume D-01 from the repository root with `PYTHONDONTWRITEBYTECODE=1 python3 evaluation/summarize.py evaluation/evidence/phase2-final-2026-11-22/performance-retry --runs 3`. The evidence is local and Git-ignored.
+- QS-03 passed two in-flight worker interruptions and two broker interruptions on the updated validation stack. In each run, the same job resumed, the output was downloadable and no new staging files remained. A separate polling experiment measured one 1 Hz observer's HTTP cost. [Follow-up evidence](docs/sessoes/2026-11-23-recuperacao-e-polling.md)
+- F8 was verified separately with free accounts. Cancelling a new video execution refunds its payer once, including on a shared project or after a retried refund. [Verification log](docs/sessoes/2026-11-23-commits-fase2.md)
+- Still open: independent reproduction from the evidence package, team review of the report and AI record, and confirmation of submission or deadline extension.
+- D-01 has a local, Git-ignored archive at `evaluation/evidence/picturas-phase2-d01.tar.gz`. A clean extraction passed the SHA-256 checks and reproduced the recorded aggregates. D-02 has a Typst draft based on those records. [Reproduction guide](evaluation/phase2-reproduction.md) · [Session log](docs/sessoes/2026-11-23-d01-d02.md)
+- Next, have another team member run the capacity and browser scenarios, record the team's manual review of the report and AI use, and confirm submission status and the applicable deadline.
 
 ## What the app is
 
@@ -58,7 +60,7 @@ Behind the gateway:
   contiguous frame effects (`Tools/video/effects.py`). Ordinary video output is MP4/H.264 + AAC
   with audio retained. The worker reports typed progress to `project_queue`.
   For an active run, `projects` persists accepted updates and publishes them to
-  `ws_queue`. The worker acks at the end and removes partial output on failure. Preview mode
+  `ws_queue`. Video jobs and terminal replies are persistent. The worker acks after the broker confirms the terminal reply. A retry clears abandoned staging for that output. Preview mode
   renders only the first `VIDEO_PREVIEW_SECONDS` (3 s).
 
 ### Media types

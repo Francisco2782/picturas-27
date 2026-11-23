@@ -21,9 +21,9 @@
     colunas: (1.6cm, 3.4cm, 1fr, 3cm, 2.4cm),
     tamanho: 8.5pt,
     [ID], [Nome / padrão], [Descrição breve], [Mantém ou altera o padrão global?], [Fonte],
-    [ALT-1], [#preencher[…]], [#preencher[…]], [#preencher[Mantém / Altera / Afasta-se parcialmente]], [#preencher[…]],
-    [ALT-2], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [ALT-3 (opcional)], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
+    [ALT-1], [Consumidores concorrentes], [Réplicas do worker na mesma fila.], [Mantém], [Documento de apoio, secção 7.],
+    [ALT-2], [Ferramentas de vídeo distribuídas], [Um serviço por efeito, com encadeamento.], [Altera o padrão de vídeo], [Documento de apoio, secções 3 e 6.],
+    [ALT-3 (opcional)], [Filas por tipo de carga], [Separar trabalhos leves e pesados.], [Altera a topologia de despacho], [Documento de apoio, secções 4 e 7.],
   ),
 )
 
@@ -35,26 +35,27 @@
   genéricas: cada ponto deve referir algo concreto da solução do PictuRAS (e citar evidência `EV-nn` ou hipótese `H-nn`).
 ]
 
-*ALT-1 — #preencher[nome]*
+*ALT-1 — Consumidores concorrentes*
 
 #tabela-campos(
-  [Coerência com o padrão global], [#preencher[…]],
-  [Efeito nos atributos de qualidade], [#preencher[…]],
-  [Vantagens potenciais], [#preencher[…]],
-  [Desvantagens ou riscos], [#preencher[…]],
-  [Custo e risco de migração (a funcionalidade existente tem de ser preservada)], [#preencher[…]],
+  [Coerência com o padrão global], [Usa a mesma fila e contrato.],
+  [Efeito nos atributos de qualidade], [Permite processar B durante A.],
+  [Vantagens potenciais], [Mantém o pipeline local.],
+  [Desvantagens ou riscos], [Mais memória e fechos concorrentes.],
+  [Custo e risco de migração (a funcionalidade existente tem de ser preservada)], [Mudança de escala e correção de concorrência.],
 )
 
-*ALT-2 — #preencher[nome]*
+*ALT-2 — Ferramentas de vídeo distribuídas*
 
 #tabela-campos(
-  [Coerência com o padrão global], [#preencher[…]],
-  [Efeito nos atributos de qualidade], [#preencher[…]],
-  [Vantagens potenciais], [#preencher[…]],
-  [Desvantagens ou riscos], [#preencher[…]],
-  [Custo e risco de migração], [#preencher[…]],
+  [Coerência com o padrão global], [Aproxima-se da distribuição por efeito das imagens.],
+  [Efeito nos atributos de qualidade], [Permite escalar cada etapa independentemente.],
+  [Vantagens potenciais], [Isola efeitos e falhas por serviço.],
+  [Desvantagens ou riscos], [Acrescenta transferências e pode repetir codificação.],
+  [Custo e risco de migração], [Exige integração de novos serviços e validação do pipeline.],
 )
 
+#paisagem[
 == Matriz de comparação de padrões
 
 #orientacao[
@@ -67,23 +68,22 @@
   acrescentar linhas para outros atributos relevantes.
 ]
 
-#paisagem[
 #tab([Matriz de comparação de padrões],
   tabela(
     colunas: (5.6cm, 4.2cm, 4cm, 4cm, 4cm),
     tamanho: 8.5pt,
     [Atributo de qualidade (ISO/IEC 25010)], [Padrão global atual (referência)], [Padrão atual do vídeo], [ALT-1], [ALT-2],
-    [Relação com o padrão global], [—], [#preencher[Segue / Afasta-se]], [#preencher[Mantém / Altera]], [#preencher[Mantém / Altera]],
-    [Eficiência de desempenho: comportamento temporal], [#preencher[nível — justificação (EV-nn)]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [Eficiência de desempenho: capacidade / elasticidade], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [Fiabilidade: tolerância a falhas / recuperabilidade], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [Manutenibilidade: modularidade / modificabilidade], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [Segurança], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [Usabilidade: operabilidade], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
+    [Relação com o padrão global], [—], [Pipeline local com despacho assíncrono.], [Mantém a fila e o pipeline.], [Distribui os efeitos de vídeo.],
+    [Eficiência de desempenho: comportamento temporal], [Assíncrono por ferramenta.], [Trabalhos aguardam o único consumidor.], [Amostra final de B arrancou durante A.], [Pode aumentar I/O e recodificação.],
+    [Eficiência de desempenho: capacidade / elasticidade], [Escala por ferramenta.], [Um vídeo de cada vez na base.], [Duas réplicas validadas.], [Escala por etapa.],
+    [Fiabilidade: tolerância a falhas / recuperabilidade], [Ack automático nas ferramentas de imagem.], [Ack manual no worker de vídeo.], [Ack manual e fecho concorrente protegido.], [Isolamento por etapa com mais pontos de falha.],
+    [Manutenibilidade: modularidade / modificabilidade], [Ferramentas especializadas.], [Efeitos no mesmo serviço.], [Mesma estrutura interna.], [Maior independência por efeito e mais coordenação.],
+    [Segurança], [Gateway no perímetro.], [Percurso existente.], [Mesmos contratos e fronteiras.], [Mais dependências internas.],
+    [Usabilidade: operabilidade], [O estado visível depende do frontend.], [Overlay na base.], [A redução da espera foi medida separadamente da interface.], [Depende de acompanhar as etapas no cliente.],
   ),
 )
 ]
 
 == Adequação do padrão atual
 
-#preencher[Justificação de por que o padrão atual (global e do vídeo) é mais ou menos adequado do que as alternativas, considerando os requisitos não funcionais identificados (5 a 10 linhas).]
+ALT-1 foi selecionada para preservar o pipeline e limitar as mudanças no despacho. ALT-2 exigiria rever a coordenação e os ficheiros intermédios. ALT-3 exigiria encaminhar trabalhos consoante a carga. As duas últimas ficaram na análise conceptual.

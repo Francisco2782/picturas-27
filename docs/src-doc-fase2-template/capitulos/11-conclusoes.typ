@@ -14,13 +14,13 @@
 ]
 
 == Adequação do padrão atual (global e do vídeo)
-#preencher[…]
+A orquestração assíncrona mantém a execução em lote para imagem e vídeo. O serviço de vídeo agrupa o pipeline para reaproveitar a descodificação e codificação entre efeitos compatíveis. A fila comum admite consumidores concorrentes e a publicação de resultados exige proteção contra fechos simultâneos.
 
 == Sugestões de otimização
-#preencher[…]
+A configuração validada para a carga de capacidade usa duas réplicas, e o Compose conserva uma por omissão. O dimensionamento para outras cargas precisa de observar em conjunto a espera dos trabalhos curtos, o pico de memória e a duração do lote.
 
 == Considerações para evolução futura
-#preencher[…]
+O estado persistido permite acompanhar execuções longas através do mesmo endpoint após navegação, recarregamento ou reconexão. A evolução de ferramentas de vídeo pode reutilizar esse contrato de acompanhamento e os testes de regressão de lotes mistos.
 
 == Trabalho futuro
-#preencher[O que ficou por fazer e porquê, e ligação à Fase 3.]
+O seguimento QS-03 validou a recuperação de uma execução de legendagem em dois tipos de interrupção. O teste de polling quantificou o custo HTTP de um observador. Cargas com vários clientes e a atribuição de CPU e memória ficam por avaliar. Para fechar a entrega, falta repetir os cenários por outro membro da equipa e registar a revisão humana do relatório e da utilização de IA.

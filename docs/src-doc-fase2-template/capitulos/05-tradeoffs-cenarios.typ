@@ -1,5 +1,6 @@
 #import "../template.typ": *
 
+#paisagem[
 = Trade-offs, Cenários de Qualidade e Prioridades
 
 #orientacao[
@@ -32,15 +33,14 @@
   mínimo: esses fixam-se após a medição inicial. A medida da resposta indica o que se mede, não o valor a atingir.
 ]
 
-#paisagem[
 #tab([Cenários de qualidade],
   tabela(
     colunas: (1.2cm, 3.4cm, 2.6cm, 2.2cm, 2.2cm, 2.4cm, 2.2cm, 2.6cm, 3cm),
     tamanho: 7.5pt,
     [ID], [Fragilidade na base (EV-nn)], [Característica (ISO/IEC 25010)], [Fonte do estímulo], [Estímulo], [Artefacto], [Ambiente], [Resposta], [Medida da resposta],
-    [QS-01], [#preencher[… (EV-nn)]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [QS-02], [#preencher[… (EV-nn)]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [QS-03], [#preencher[… (EV-nn)]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
+    [QS-01], [Um consumidor para a fila de vídeo (EV-01 a EV-03)], [Eficiência de desempenho, capacidade], [Cliente HTTP], [Submete B durante a legendagem de A], [`video_queue` e `video_tool`], [Docker, carga concorrente], [B inicia durante A], [Espera média de B ≤ 15 s.],
+    [QS-02], [Estado de apresentação volátil (EV-05)], [Usabilidade, operabilidade], [Utilizador premium], [Alterna projetos e recarrega durante A], [Dashboard e rota de estado], [Chrome, 1280 × 720], [Mantém acesso e recupera o progresso], [12/12 ações, navegação e recarregamento 3/3, zero falsas conclusões.],
+    [QS-03], [A base usa ack manual (EV-01).], [Fiabilidade, recuperabilidade], [Falha de infraestrutura], [Interrompe um worker ou o broker a meio do lote], [RabbitMQ, worker e orquestrador], [Falha transitória], [Retoma após restabelecimento], [Resultado íntegro e zero novos artefactos parciais órfãos. O seguimento verificou os dois tipos de falha.],
   ),
 )
 ]
@@ -56,9 +56,9 @@
   tabela(
     colunas: (1.6cm, 4.8cm, 4.8cm, 2cm),
     [ID], [Importância para os stakeholders], [Dificuldade / risco técnico], [Prioridade],
-    [QS-01], [#preencher[Alta / Média / Baixa — porquê]], [#preencher[Alta / Média / Baixa — porquê]], [#preencher[1..N]],
-    [QS-02], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [QS-03], [#preencher[…]], [#preencher[…]], [#preencher[…]],
+    [QS-01], [Alta, afeta outros utilizadores.], [Média, requer escala e proteção de fechos concorrentes.], [1],
+    [QS-02], [Alta, afeta edição e acompanhamento.], [Média a alta, envolve persistência e cliente.], [2],
+    [QS-03], [Média, afeta robustez operacional.], [Alta, exige ensaio de falha dedicado.], [3],
   ),
 )
 
@@ -70,9 +70,9 @@
   priorização acima.
 ]
 
-+ #preencher[Atributo — cenários QS-nn; justificação]
-+ #preencher[Atributo — …]
-+ #preencher[Atributo — …]
++ Capacidade (QS-01). Um consumidor ocupado transmite a espera a outros projetos.
++ Operabilidade (QS-02). Os trabalhos longos exigem navegação e recuperação do estado.
++ Recuperabilidade (QS-03). Uma interrupção a meio do lote exige validação própria.
 
 == Pré-requisitos e efeitos colaterais entre atributos
 
@@ -86,8 +86,8 @@
   tabela(
     colunas: (2.8cm, 2.8cm, 4cm, 1fr),
     [Atributo A], [Atributo B], [Efeito (pré-requisito, sinergia ou conflito)], [Razão / evidência],
-    [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
-    [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
+    [Capacidade], [Integridade do lote], [Risco], [Resultados podem terminar em simultâneo. P-02 verificou a correção.],
+    [Operabilidade], [Utilização de recursos], [Custo], [Persistência e consultas periódicas acrescentam tráfego.],
   ),
 )
 
@@ -104,7 +104,7 @@
     colunas: (1fr, 2.6cm, 3cm, 1.8cm, 2.2cm),
     tamanho: 8.5pt,
     [Recomendação], [Atributo(s)], [Padrão a que se refere (global / vídeo)], [Esforço], [Risco de regressão],
-    [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[Baixo / Médio / Alto]], [#preencher[Baixo / Médio / Alto]],
-    [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
+    [Escalar o worker e proteger fechos simultâneos.], [Capacidade e fiabilidade], [Vídeo e orquestração], [Médio], [Médio],
+    [Persistir e reconciliar o estado no dashboard.], [Operabilidade], [Interação frontend e backend], [Médio], [Médio],
   ),
 )
