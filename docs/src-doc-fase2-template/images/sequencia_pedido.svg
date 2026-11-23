@@ -110,6 +110,6 @@
   <text x="440" y="520" text-anchor="middle" font-size="9" fill="#374151">processingRun: completed</text>
 
   <line x1="365" y1="545" x2="80" y2="545" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="220" y="540" text-anchor="middle" font-size="9" font-weight="bold" fill="#15803D">ws_queue → process_completed (Resultados disponíveis)</text>
+  <text x="220" y="540" text-anchor="middle" font-size="9" font-weight="bold" fill="#15803D">ws_queue → process-update (Resultados disponíveis)</text>
 
 </svg>

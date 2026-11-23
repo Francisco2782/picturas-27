@@ -130,8 +130,8 @@ O processamento completo de um projeto com vídeos articula-se em cinco fases es
     [Passo], [Origem → Destino], [Mensagem / _endpoint_ / fila], [Evidência],
     [Carregamento do vídeo], [Browser → Gateway → `projects` → S3], [`POST /api-gateway/projects/:owner/:project/video` (multipart/form-data)], [`EV-04`: `projects/routes/projects.js` e `projects/utils/video.js` — validam contentor, codec de vídeo, duração, tamanho e resolução.],
     [Definição do _pipeline_], [Browser → Gateway → `projects`], [`POST …/tool` para adicionar e `POST …/reorder` para reordenar], [`EV-04`: `apiGateway/routes/projects.js` e `projects/routes/projects.js`.],
-    [_Apply_], [Browser → Gateway → `projects` → RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` → publica em `video_queue`], [`EV-01`: `Tools/video/video.py:53-54` e `EV-04`: `projects/utils/processBatch.js:88-142` — 1 msg por vídeo com pipeline integral.],
+    [_Apply_], [Browser → Gateway → `projects` → RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` → publica em `video_queue`], [`EV-01`: `Tools/video/video.py:54` e `EV-04`: `projects/routes/projects.js:1564-1671` — 1 msg por vídeo com pipeline integral.],
     [Progresso], [`video_tool` → `project_queue` → `projects` → `ws_queue`], [Mensagens `video-progress` tipadas com token e percentagem], [`EV-03`: `Tools/video/video.py` e `EV-06`: `projects/utils/videoProgress.js` — validação e persistência antes de publicar.],
-    [Resultado], [`video_tool` → `project_queue` → `projects` → UI], [Mensagem de sucesso, ack manual, criação de `Result` e evento `process_completed`], [`EV-01`: `Tools/video/video.py:169-176` e `EV-06`: `projects/utils/processBatch.js` — commit de lote. A segurança do fecho simultâneo está por confirmar em P-02.],
+    [Resultado], [`video_tool` → `project_queue` → `projects` → UI], [Mensagem de sucesso, ack manual, criação de `Result` e evento `process-update`], [`EV-01`: `Tools/video/video.py:170` e `EV-06`: `projects/utils/processBatch.js` — commit de lote. A segurança do fecho simultâneo está por confirmar em P-02.],
   ),
 ) <tab-passos-pedido>
