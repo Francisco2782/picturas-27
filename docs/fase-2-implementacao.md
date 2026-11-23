@@ -8,6 +8,8 @@
 
 **Seguimento técnico de 23/11/2026.** A interrupção de um worker e o reinício do RabbitMQ passaram com um trabalho de legendagem ativo após tornar as mensagens persistentes, recuperar a subscrição de `projects` e limpar o staging por saída. O ensaio complementar de polling mediu quatro pedidos e 1 048 bytes de corpo de resposta por janela de quatro segundos, com mediana de 7,75 ms por pedido. [Sessão de recuperação e polling](sessoes/2026-11-23-recuperacao-e-polling.md)
 
+**Concorrência entre edição e processamento (F2 e F3).** As gravações de edição preservam o estado e os tokens alterados pelo worker. O progresso é validado por vídeo e a data do lote conserva o valor mais recente. As três regressões em MongoDB passaram, assim como a integração de reembolso. Um lote editado durante o processamento preservou os dois resultados descarregáveis. A repetição completa de QS-01 e QS-02 na versão integrada ainda está pendente. [Sessão F2 e F3](sessoes/2026-11-23-f2-f3.md)
+
 Este documento regista cada incremento implementado, a respetiva validação e o
 trabalho ainda pendente. As evidências oficiais da baseline permanecem na pasta
 local `evaluation/evidence/`, ignorada pelo Git.

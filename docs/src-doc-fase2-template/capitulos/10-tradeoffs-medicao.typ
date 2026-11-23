@@ -112,6 +112,8 @@ QS-03 foi uma verificação complementar de regressão da DA-1 (QS-01). Ao valid
 
 F8 corrigiu uma falha herdada de reembolso da quota de vídeo ao cancelar. Foi verificada em separado com contas gratuitas, incluindo cancelamentos concorrentes, uma repetição após indisponibilidade temporária e um projeto partilhado. As campanhas dos dois requisitos usaram contas premium.
 
+No seguimento de F2 e F3, três regressões em MongoDB verificaram a preservação do estado terminal após uma edição e a aceitação de eventos pela ordem de cada vídeo. Pela API, renomear um projeto durante a execução preservou os dois resultados descarregáveis e o teste de reembolso voltou a passar. As medições comparativas acima são da campanha anterior a este seguimento.
+
 #tab([Preservação funcional e testes de regressão],
   tabela(
     colunas: (2.4cm, 3.8cm, 2.8cm, 3.2cm, 1fr),
