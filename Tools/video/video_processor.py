@@ -12,8 +12,11 @@ Speed changes the playback rate (0.25x to 5x): frame timestamps are rescaled
 while decoding and the audio tempo is changed by the same factor, so both stay
 in sync. Trim times always refer to the original video.
 """
+from contextlib import contextmanager
+import fcntl
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -165,7 +168,7 @@ def validate_tools(tools: list) -> None:
 
 
 def _process_video(input_path: str, output_path: str, tools: list,
-                  progress_cb=None, preview: bool = False) -> dict:
+                  work: Path, progress_cb=None, preview: bool = False) -> dict:
     """Applies `tools` (ordered) to the video at `input_path` and writes MP4 to `output_path`.
 
     `progress_cb(percent: int)` is called as frames are processed.
@@ -195,7 +198,7 @@ def _process_video(input_path: str, output_path: str, tools: list,
     ]
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-    tmp_out = output_path + ".part.mp4"
+    tmp_out = str(work / "encoded.part.mp4")
     dec_err = tempfile.TemporaryFile()
     enc_err = tempfile.TemporaryFile()
     decoder = subprocess.Popen(decode_cmd, stdout=subprocess.PIPE, stderr=dec_err)
@@ -283,6 +286,45 @@ def _read(f) -> str:
     return f.read().decode(errors="replace").strip()[-500:]
 
 
+@contextmanager
+def _video_workspace(output_path: str):
+    """Recover a killed delivery's staging files without touching another output."""
+    target = Path(output_path).resolve()
+    work = target.with_name(target.name + ".video-work")
+    work.parent.mkdir(parents=True, exist_ok=True)
+    while True:
+        try:
+            work.mkdir()
+        except FileExistsError:
+            pass
+        try:
+            descriptor = os.open(work, os.O_RDONLY | os.O_DIRECTORY)
+        except FileNotFoundError:
+            continue
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+            try:
+                # A competing delivery may have removed or replaced the directory
+                # while this process was waiting on its original inode.
+                current = work.stat()
+            except FileNotFoundError:
+                continue
+            if not os.path.samestat(os.fstat(descriptor), current):
+                continue
+            try:
+                for artifact in work.iterdir():
+                    if artifact.is_dir() and not artifact.is_symlink():
+                        shutil.rmtree(artifact)
+                    else:
+                        artifact.unlink()
+                yield work
+            finally:
+                shutil.rmtree(work)
+            return
+        finally:
+            os.close(descriptor)
+
+
 def process_video(input_path: str, output_path: str, tools: list,
                   progress_cb=None, preview: bool = False) -> dict:
     """Run caption stages in order, keeping the existing fast path for other tools.
@@ -291,6 +333,11 @@ def process_video(input_path: str, output_path: str, tools: list,
     frames too. Work stays temporary until the entire pipeline succeeds.
     """
     validate_tools(tools)
+    with _video_workspace(output_path) as work:
+        return _run_pipeline(input_path, output_path, tools, work, progress_cb, preview)
+
+
+def _run_pipeline(input_path, output_path, tools, work, progress_cb, preview):
     if tools and tools[-1].get("procedure") == "extract_frames":
         from frame_extraction import extract_frames
         if len(tools) == 1:
@@ -301,20 +348,16 @@ def process_video(input_path: str, output_path: str, tools: list,
             return extract_frames(input_path, output_path,
                                   probe(input_path, prefer_video_duration=True),
                                   tools[-1].get("params", {}),
-                                  progress_cb or (lambda _: None), preview=preview)
-        target = Path(output_path).resolve()
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix="frame-source-", dir=target.parent) as work:
-            edited = str(Path(work) / "edited.mp4")
-            # Sampling spans the complete edited timeline, including in preview.
-            info = process_video(input_path, edited, tools[:-1],
-                                 lambda pct: progress_cb(int(pct * 0.7)) if progress_cb else None,
-                                 preview=False)
-            return extract_frames(edited, output_path, info, tools[-1].get("params", {}),
-                                  lambda pct: progress_cb(70 + int(pct * 0.3)) if progress_cb else None,
-                                  preview=preview)
+                                  progress_cb or (lambda _: None), preview=preview, work_parent=work)
+        edited = str(work / "edited.mp4")
+        # Sampling spans the complete edited timeline, including in preview.
+        info = _run_pipeline(input_path, edited, tools[:-1], work,
+                             lambda pct: progress_cb(int(pct * 0.7)) if progress_cb else None, False)
+        return extract_frames(edited, output_path, info, tools[-1].get("params", {}),
+                              lambda pct: progress_cb(70 + int(pct * 0.3)) if progress_cb else None,
+                              preview=preview, work_parent=work)
     if not any(t.get("procedure") == "subtitles" for t in tools):
-        return _process_video(input_path, output_path, tools, progress_cb, preview)
+        return _process_video(input_path, output_path, tools, work, progress_cb, preview)
 
     from subtitles import caption_video
 
@@ -343,27 +386,24 @@ def process_video(input_path: str, output_path: str, tools: list,
         default=0,
     )
 
-    target = Path(output_path).resolve()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="captions-", dir=target.parent) as work:
-        current = input_path
-        for index, stage in enumerate(stages):
-            next_path = str(Path(work) / f"stage-{index}.mp4")
+    current = input_path
+    for index, stage in enumerate(stages):
+        next_path = str(work / f"stage-{index}.mp4")
 
-            def progress(percent):
-                if progress_cb:
-                    progress_cb(min(99, int((index + percent / 100) * 100 / len(stages))))
+        def progress(percent):
+            if progress_cb:
+                progress_cb(min(99, int((index + percent / 100) * 100 / len(stages))))
 
-            progress(0)
-            if stage is None:
-                caption_video(current, next_path, probe(current), progress)
-            else:
-                _process_video(current, next_path, stage, progress,
-                               preview=preview and index == preview_stage)
-            current = next_path
-        result = probe(current)
-        result["frames"] = round(result["duration"] * result["fps"])
-        os.replace(current, target)
+        progress(0)
+        if stage is None:
+            caption_video(current, next_path, probe(current), progress)
+        else:
+            _process_video(current, next_path, stage, work, progress,
+                           preview=preview and index == preview_stage)
+        current = next_path
+    result = probe(current)
+    result["frames"] = round(result["duration"] * result["fps"])
+    os.replace(current, Path(output_path).resolve())
     if progress_cb:
         progress_cb(100)
     return result
