@@ -17,10 +17,39 @@ from evaluation.run_scenario import (
     parse_stats,
     parse_worker_stats,
     parse_video_logs,
+    validate_results,
+    wait_for_results,
 )
 
 
 class RunScenarioTests(unittest.TestCase):
+    def test_a_and_b_completion_are_observed_independently(self):
+        submission = "2026-11-10T12:00:00+00:00"
+        a = WorkloadProject("A", 1, submission_at=submission)
+        b = WorkloadProject("B", 1, submission_at=submission)
+        video = {"imgs": [{"result_id": "result", "og_img_id": "source",
+                           "type": "video", "url": "https://example.test/result"}]}
+        api = Mock()
+        api.results.side_effect = [{"imgs": []}, video, video, video, video]
+        args = argparse.Namespace(process_timeout=5, poll_interval=0)
+
+        with patch("evaluation.run_scenario.iso_now", side_effect=[
+            "2026-11-10T12:00:02+00:00", "2026-11-10T12:00:08+00:00",
+        ]):
+            wait_for_results(api, [a, b], args)
+
+        self.assertEqual(b.duration_seconds, 2)
+        self.assertEqual(a.duration_seconds, 8)
+
+    def test_overcount_and_duplicate_sources_invalidate_results(self):
+        item = {"result_id": "unique", "og_img_id": "same", "type": "video", "url": "url"}
+        with self.assertRaisesRegex(ScenarioError, "Unexpected results"):
+            validate_results(WorkloadProject("A", 1), {"imgs": [item, item]})
+        with self.assertRaisesRegex(ScenarioError, "duplicate og_img_id"):
+            validate_results(WorkloadProject("B", 2), {"imgs": [
+                item, {**item, "result_id": "other"},
+            ]})
+
     def test_worker_discovery_handles_zero_one_two_and_changing_ids(self):
         outputs = ["", "abc123\tpicturas-video_tool-1\n",
                    "def456\tpicturas-video_tool-2\nabc123\tpicturas-video_tool-1\n",

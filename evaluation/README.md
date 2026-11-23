@@ -55,7 +55,7 @@ malformed resource data.
 ## Run the scenario
 
 ```sh
-python3 evaluation/run_scenario.py --runs 3 --warmup 1
+python3 evaluation/run_scenario.py --runs 3 --warmup 1 --expected-workers 2 --output-dir evaluation/evidence/final-performance
 ```
 
 Each run creates fresh projects. A uploads the 177-second speech video and uses
@@ -73,7 +73,13 @@ by the summarizer. B's wait uses the earliest matching brightness log timestamp
 found across all observed replicas minus B's submission timestamp. Queue depth is
 corroborating evidence and the worker log is the processing-start measurement.
 If the worker replica count changes, or a replica cannot be observed, the run is
-invalid rather than silently reporting a partial group sample.
+invalid. The runner also checks worker identity, start time, restart count and
+OOM status before and after the run. It rejects missing queue or worker samples
+and gaps exceeding the sampling interval plus five seconds for Docker stats.
+It polls A and B in each round and validates exact counts and distinct source
+and result IDs. Older evidence collected by polling A to completion before B
+remains comparable for log-derived wait. Remeasure with the same runner before
+using those older completion observations to quantify duration changes.
 
 The evidence tree is local:
 

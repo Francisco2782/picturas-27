@@ -125,6 +125,7 @@ class ScenarioRun:
     projects: dict[str, WorkloadProject] = field(default_factory=dict)
     samples: list[ResourceSample] = field(default_factory=list)
     log_matches: list[dict[str, str]] = field(default_factory=list)
+    worker_lifecycle: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -246,14 +247,20 @@ class ApiClient:
         return response
 
     def result_count(self, project: WorkloadProject) -> int:
+        body = self.results(project)
+        return len(body["imgs"]) + len(body.get("texts", []))
+
+    def results(self, project: WorkloadProject) -> dict[str, Any]:
         response = self._request(
             "GET", f"/projects/{self.user_id}/{project.project_id}/process/url",
             expected=(200,),
         )
         try:
             body = response.json()
-            return len(body.get("imgs", [])) + len(body.get("texts", []))
-        except (ValueError, AttributeError) as exc:
+            if not isinstance(body, dict) or not isinstance(body.get("imgs"), list):
+                raise ValueError("Expected an imgs list")
+            return body
+        except ValueError as exc:
             raise ScenarioError("Process URL response was not a JSON object") from exc
 
 
@@ -299,7 +306,7 @@ def discover_workers(
 ) -> list[dict[str, str]]:
     """Discover running Compose workers by service and project labels."""
     command = [
-        "docker", "ps", "--filter", f"label=com.docker.compose.service={service}",
+        "docker", "ps", "--no-trunc", "--filter", f"label=com.docker.compose.service={service}",
         "--filter", f"label=com.docker.compose.project={project}",
         "--format", "{{.ID}}\t{{.Names}}",
     ]
@@ -532,21 +539,83 @@ def prepare_project(
     return project
 
 
-def wait_for_result(api: ApiClient, project: WorkloadProject, args: argparse.Namespace) -> None:
+def validate_results(project: WorkloadProject, results: dict[str, Any]) -> bool:
+    items = results["imgs"]
+    if len(items) > project.expected_results or results.get("texts"):
+        raise ScenarioError(f"Unexpected results for project {project.label}")
+    if len(items) < project.expected_results:
+        return False
+    for field_name in ("result_id", "og_img_id"):
+        values = {item.get(field_name) for item in items}
+        if None in values or "" in values or len(values) != project.expected_results:
+            raise ScenarioError(f"Missing or duplicate {field_name} for project {project.label}")
+    if any(item.get("type") != "video" or not item.get("url") for item in items):
+        raise ScenarioError(f"Unexpected media output for project {project.label}")
+    return True
+
+
+def wait_for_results(
+    api: ApiClient, projects: list[WorkloadProject], args: argparse.Namespace,
+) -> None:
     deadline = time.monotonic() + args.process_timeout
-    while time.monotonic() < deadline:
-        count = api.result_count(project)
-        if count >= project.expected_results:
+    pending = projects.copy()
+    while pending and time.monotonic() < deadline:
+        for project in pending.copy():
+            if not validate_results(project, api.results(project)):
+                continue
             project.finished_at = iso_now()
             project.duration_seconds = (
                 parse_timestamp(project.finished_at) - parse_timestamp(project.submission_at)
             ).total_seconds()
-            return
-        time.sleep(args.poll_interval)
-    raise ScenarioError(
-        f"Timed out waiting for project {project.label} ({project.project_id}) "
-        f"to reach {project.expected_results} results"
+            pending.remove(project)
+        if pending:
+            time.sleep(args.poll_interval)
+    if pending:
+        raise ScenarioError("Timed out waiting for projects " + ", ".join(p.label for p in pending))
+    for project in projects:
+        if not validate_results(project, api.results(project)):
+            raise ScenarioError(f"Results disappeared for project {project.label}")
+
+
+def worker_lifecycle(args: argparse.Namespace) -> dict[str, Any]:
+    workers = discover_workers(args.video_worker_service, args.compose_project)
+    if not workers or (args.expected_workers is not None and len(workers) != args.expected_workers):
+        raise ScenarioError(f"Unexpected running worker count: {len(workers)}")
+    result = subprocess.run(
+        ["docker", "inspect", *[worker["container_id"] for worker in workers]],
+        check=True, capture_output=True, text=True, timeout=args.timeout,
     )
+    return {
+        item["Id"]: {
+            "started_at": item["State"]["StartedAt"],
+            "running": item["State"]["Running"],
+            "oom": item["State"]["OOMKilled"],
+            "restarts": item["RestartCount"],
+        }
+        for item in json.loads(result.stdout)
+    }
+
+
+def validate_sample_coverage(run: ScenarioRun, sample_interval: float) -> None:
+    expected = set(run.worker_lifecycle["before"])
+    if run.worker_lifecycle["before"] != run.worker_lifecycle["after"] or any(
+        not state["running"] or state["oom"] for state in run.worker_lifecycle["after"].values()
+    ):
+        raise ScenarioError("Worker set or lifecycle changed during the run")
+    if not run.samples or any(
+        sample.errors or set(worker.container_id for worker in sample.workers) != expected or
+        None in (sample.ready, sample.unacked, sample.cpu_percent, sample.memory_bytes)
+        for sample in run.samples
+    ):
+        raise ScenarioError("Incomplete queue or worker samples")
+    timestamps = [parse_timestamp(sample.timestamp) for sample in run.samples]
+    submitted = parse_timestamp(run.projects["A"].submission_at)
+    finished = max(parse_timestamp(project.finished_at) for project in run.projects.values())
+    gaps = [abs((timestamps[0] - submitted).total_seconds()), (finished - timestamps[-1]).total_seconds()]
+    gaps.extend((right - left).total_seconds() for left, right in zip(timestamps, timestamps[1:]))
+    # Docker stats --no-stream takes a measurement before returning, in addition to the interval.
+    if max(gaps) > sample_interval + 5:
+        raise ScenarioError(f"Queue or worker sample gap too long: {max(gaps):.3f}s")
 
 
 def run_once(api: ApiClient, args: argparse.Namespace, kind: str, paths: dict[str, Path]) -> ScenarioRun:
@@ -566,6 +635,7 @@ def run_once(api: ApiClient, args: argparse.Namespace, kind: str, paths: dict[st
             ],
             ("brightness", {"brightness": 1.1}),
         )
+        run.worker_lifecycle["before"] = worker_lifecycle(args)
         sampler.start()
         a = run.projects["A"]
         b = run.projects["B"]
@@ -574,9 +644,10 @@ def run_once(api: ApiClient, args: argparse.Namespace, kind: str, paths: dict[st
         time.sleep(args.dispatch_delay)
         b.submission_at = iso_now()
         api.process(b)
-        wait_for_result(api, a, args)
-        wait_for_result(api, b, args)
+        wait_for_results(api, [a, b], args)
         sampler.stop()
+        run.worker_lifecycle["after"] = worker_lifecycle(args)
+        validate_sample_coverage(run, args.sample_interval)
         observed_workers = {
             worker.container_id: {"container_id": worker.container_id, "name": worker.name}
             for sample in run.samples for worker in sample.workers
@@ -650,6 +721,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rabbit-password-env", default="RABBITMQ_MANAGEMENT_PASSWORD")
     parser.add_argument("--compose-project", default=os.getenv("COMPOSE_PROJECT_NAME", "picturas"))
     parser.add_argument("--video-worker-service", default=os.getenv("VIDEO_WORKER_SERVICE", "video_tool"))
+    parser.add_argument("--expected-workers", type=int, choices=(1, 2))
     parser.add_argument("--sample-interval", type=float, default=1.0)
     parser.add_argument("--dispatch-delay", type=float, default=1.5)
     parser.add_argument("--poll-interval", type=float, default=2.0)
