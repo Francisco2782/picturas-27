@@ -50,8 +50,10 @@ module.exports.getAll = async (user_id) => {
   return await Project.find({ user_id: user_id }).sort({ _id: 1 }).exec();
 };
 
-module.exports.getOne = async (user_id, project_id) => {
-  return await Project.findOne({ user_id: user_id, _id: project_id }).exec();
+module.exports.getOne = async (user_id, project_id, { includeQuota = false } = {}) => {
+  const query = Project.findOne({ user_id: user_id, _id: project_id });
+  if (includeQuota) query.select("+processingQuota");
+  return query.exec();
 };
 
 module.exports.create = async (project) => {
@@ -70,14 +72,14 @@ module.exports.delete = (user_id, project_id) => {
 module.exports.getOneByShareId = (shareId) =>
   Project.findOne({ "sharedLinks.id": shareId }).exec();
 
-module.exports.updateIfVersion = async (user_id, project_id, project, expectedVersion) => {
+module.exports.updateIfVersion = async (user_id, project_id, project, expectedVersion, conditions = {}) => {
   const raw = project.toObject ? project.toObject() : project;
 
   // remove campos que não se quer "setar"
   const { _id, user_id: _uid, version, __v, sharedLinks, ...rest } = raw;
 
   return await Project.findOneAndUpdate(
-    { user_id: user_id, _id: project_id, version: expectedVersion },
+    { user_id: user_id, _id: project_id, version: expectedVersion, ...conditions },
     { $set: rest, $inc: { version: 1 } },
     { new: true } // devolve documento já com versão incrementada
   ).exec();
