@@ -40,7 +40,7 @@
 
 | **Cenário** | **O que mudou e porquê** | **Onde foi atualizado no Bloco 2** |
 |-------------|--------------------------|-------------------------------------|
-| QS-01 / QS-02 | Nenhuma alteração efetuada. Os cenários foram integralmente validados e mantidos consistentes com o Bloco 2. | N/A |
+| QS-01 / QS-02 | Foram mantidos os cenários e critérios definidos no Bloco 2. Os resultados das campanhas são registados na comparação final. | N/A |
 
 ---
 
@@ -52,7 +52,7 @@
 |--------|-------------|--------------------------|------------|-----------------------------------------------------------|------------------------------------|--------------------|
 | **TAT-01** | QS-01 | Desempenho → gerir recursos | **Replicar computação (*Replicate computation*)** | O broker RabbitMQ distribui as mensagens de vídeo pendentes por múltiplas réplicas ativas na mesma fila (`video_queue`), permitindo que a réplica livre processe o projeto B enquanto a outra transcreve o projeto A. | **Parcial** — O RabbitMQ suporta nativamente, mas o `docker-compose.yaml` instanciava apenas 1 réplica por omissão (`EV-02`). | **A** |
 | **TAT-02** | QS-01 | Desempenho → controlar procura | **Priorizar eventos (*Prioritize events*) / Filas dedicadas** | Criar duas filas separadas (`video_light_queue` e `video_heavy_queue`), garantindo que tarefas rápidas têm trânsito prioritário e não são bloqueadas por tarefas de legendagem. | **Não** — Existe apenas uma fila `video_queue` partilhada para todas as operações de vídeo (`EV-04`). | **A** |
-| **TAT-03** | QS-01 | Desempenho → controlar procura | **Reduzir a sobrecarga: partilha de recursos (*Reduce overhead*)** | Manter o modelo Faster-Whisper pré-carregado em cache persistente de memória partilhada entre processos para mitigar tempos de inicialização da inferência em CPU. | **Parcial** — O modelo é descarregado para o volume `whisper_models`, mas a instanciação do pipeline Whisper é repetida em cada job (`EV-03`). | **A** |
+| **TAT-03** | QS-01 | Desempenho → controlar procura | **Reduzir a sobrecarga: partilha de recursos (*Reduce overhead*)** | Partilhar um modelo em memória entre processos para reduzir a duplicação de memória e o custo de inicialização por réplica. | **Parcial** — O volume `whisper_models` partilha os ficheiros. Cada processo reutiliza a sua própria instância através de `lru_cache` em `Tools/video/subtitles.py`. | **A** |
 | **TAT-04** | QS-02 | Usabilidade / Fiabilidade → gerir recursos | **Manter cópias de dados: snapshot de estado (*Maintain data copies*)** | O serviço `projects` persiste no MongoDB um snapshot atómico (`processingRun`) contendo token, estado terminal e progresso monotónico por vídeo, exposto via endpoint autenticado de leitura. | **Não** — A base mantinha o progresso exclusivamente na memória volátil do componente React (`EV-05`). | **A** |
 | **TAT-05** | QS-02 | Usabilidade → operabilidade | **Desacoplamento visual da interface (*Support concurrent user tasks*)** | Eliminar a janela modal de sobreposição bloqueante (*overlay*) e implementar um painel flutuante partilhado no layout global do dashboard, permitindo navegação concorrente entre projetos. | **Não** — A interface base bloqueava o ecrã com um modal obrigatório durante toda a duração do lote (`EV-05`). | **B** (alteração visual que é o objeto direto da melhoria) |
 | **TAT-06** | QS-02 | Usabilidade / Fiabilidade → detetar e recuperar | **Reconciliação e sincronização de eventos (*Event synchronization*)** | O frontend reconcilia os eventos recebidos via WebSocket com polling na API REST de status, ordenando observações por data/hora e token para evitar regressões de progresso em caso de atrasos de rede. | **Não** — O cliente base não efetuava reconciliação nem persistia identificadores de execução (`EV-05`). | **A** |
@@ -69,11 +69,11 @@
 | **Tática(s) escolhida(s)** | **TAT-01** (Replicar computação via instâncias concorrentes). |
 | **Estrutura / padrão que a realiza** | Padrão **Competing Consumers** (consumidores concorrentes) implementado através de 2 réplicas do contentor `video_tool` consumindo da mesma fila durável `video_queue` do RabbitMQ, cada uma mantendo `prefetch_count=1` e confirmação manual (`ack`). |
 | **Alternativas consideradas e razão de rejeição** | **TAT-02 (Filas dedicadas por carga):** Rejeitada porque exigiria reescrever o orquestrador `projects`, alterar o contrato de despacho de mensagens e modificar a infraestrutura de filas do RabbitMQ, introduzindo risco severo de regressão. <br>**TAT-03 (Partilha de modelo em memória):** Rejeitada como solução isolada, pois otimizaria apenas o carregamento do modelo mas não resolveria a serialização síncrona do processamento de vídeo. |
-| **Consequências positivas** | Redução esperada da espera de B ao poder iniciar trabalho noutra réplica. Baseline de 61,727 s, mínimo aceitável de ≤30 s e alvo de ≤15 s. Resultado final por confirmar. |
-| **Consequências negativas / riscos** | Aumento da utilização agregada de CPU e memória RAM no host Docker; risco de perda de resultados quando múltiplos vídeos do mesmo lote terminam em simultâneo. A auditoria reproduziu a perda e reabriu P-02. |
+| **Consequências positivas** | A espera média de B foi 0,113 s com duas réplicas, face aos 61,727 s da baseline oficial. Atingiu o mínimo de ≤30 s e o alvo de ≤15 s. [M-02](../sessoes/2026-11-22-fecho-fase-2.md#final-capacity-and-same-instrument-baseline) |
+| **Consequências negativas / riscos** | A média dos picos agregados de RAM passou de 2,86 GB para 4,29 GB face à baseline repetida. Os picos de CPU sobrepuseram-se nos dois conjuntos. A P-02 verificou a correção do fecho simultâneo e os três ensaios finais preservaram os resultados esperados. [M-04](../sessoes/2026-11-22-fecho-fase-2.md#final-capacity-and-same-instrument-baseline) |
 | **Elementos arquiteturais afetados** | `docker-compose.yaml` (escalamento de réplicas de `video_tool`), broker RabbitMQ (`video_queue`), orquestrador `projects/utils/processBatch.js` (sincronização de commit de lote). |
-| **Origem e âmbito do *refactoring*** | Padrão do vídeo e infraestrutura de implantação. Âmbito circunscrito ao subsistema de execução assíncrona, com regressão de fecho simultâneo ainda pendente em P-02. |
-| **Classe (A/B/C)** | **Classe A** (Refactoring para reduzir a espera com preservação funcional, ambas por confirmar na validação final). |
+| **Origem e âmbito do *refactoring*** | Padrão do vídeo e infraestrutura de implantação. A [P-02](../sessoes/2026-11-22-p02.md) verificou o fecho simultâneo com duas réplicas, persistência real e dois resultados recuperáveis. |
+| **Classe (A/B/C)** | **Classe A**. Preserva o contrato de processamento e altera a capacidade de execução. |
 
 ### DA-2 — Persistência de snapshot de execução e interface de acompanhamento não bloqueante (cenário QS-02)
 
@@ -83,8 +83,8 @@
 | **Tática(s) escolhida(s)** | **TAT-04** (Manter cópias de dados: snapshot no MongoDB), **TAT-05** (Desacoplamento visual da interface) e **TAT-06** (Reconciliação de eventos). |
 | **Estrutura / padrão que a realiza** | **Snapshot Pattern** no MongoDB (`processingRun` em `Project`), rota REST autenticada de projeção (`GET /projects/:owner/:project/processing-status`) e componente flutuante de progresso integrado no layout comum do Dashboard Next.js, sincronizado via WebSocket e polling periódico. |
 | **Alternativas consideradas e razão de rejeição** | **Persistência exclusiva em LocalStorage/SessionStorage no browser:** Rejeitada porque não sincroniza entre múltiplos dispositivos/abas e perde o estado se o utilizador fechar a sessão ou limpar a cache. <br>**Comunicação exclusiva por WebSocket sem persistência:** Rejeitada porque o recarregamento de página corta a ligação Socket.IO e perde o progresso até chegar um novo evento do worker. |
-| **Consequências positivas** | Objetivo de 12/12 interações, recuperação em 3/3 ensaios após navegação e após recarregamento e zero falsas conclusões. O painel está implementado. O resultado integrado está por confirmar em Chromium. |
-| **Consequências negativas / riscos** | Introdução de pequenas escritas atómicas adicionais na base de dados durante o reporte de progresso; tráfego HTTP periódico na rota de status enquanto a execução está ativa. |
+| **Consequências positivas** | O alvo foi atingido em Chromium: 12/12 ações, recuperação em 3/3 após navegação, recarregamento e reconexão, e zero conclusões prematuras. A baseline tinha 6/12 ações e 0/3 após navegação e recarregamento. [M-03](../sessoes/2026-11-22-fecho-fase-2.md#measurement-configuration-and-usability) |
+| **Consequências negativas / riscos** | O snapshot introduz escritas na base de dados e consultas durante a execução. O teste final observou 40 pedidos à API, incluindo 8 de estado, por ensaio. A baseline registou 28 e 6. As diferenças de instrumentação e reconexão limitam a atribuição do acréscimo ao polling. |
 | **Elementos arquiteturais afetados** | `projects/models/project.js`, `projects/routes/projects.js`, `projects/utils/processingRun.js`, `apiGateway/routes/projects.js`, `frontend/app/dashboard/` e `frontend/components/`. |
 | **Origem e âmbito do *refactoring*** | Interação entre o orquestrador backend e o frontend SPA. |
 | **Classe (A/B/C)** | **Classe B** (Alteração visível na interface que constitui o objeto direto do requisito de usabilidade/operabilidade; devidamente justificada pois não introduz funcionalidades novas de edição). |
@@ -142,14 +142,14 @@
 
 | **Decisão** | **Desempenho** | **Disponibilidade / Fiabilidade** | **Segurança** | **Usabilidade** | **Manutenibilidade / Testabilidade** | **Justificação** |
 |-------------|----------------|-----------------------------------|---------------|-----------------|--------------------------------------|------------------|
-| **DA-1** | **↑ Esperado** (espera menor; alvo ≤15 s, por confirmar) | **↓ Risco observado** (perda de resultados em P-02) | **= Neutro** (mesma superfície de rede) | **↑ Esperado** (menor espera, por confirmar) | **↓ Degrada ligeiramente** (mais caminhos concorrentes a validar nos testes de orquestração) | A capacidade adicional permite concorrência. O ganho e a integridade dos resultados continuam por confirmar. |
-| **DA-2** | **= Neutro / ↓ Ligeiro** (pequeno overhead de polling) | **↑ Melhora** (tolerância a falhas na visualização do estado) | **= Neutro** (acesso protegido por permissões de projeto) | **↑ Esperado** (recuperação em Chromium por confirmar) | **= Neutro** (código modularizado em subdocumentos Mongoose e componentes React) | O snapshot permite recuperar o estado. O comportamento integrado e o custo de polling estão por confirmar. |
+| **DA-1** | **↑ Observado** na espera de B (0,113 s) | A P-02 e os três ensaios finais preservaram os resultados previstos. | **= Neutro** (mesmas interfaces) | B inicia mais cedo. A operabilidade do painel foi avaliada separadamente. | Há mais caminhos concorrentes a validar na orquestração. | O ganho aplica-se à carga testada, com duas réplicas e `prefetch_count=1`. |
+| **DA-2** | Foram observados mais pedidos HTTP. O custo isolado do polling ficou por medir. | **↑ Observado** (recuperação em 3/3 após recarregamento e reconexão) | Os testes F5 confirmaram os controlos de cancelamento por permissão e após revogação. | **↑ Observado** (12/12 ações em Chromium) | O subdocumento e os componentes têm testes próprios de reconciliação. | A [campanha final de operabilidade](../sessoes/2026-11-22-fecho-fase-2.md#measurement-configuration-and-usability) atingiu o alvo. |
 
 ### 5.2 Interação entre DA-1 e DA-2
 
 | **Decisão A** | **Decisão B** | **Efeito** (pré-requisito, sinergia ou conflito) | **Razão / evidência** |
 |---------------|---------------|--------------------------------------------------|-----------------------|
-| **DA-1** (Réplicas de Vídeo) | **DA-2** (Snapshot e UI) | **Sinergia** | DA-1 procura reduzir a espera. Durante execuções longas, DA-2 permite acompanhar o trabalho num painel. Os efeitos combinados estão por confirmar nos ensaios finais. |
+| **DA-1** (Réplicas de Vídeo) | **DA-2** (Snapshot e UI) | **Sinergia** | A configuração final atingiu o alvo de espera e o de operabilidade em ensaios separados. Durante execuções longas, o utilizador pôde continuar a trabalhar no dashboard. A campanha não isolou a influência do polling sobre o processamento concorrente. |
 | **DA-1** (Réplicas de Vídeo) | **DA-2** (Snapshot e UI) | **Pré-requisito técnico** | O envio de múltiplos eventos de progresso e conclusões fora de ordem provenientes de várias réplicas em DA-1 exige que o mecanismo de snapshot de DA-2 valide rigorosamente a monotonicidade e a precedência dos estados terminais (`EV-06`). |
 
 ### 5.3 Plano de medição (esboço)
@@ -165,7 +165,7 @@
 
 | **Zona alterada** | **Testes de regressão existentes** (`Tools/video/tests`, `projects/tests`, …) | **Lacunas de teste** | **Testes a acrescentar** |
 |-------------------|--------------------------------------------------------------------------------|----------------------|--------------------------|
-| **DA-1:** Orquestração de lotes concorrentes e finalização no RabbitMQ | `projects/tests/process-batch.test.js` e `Tools/video/tests/` | A auditoria reproduziu em memória a perda de resultados no fecho simultâneo. | Acrescentar uma regressão de duas finalizações simultâneas do mesmo lote e validar o fecho de P-02. |
+| **DA-1:** Orquestração de lotes concorrentes e finalização no RabbitMQ | `projects/tests/process-batch.test.js` e `Tools/video/tests/` | A auditoria reproduziu em memória a perda de resultados no fecho simultâneo. | Regressão local com barreira e validação com duas réplicas concluídas na [P-02](../sessoes/2026-11-22-p02.md). |
 | **DA-2:** Snapshot de estado, API de status e interface React | Não existiam testes para a rota de status nem para lógica de reconciliação de estado no cliente | Ausência de cobertura para tokens antigos, eventos fora de ordem e hidratação de componentes | Criada suite de testes com 7 testes unitários em `frontend/tests/processing-status.test.mjs` cobrindo monotonicidade e precedência terminal |
 
 ---

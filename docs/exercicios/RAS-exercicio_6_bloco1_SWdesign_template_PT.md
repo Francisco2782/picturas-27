@@ -35,8 +35,8 @@
 |----------|-----------|
 | Commit de partida | `052310226c51fa57a17101c7bd1ad795674aac95` (tag `phase2-base`), checkout `afb84e5c818820f807bb504a8ed9f0a3162cc9dd` |
 | Comando(s) de arranque | `docker compose up -d --build` (e arranque de réplicas via `docker compose up -d --no-build --scale video_tool=2 video_tool`) |
-| Ambiente (SO, CPU, RAM, versões de Docker e Compose) | macOS Darwin (Apple Silicon ARM64 / x86_64 compatível), Docker Desktop v24+, Docker Compose v2.20+, Node.js v20/v24, Python 3.10+ |
-| Projeto de teste (nº de imagens e de vídeos, amostras usadas) | Amostras em `samples/video/`: projeto A com vídeo de fala de 177s / 10s com legendas (`subtitles`); projeto B com 2 vídeos MP4 de 10s e 1 vídeo MOV de 6s com efeito `brightness` |
+| Ambiente da baseline (SO, CPU, RAM, versões de Docker e Compose) | Linux 7.0.0-43-generic x86_64, Intel Core i7-13650HX (20 CPUs lógicas), 33 357 824 000 bytes de RAM visíveis ao Docker, Docker Engine 29.9.3 e Compose v5.7.1. Dados do manifesto oficial em `evaluation/evidence/official-baseline-performance-2026-11-17/`. |
+| Projeto de teste (nº de imagens e de vídeos, amostras usadas) | Capacidade: A com um vídeo de fala de 177 s e legendagem, B com dois MP4 de 10 s e um MOV de 6 s com brilho, sem imagens. Operabilidade: A com o excerto de fala de 10 s da baseline de usabilidade, B com um vídeo para usar a barra de ferramentas, sem aplicar o pipeline. |
 | Problemas encontrados ao lançar | Conflitos com volumes legados da Fase 1 exigiram limpeza com `docker compose down -v --remove-orphans` devido a alterações de layout do SeaweedFS (S3); certificados TLS internos autoassinados expirados necessitando `rejectUnauthorized: false` |
 
 **Como é orquestrado o processamento em lote de imagens e de vídeos** *(5 a 8 linhas)*:
@@ -130,7 +130,7 @@ O botão `Apply` envia um pedido a `POST /api-gateway/projects/:user/:project/pr
 | Benefício | Desacoplamento de responsabilidades e escalabilidade independente dos módulos de negócio | Manutenibilidade / Modularidade | Facto (`EV-04`) |
 | Benefício | Tolerância a bloqueios no frontend através de processamento em segundo plano orientado a eventos | Eficiência de desempenho / Comportamento temporal | Facto (`EV-04`) |
 | Desafio | Complexidade de coordenação de transações distribuídas e consistência de dados entre MongoDB, S3 e AMQP | Fiabilidade / Recuperabilidade | Facto (`EV-06`, `fase-2-auditoria.md`) |
-| Desafio | Ponto único de falha e sobrecarga de I/O no volume de armazenamento partilhado | Eficiência de desempenho / Utilização de recursos | Hipótese (`H-03`) |
+| Desafio | Ponto único de falha e sobrecarga de I/O no volume de armazenamento partilhado | Eficiência de desempenho / Utilização de recursos | Hipótese (`H-04`) |
 
 ### 2.2 Padrão do processamento de vídeo
 
@@ -204,9 +204,10 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 
 | **ID** | **Hipótese** | **Como confirmar ou refutar** | **Estado** |
 |--------|--------------|-------------------------------|------------|
-| H-01 | A execução de duas réplicas de `video_tool` sob a mesma fila `video_queue` reduzirá a média do tempo de espera de B (`b_wait_seconds`) para 15 segundos ou menos. | Executar o cenário de medição A/B automatizado (`evaluation/run_scenario.py`) comparando a baseline com o sistema com 2 réplicas. | por confirmar |
-| H-02 | A persistência do snapshot da execução no MongoDB associada à remoção do overlay bloqueante no frontend garantirá operabilidade contínua (12/12) e recuperação total após refresh e navegação. | Executar ensaios no Chromium com utilizador premium, alternando entre projetos durante a legendagem de A e testando recarregamento de página. | por confirmar |
-| H-03 | Finalizações concorrentes de trabalhos do mesmo lote por réplicas distintas podem gerar condições de corrida e perda de resultados no orquestrador `projects`. | Executar testes de concorrência com finalizações simultâneas de jobs de vídeo (conforme auditoria F1 em P-02). | Confirmada |
+| H-01 | A execução de duas réplicas de `video_tool` sob a mesma fila `video_queue` reduzirá a média do tempo de espera de B (`b_wait_seconds`) para 15 segundos ou menos. | Executar o cenário automatizado A/B com uma e duas réplicas. | Confirmada no cenário medido: média de 0,113 s nos três ensaios finais. [M-02](../sessoes/2026-11-22-fecho-fase-2.md#final-capacity-and-same-instrument-baseline) |
+| H-02 | A persistência do snapshot e a remoção do overlay permitirão 12/12 ações e recuperação após recarregamento e navegação no cenário A/B. | Executar três ensaios no Chromium com utilizador premium e projetos novos durante a legendagem de A. | Confirmada no cenário medido: 12/12 ações, 3/3 nos dois percursos e zero conclusões prematuras. [M-03](../sessoes/2026-11-22-fecho-fase-2.md#measurement-configuration-and-usability) |
+| H-03 | Finalizações concorrentes de trabalhos do mesmo lote por réplicas distintas podem gerar condições de corrida e perda de resultados no orquestrador `projects`. | Executar testes de concorrência com finalizações simultâneas de vídeos. | Reproduzida antes da correção. A [P-02](../sessoes/2026-11-22-p02.md) confirmou dois resultados preservados após a correção. |
+| H-04 | O volume partilhado pode tornar-se um gargalo de I/O ou ponto de falha. | Medir latência e utilização do volume sob carga e observar o efeito de uma indisponibilidade controlada. | por confirmar |
 
 ---
 
@@ -231,8 +232,8 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 | | |
 |---|---|
 | **Coerência com o padrão global** | Totalmente coerente. Utiliza a semântica nativa de balanceamento de carga do RabbitMQ sobre a mesma fila `video_queue` e o mesmo volume partilhado. |
-| **Efeito nos atributos de qualidade** | Melhora drasticamente a **capacidade** e o **comportamento temporal** em cenários de concorrência de lotes; mantém a fiabilidade com ack manual; aumenta ligeiramente o consumo de RAM/CPU no host. |
-| **Vantagens potenciais** | Simplicidade de implementação (*refactoring* puro de infraestrutura/orquestração sem quebra de contratos funcionais); eliminação imediata do bloqueio de cabeça de fila (*head-of-line blocking*). |
+| **Efeito nos atributos de qualidade** | Permite trabalho concorrente com a mesma confirmação manual. O ganho temporal e o consumo agregado dependem da carga e do número de réplicas. |
+| **Vantagens potenciais** | Mantém o contrato de mensagens. Enquanto houver uma réplica livre, outro trabalho pode avançar durante a legendagem. |
 | **Desvantagens ou riscos** | Risco de condições de corrida no orquestrador `projects` quando múltiplos vídeos de um lote terminam em simultâneo (P-02 foi reaberta após a auditoria reproduzir perda de resultados); duplicação de modelos Whisper na memória sem partilha. |
 | **Custo e risco de migração** (a funcionalidade existente tem de ser preservada) | **Baixo custo e risco muito reduzido**. Não altera código de clientes nem formatos de mensagem. |
 
@@ -243,28 +244,38 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 | **Coerência com o padrão global** | Alinha perfeitamente o processamento de vídeo com o modelo das ferramentas de imagem (*Pipes and Filters* distribuído com 1 fila por filtro). |
 | **Efeito nos atributos de qualidade** | Aumenta a **modularidade** e **modificabilidade** isolada; no entanto, **destrói o desempenho temporal** e a utilização de recursos devido ao ciclo vicioso de decodificação/recodificação H.264 por cada filtro. |
 | **Vantagens potenciais** | Isolamento total de falhas (falha nas legendas não afeta filtros de brilho); escalamento granular de ferramentas individuais. |
-| **Desvantagens ou riscos** | Degradação catastrófica de qualidade de vídeo por re-compressões sucessivas (*generation loss*); multiplicação do tempo de processamento por 5x a 10x; explosão de tráfego de I/O em disco/S3. |
+| **Desvantagens ou riscos** | Recodificações sucessivas podem degradar a qualidade, aumentar a duração e gerar mais I/O. A dimensão dos efeitos exigiria implementar e medir a alternativa. |
 | **Custo e risco de migração** | **Custo e risco extremamente altos**. Reescreveria completamente o subsistema de vídeo, quebrando contratos e violando o princípio de *refactoring* sem novas funcionalidades. |
+
+**ALT-3 — Filas separadas por tipo de carga**
+
+| | |
+|---|---|
+| **Coerência com o padrão global** | Mantém os microsserviços assíncronos e o pipeline completo por vídeo. Altera o encaminhamento no orquestrador e a topologia RabbitMQ (`EV-01`, `EV-04`). |
+| **Efeito nos atributos de qualidade** | Consumidores dedicados podem reduzir a interferência entre tipos de carga. O ganho depende da distribuição da procura e dos recursos disponíveis. |
+| **Vantagens potenciais** | Capacidade reservada para efeitos rápidos e configuração de escala por tipo de carga. |
+| **Desvantagens ou riscos** | Filas com procura desigual podem deixar capacidade ociosa. A classificação de pipelines mistos acrescenta caminhos a validar. |
+| **Custo e risco de migração** | Médios. Exige alterar o encaminhamento, configurar consumidores e repetir testes de entrega e finalização de lotes. |
 
 ### 3.3 Matriz de comparação de padrões
 
 > Escala à tua escolha (e.g., Alto / Médio / Baixo). **Justifica cada célula** com evidência da solução (`EV-nn` ou `H-nn`); as avaliações sem fundamento não são valorizadas. A justificação detalhada e a análise de trade-offs fazem-se no Bloco 2 (secção 4.1).
 
-| **Atributo de qualidade (ISO/IEC 25010)** | **Padrão global atual (referência)** | **Padrão atual do vídeo** | **ALT-1** | **ALT-2** |
-|-------------------------------------------|--------------------------------------|---------------------------|-----------|-----------|
-| Relação com o padrão global | — | Afasta-se (Pipeline Monolith) | Mantém o padrão global e do vídeo | Converge totalmente com o padrão global de imagens |
-| Eficiência de desempenho — comportamento temporal | Médio — depende do encadeamento passo-a-passo (`EV-04`) | Baixo — bloqueado por tarefas longas de legendagem (`EV-01`, `EV-03`) | **Alto** — processamento concorrente sem espera (`H-01`, `spec.md`) | **Muito Baixo** — overhead massivo de encodes repetidos |
-| Eficiência de desempenho — capacidade / elasticidade | Alto — ferramentas de imagem escalam individualmente (`EV-07`) | Muito Baixo — réplica única, 1 vídeo de cada vez (`EV-02`) | **Alto** — escala linear por réplica disponível (`EV-02`, smoke P-01) | Médio — escala por ferramenta, mas com saturação de CPU/disco |
-| Fiabilidade — tolerância a falhas / recuperabilidade | Média — ferramentas de imagem usam auto-ack (`EV-07`) | Alta — ack manual e limpeza de ficheiros `.part` (`EV-01`) | **Alta** — preserva ack manual e isola crashes entre workers (`EV-01`) | Alta — isolamento de falha por ferramenta, mas maior número de pontos de falha |
-| Manutenibilidade — modularidade / modificabilidade | Alta — microsserviços desacoplados e independentes (`EV-04`) | Média — pipeline monolítico concentra múltiplas lógicas (`EV-01`) | Média — mantém a base monolítica do worker de vídeo | **Alta** — cada ferramenta possui base de código estritamente isolada |
-| Segurança | Média — validação no gateway, mas certificados internos fracos (`EV-09`) | Média — isolamento em contentores Docker | Média — idêntica à base atual | Média — aumenta a superfície de ataque pela proliferação de portas/filas |
-| Usabilidade — operabilidade | Média — operações desacopladas no backend | Baixa — bloqueio de UI na base durante o processamento (`EV-05`) | **Alta** (em conjunto com refactoring de UI) — resposta rápida do sistema | Baixa — tempos de espera incomportáveis para o utilizador |
+| **Atributo de qualidade (ISO/IEC 25010)** | **Padrão global atual (referência)** | **Padrão atual do vídeo** | **ALT-1** | **ALT-2 (projeção)** | **ALT-3 (projeção)** |
+|-------------------------------------------|--------------------------------------|---------------------------|-----------|-----------|-----------|
+| Relação com o padrão global | — | Afasta-se (Pipeline Monolith) | Mantém o padrão global e do vídeo | Aproxima o vídeo do padrão distribuído das imagens | Mantém o padrão global e altera o encaminhamento de vídeo |
+| Eficiência de desempenho — comportamento temporal | Médio — depende do encadeamento passo a passo (`EV-04`) | Baixo — bloqueado por tarefas longas de legendagem (`EV-01`, `EV-03`) | Alto no cenário A/B — dois consumidores podem avançar em paralelo (`H-01`) | Baixo — recodificações adicionais | Alto para tarefas rápidas quando há capacidade reservada |
+| Eficiência de desempenho — capacidade / elasticidade | Alto — ferramentas de imagem escalam individualmente (`EV-07`) | Baixo — réplica única, um vídeo de cada vez (`EV-02`) | Duas réplicas validadas em P-01. A relação com escalas superiores ficou por medir. | Médio — escala por ferramenta, com possível saturação de CPU e disco | Médio — escala por fila, com risco de capacidade ociosa |
+| Fiabilidade — tolerância a falhas / recuperabilidade | Média — ferramentas de imagem usam auto-ack (`EV-07`) | Ack manual e limpeza de ficheiros `.part` (`EV-01`) | Preserva ack manual. A P-02 verificou a proteção do fecho simultâneo. | Isola falhas por ferramenta e acrescenta pontos de falha | Preserva ack manual se mantiver o protocolo. Acrescenta dependências de encaminhamento. |
+| Manutenibilidade — modularidade / modificabilidade | Alta — serviços independentes (`EV-04`) | Média — o worker concentra as operações de vídeo (`EV-01`) | Média — mantém a estrutura do worker | Alta — isola operações em serviços separados | Média — reutiliza o worker e acrescenta regras de classificação |
+| Segurança | Validação no gateway e dívida de TLS interno (`EV-09`) | Isolamento em contentores Docker | Mantém as mesmas interfaces | Requer controlo de acessos nos serviços e filas adicionais | Requer controlo de acessos às novas filas |
+| Usabilidade — operabilidade | Operações desacopladas no backend | Bloqueio de UI na base (`EV-05`) | A recuperação na UI resulta do painel e do snapshot (`H-02`) | Depende do frontend. A maior demora prevista pode afetar a experiência. | Pode reduzir a espera das tarefas rápidas. A recuperação depende do frontend. |
 
 ### 3.4 Adequação do padrão atual
 
 O padrão atual global (Microsserviços Orientados a Eventos) é altamente adequado para as operações de gestão de projetos, controlo de acessos e orquestração assíncrona do PictuRAS. No entanto, no subsistema de vídeo, a combinação de um **Pipeline Monolith** executado numa **única réplica com prefetch unitário** revelou-se inadequada para responder aos requisitos não funcionais de capacidade e elasticidade (`REQ-VID-EDIT-011`), gerando esperas inaceitáveis quando ocorrem tarefas CPU-bound (legendagem Faster-Whisper).
 
-A alternativa **ALT-1** (*Competing Consumers* com 2 réplicas de `video_tool`) é a que melhor se adequa aos objetivos da Fase 2: resolve a fragilidade de capacidade ao permitir que pedidos de vídeo leves avancem imediatamente sem esperar por tarefas pesadas em curso, preservando a grande vantagem do Pipeline Monolith (processamento em passagem única com eficiência temporal e sem perda de qualidade por recodificações sucessivas). Esta escolha respeita estritamente o âmbito de *refactoring*, mantendo os contratos funcionais existentes intactos.
+A alternativa **ALT-1** (*Competing Consumers* com duas réplicas de `video_tool`) permite que um pedido avance enquanto outro ocupa uma réplica. Mantém o contrato de despacho e a passagem partilhada de descodificação e codificação para efeitos de fotograma contíguos.
 
 ---
 
