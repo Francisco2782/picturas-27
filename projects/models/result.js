@@ -8,6 +8,7 @@ const resultSchema = new mongoose.Schema({
   project_id: { type: mongoose.Schema.Types.ObjectId, required: true },
   user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
   token: { type: Number, default: 0, index: true },
+  delivery_key: { type: String, unique: true, sparse: true },
 });
 
 module.exports = mongoose.model("result", resultSchema);

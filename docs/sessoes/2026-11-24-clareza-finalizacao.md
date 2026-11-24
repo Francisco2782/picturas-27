@@ -2,7 +2,7 @@
 
 - O comentário de `persistAndSettleProcess` passou a explicar que duas respostas podem observar zero trabalhos pendentes em simultâneo. A atualização condicional permite que apenas uma confirme o lote.
 - O avaliador passou a atribuir `Authorization` uma vez em `ApiClient._request`. O pedido conserva o mesmo valor `Bearer` e o mesmo cabeçalho de versão quando indicado.
-- A análise anterior da reentrega entre a gravação do resultado e a remoção do trabalho continua uma hipótese sem ensaio específico. Os ensaios existentes interromperam jobs durante a legendagem. O âmbito desta sessão foi a clareza do código.
+- Nesta sessão, a janela entre a gravação do resultado e a remoção do trabalho ficou por testar. A [sessão da reentrega](2026-11-24-reentrega-resultados.md) regista a correção e a regressão específica.
 
 ## Verificação
 

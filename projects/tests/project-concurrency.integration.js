@@ -2,6 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const Project = require('../controllers/project');
+const Result = require('../controllers/result');
+const Process = require('../controllers/process');
+const { persistAndSettleProcess } = require('../utils/processBatch');
+const { persistProcessingResult } = require('../utils/processingResult');
 const { startProcessingRun } = require('../utils/processingRun');
 
 const userId = new mongoose.Types.ObjectId();
@@ -77,4 +81,87 @@ test('an edit read before failure preserves the failed run and invalidated token
   assert.equal(saved.activeToken, 6);
   assert.equal(saved.processingRun.state, 'failed');
   assert.equal(await progress(project, 'video-a', 80, later), null);
+});
+
+test('a redelivery after recording the result resumes the batch without another upload', async (t) => {
+  const project = await runningProject(t);
+  const job = await Process.create({
+    user_id: userId, project_id: project._id, img_id: new mongoose.Types.ObjectId(),
+    token: 5, msg_id: 'replayed-video', cur_pos: 0, og_img_uri: 'input.mp4', new_img_uri: 'output.mp4',
+  });
+  t.after(async () => {
+    await Process.deleteByProjectAndToken(userId, project._id, 5);
+    await Result.deleteByToken(userId, project._id, 5);
+  });
+  let uploads = 0;
+  const output = { file: 'output.mp4', name: 'output.mp4', type: 'video', slot: 'output' };
+  const storage = {
+    find: Result.getByDeliveryKey,
+    upload: async () => `object-${++uploads}`,
+    create: Result.create,
+    removeImage: async () => assert.fail('A recorded result must keep its object'),
+  };
+  const steps = {
+    persistResult: process => persistProcessingResult(process, output, storage),
+    remove: process => Process.delete(userId, project._id, process._id),
+    countPending: Process.countByProjectAndToken,
+    commit: () => Project.commitRunIfActive(userId, project._id, 5, []),
+  };
+  await assert.rejects(persistAndSettleProcess(job, {
+    ...steps, remove: async () => { throw new Error('Interrupted before removing the job'); },
+  }), /Interrupted before removing the job/);
+  const [written] = await Result.getAllByToken(userId, project._id, 5);
+  assert.equal(written.img_key, 'object-1');
+  assert.equal(await Process.countByProjectAndToken(project._id, 5), 1);
+
+  const redelivered = await Process.getOneByMsgId(job.msg_id);
+  assert.equal((await persistAndSettleProcess(redelivered, steps)).committed, true);
+  const [saved, duplicate] = await Result.getAllByToken(userId, project._id, 5);
+  assert.equal(String(saved._id), String(written._id));
+  assert.equal(duplicate, undefined);
+  assert.equal(uploads, 1);
+  assert.equal(await Process.countByProjectAndToken(project._id, 5), 0);
+  assert.equal((await Project.getOne(userId, project._id)).processingRun.state, 'completed');
+});
+
+test('concurrent copies of one delivery keep the first recorded object', async (t) => {
+  const project = await runningProject(t);
+  const job = {
+    _id: new mongoose.Types.ObjectId(), img_id: new mongoose.Types.ObjectId(),
+    user_id: userId, project_id: project._id, token: 5,
+  };
+  t.after(async () => {
+    await Result.deleteByToken(userId, project._id, 5);
+    await Result.deleteByToken(userId, project._id, 4);
+  });
+  await Result.getByDeliveryKey('unused');
+  const legacyResult = {
+    type: 'image', file_name: 'old.png', img_id: job.img_id,
+    user_id: userId, project_id: project._id, token: 4,
+  };
+  await Result.create({ ...legacyResult, img_key: 'old-1' });
+  await Result.create({ ...legacyResult, img_key: 'old-2' });
+  const files = new Set();
+  const bothUploaded = Promise.withResolvers();
+  const output = { file: 'output.mp4', name: 'output.mp4', type: 'video', slot: 'output' };
+  const storage = {
+    find: Result.getByDeliveryKey,
+    upload: async () => {
+      const key = `object-${files.size + 1}`;
+      files.add(key);
+      if (files.size === 2) bothUploaded.resolve();
+      await bothUploaded.promise;
+      return key;
+    },
+    create: Result.create,
+    removeImage: async key => files.delete(key),
+  };
+  await Promise.all([job, job].map(copy => persistProcessingResult(copy, output, storage)));
+  const results = await Result.getAllByToken(userId, project._id, 5);
+  assert.equal(results.length, 1);
+  assert.deepEqual([...files], [results[0].img_key]);
+  assert.deepEqual(
+    (await Result.getAllByToken(userId, project._id, 4)).map(result => result.img_key),
+    ['old-1', 'old-2'],
+  );
 });

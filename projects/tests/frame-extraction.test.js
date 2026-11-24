@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const { validateFrameExtraction, insertPipelineTool, imageTools, videoPipeline, videoOps } = require('../utils/video');
 const { frameFiles, persistFrameResults } = require('../utils/frameResults');
+const { persistProcessingResult } = require('../utils/processingResult');
 
 const extraction = (params = {}) => ({ procedure: 'extract_frames', params: { mode: 'count', count: 6, interval: 2, format: 'png', ...params } });
 
@@ -66,27 +67,29 @@ test('manifest validation rejects escaped, duplicate and oversized frame output 
   assert.throws(() => frameFiles({ ...output, frames: [{ ...output.frames[0], time: -1 }] }, process), /Invalid extracted frame/);
 });
 
-test('all extracted images retain the source ID and run token; upload failure rolls back only this batch', async (t) => {
+test('retrying a partially persisted frame manifest only stores the missing frames', async (t) => {
   const { output, process } = fixture(t);
-  const records = [], removedRecords = [], removedImages = [];
+  process._id = 'frame-job';
+  const records = new Map();
+  const uploads = [];
+  let interrupted = true;
   const storage = {
-    upload: async (_, name) => `stored-${name}`,
-    create: async result => { records.push(result); return { _id: records.length }; },
-    removeResult: async id => removedRecords.push(id),
-    removeImage: async key => removedImages.push(key),
+    find: async key => records.get(key),
+    upload: async (_, name) => {
+      if (interrupted && uploads.length === 1) throw new Error('upload interrupted');
+      uploads.push(name);
+      return `stored-${name}`;
+    },
+    create: async result => records.set(result.delivery_key, result),
+    removeImage: async () => assert.fail('No upload should be removed'),
   };
-  await persistFrameResults(output, process, storage);
-  assert.equal(records.length, 2);
-  assert.ok(records.every(r => r.type === 'image' && r.token === 7 && r.img_id === 'video-a'));
-  assert.notEqual(records[0].file_name, records[1].file_name);
-  assert.deepEqual(removedImages, []);
-  records.length = 0;
-  storage.create = async result => {
-    records.push(result);
-    if (records.length === 2) throw new Error('database failure');
-    return { _id: 'first-new-result' };
-  };
-  await assert.rejects(persistFrameResults(output, process, storage), /database failure/);
-  assert.deepEqual(removedRecords, ['first-new-result']);
-  assert.equal(removedImages.length, 2);
+  const persist = frame => persistProcessingResult(process, frame, storage);
+  await assert.rejects(persistFrameResults(output, process, persist), /upload interrupted/);
+  assert.equal(records.size, 1);
+  interrupted = false;
+  await persistFrameResults(output, process, persist);
+  assert.equal(uploads.length, 2);
+  assert.deepEqual([...records.keys()], ['frame-job:frame-0', 'frame-job:frame-1']);
+  assert.ok([...records.values()].every(r => r.type === 'image' && r.token === 7 && r.img_id === 'video-a'));
+  assert.notEqual(uploads[0], uploads[1]);
 });

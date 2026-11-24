@@ -68,6 +68,7 @@ const {
   insertPipelineTool,
 } = require("../utils/video");
 const { persistFrameResults } = require("../utils/frameResults");
+const { persistProcessingResult } = require("../utils/processingResult");
 const { dispatchProcessBatch, persistAndSettleProcess } = require("../utils/processBatch");
 const { startProcessingRun, finishProcessingRun } = require("../utils/processingRun");
 const { handleVideoProgress } = require("../utils/videoProgress");
@@ -434,38 +435,26 @@ if (/preview/.test(msg_id) && isLast) {
       if (/preview/.test(msg_id) && chainEnd) return;
 
       const persistTerminalResult = async () => {
+        const persist = (output) => persistProcessingResult(process, output, {
+          find: Result.getByDeliveryKey,
+          upload: async (file, name) => {
+            const data = new FormData();
+            data.append("file", fs.createReadStream(file), { filename: name, contentType: mime.lookup(name) });
+            const response = await post_image(process.user_id, process.project_id, "out", data);
+            return response.data.data.imageKey.split("/").pop();
+          },
+          create: Result.create,
+          removeImage: (key) => delete_image(process.user_id, process.project_id, "out", key),
+        });
+
         if (type === "frames") {
           if (!sourceIsVideo) throw new Error("Unexpected extracted frames for this job");
-          await persistFrameResults(msg_content.output, process, {
-            upload: async (file, name) => {
-              const data = new FormData();
-              data.append("file", fs.createReadStream(file), { filename: name, contentType: mime.lookup(name) });
-              const response = await post_image(process.user_id, process.project_id, "out", data);
-              return response.data.data.imageKey.split("/").pop();
-            },
-            create: (result) => Result.create(result),
-            removeResult: (id) => Result.deleteById(process.user_id, process.project_id, id),
-            removeImage: (key) => delete_image(process.user_id, process.project_id, "out", key),
-          });
+          await persistFrameResults(msg_content.output, process, persist);
           return;
         }
 
-        const file_path = path.resolve(__dirname, "..", output_file_uri);
-        const file_name = path.basename(file_path);
-        const fileStream = fs.createReadStream(file_path);
-        const data = new FormData();
-        data.append("file", fileStream, path.basename(file_path), mime.lookup(file_path));
-        const response = await post_image(process.user_id, process.project_id, "out", data);
-        const imgKey = response.data.data.imageKey.split("/").pop();
-        await Result.create({
-          type,
-          file_name,
-          img_key: imgKey,
-          img_id: img_id,
-          project_id: process.project_id,
-          user_id: process.user_id,
-          token: process.token || 0,
-        });
+        const file = path.resolve(__dirname, "..", output_file_uri);
+        await persist({ file, name: path.basename(file), type, slot: "output" });
       };
 
       if (!/preview/.test(msg_id) && isLast) {
@@ -585,7 +574,10 @@ if (/preview/.test(msg_id) && isLast) {
       console.error("[process_msg] error:", err);
 
       if (ownerIdSafe && projectIdSafe && runTokenSafe !== null) {
-        await failRunAndCleanup(ownerIdSafe, projectIdSafe, runTokenSafe);
+        const failed = await failRunAndCleanup(ownerIdSafe, projectIdSafe, runTokenSafe);
+        if (!failed) {
+          await discardRunResults(ownerIdSafe, projectIdSafe, runTokenSafe);
+        }
       }
 
       const target = runnerIdSafe || ownerIdSafe;
