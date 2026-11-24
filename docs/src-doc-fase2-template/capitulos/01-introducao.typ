@@ -17,27 +17,29 @@
 ]
 
 == Propósito e âmbito
-O presente relatório documenta o trabalho desenvolvido na Fase 2 da unidade curricular de Requisitos e Arquiteturas de Software, centrado na melhoria orientada de Requisitos Não Funcionais (RNF) do sistema PictuRAS. Partindo da solução integrada herdada da Fase 1 (desenvolvida pelo grupo PL1-G4), o objetivo fulcral consiste em diagnosticar, intervir e quantificar empiricamente a melhoria de atributos de qualidade sobre o subsistema de processamento de vídeo, enquadrado no padrão arquitetural global da plataforma.
 
-O _refactoring_ procura melhorar a capacidade e a operabilidade do sistema, preservando os pipelines de edição, os formatos suportados e as regras de autorização. Foram selecionados dois requisitos não funcionais.
+O presente relatório documenta o trabalho desenvolvido na Fase 2 da unidade curricular de Requisitos e Arquiteturas de Software. O foco desta fase consiste na melhoria orientada de Requisitos Não Funcionais (RNF) sobre a plataforma *PictuRAS* através de _refactoring_ arquitetural, respeitando a restrição fundamental de não introduzir novas funcionalidades visíveis ao utilizador final.
 
-1. *Eficiência de Desempenho — Capacidade*: mitigar o estrangulamento severo provocado pelo processamento serializado e síncrono de vídeo (`video_queue`), no qual tarefas computacionalmente intensivas executadas em CPU (nomeadamente a legendagem automática com Faster-Whisper) bloqueiam o avanço de pedidos concorrentes.
-2. *Usabilidade — Operabilidade*: permitir trabalhar noutro projeto e recuperar o estado do processamento depois de navegar ou recarregar a página. A validação integrada em Chromium atingiu 12/12 ações.
+A aplicação PictuRAS constitui uma solução web de edição em lote de imagens e vídeos estruturada em microsserviços sobre Docker Compose. O utilizador cria projetos, carrega múltiplos ficheiros multimédia e define uma sequência ordenada de transformações (_pipeline_), a qual é aplicada em lote a todos os elementos do projeto. Na Fase 1, o sistema foi estendido para suportar processamento de vídeo numa lógica de Produto Mínimo Viável (MVP), comprovando a viabilidade funcional mas herdando limitações críticas de qualidade de serviço sob carga e na experiência de utilização.
 
+A partir do diagnóstico das fragilidades da solução de base oficial herdada (desenvolvida pelo grupo PL1-G4), foram selecionados dois Requisitos Não Funcionais distintos e complementares:
+
+1. *Eficiência de Desempenho — Capacidade*: o subsistema de vídeo original executa um único consumidor na fila RabbitMQ (`video_queue`), com receção unitária (`prefetch_count=1`). Tarefas de elevado custo computacional em CPU, em particular a legendagem automática, provocam um estrangulamento severo por bloqueio de cabeça de fila (_Head-of-Line Blocking_), fazendo com que pedidos de vídeo curtos e leves aguardem mais de um minuto para iniciar o seu processamento. O objetivo foi viabilizar o processamento concorrente através de réplicas de trabalhadores sob a mesma fila, mitigando drasticamente o tempo de espera.
+2. *Usabilidade — Operabilidade*: durante a execução de um lote de vídeo, a interface cliente original sobrepunha uma janela modal obstrutiva (_overlay_) que bloqueava totalmente a navegação da aplicação. Adicionalmente, o estado e a percentagem de progresso residiam exclusivamente na memória volátil do componente React: qualquer navegação entre páginas ou recarregamento de página (_refresh_ F5) destruía a visibilidade da execução, impossibilitando o acompanhamento e o controlo do projeto. O objetivo consistiu em persistir atomicamente o estado de execução no backend, eliminar o bloqueio de ecrã e disponibilizar um painel desacoplado no layout global da aplicação web.
 
 == _Baseline_ e repositório
 
-O ponto de partida do sistema assenta na versão oficial disponibilizada no repositório GitHub do projeto, marcada com a _tag_ `phase2-base`. A medição inicial usou o checkout do instrumento `afb84e5`, com código aplicacional equivalente à base oficial. As duas campanhas finais atingiram os respetivos alvos.
+O desenvolvimento partiu da versão oficial disponibilizada no repositório GitHub do projeto (`picturas-um/picturas-27`), com a _tag_ `phase2-base`. A caracterização empírica inicial foi estabelecida através de medições instrumentadas sobre a solução original antes de qualquer intervenção no código.
 
 #tab([Artefactos de partida],
   tabela(
     colunas: (5.5cm, 1fr),
     [Artefacto], [Versão / referência],
-    [Documento de requisitos de base], [doc-ext-requisitos-2627.pdf (Extensão de Requisitos PL1-G4)],
-    [Documento de solução arquitetural de base], [doc-sol-arquitetural.pdf — por confirmar],
+    [Documento de requisitos de base], [doc-ext-requisitos-2627.pdf (Extensão de Requisitos PL1-G4, Fase 1)],
+    [Documento de solução arquitetural de base], [doc-sol-arquitetural.pdf],
     [Repositório de partida], [https://github.com/picturas-um/picturas-27 · tag `phase2-base` (`0523102`), checkout de medição `afb84e5`],
-    [Repositório entregue], [por confirmar],
-    [Diretrizes da Fase 2], [Versão 1 ],
+    [Repositório entregue], [NOTA: PREENCHER NO FIM],
+    [Diretrizes da Fase 2], [fase-2-guidelines.pdf (Versão 1)],
   ),
 )
 
@@ -49,25 +51,26 @@ O ponto de partida do sistema assenta na versão oficial disponibilizada no repo
   perceber a que regras o trabalho respondeu, caso os enunciados tenham sido atualizados durante a fase.
 ]
 
+O relatório integra, consolida e aprofunda os trabalhos produzidos ao longo dos blocos de exercícios práticos, cujas versões de referência se encontram registadas na @tab-exercicios-base.
+
 #tab([Exercícios que alimentam este relatório],
   tabela(
-    colunas: (3.8cm, 2.2cm, 2cm, 2cm, 1fr),
+    colunas: (4.2cm, 2.2cm, 2cm, 2cm, 1fr),
     [Exercício], [Capítulos], [Enunciado], [Template], [Versão do documento da equipa],
     [Exercício 6, Bloco 1: padrões arquiteturais], [2, 3 e 4], [1.1], [1.1], [v1.0],
     [Exercício 6, Bloco 2: trade-offs, cenários e candidatos a RNF], [5 e 6], [1.1], [1.1], [v1.0],
     [Exercício 7: táticas arquiteturais], [7 a 10], [3.0], [3.0], [v1.0],
   ),
-)
+) <tab-exercicios-base>
 
 == Organização do documento
-As evidências arquiteturais (EV) fundamentam as alternativas (ALT), os cenários de qualidade (QS) e os requisitos escolhidos (CAND). As táticas (TAT) suportam as decisões (DA). O relatório termina com a comparação das medições, os testes de preservação funcional e o registo de utilização de IA.
 
-O relatório encontra-se estruturado em cinco partes que refletem o ciclo metodológico completo _Diagnóstico → Decisão → Implementação → Avaliação_:
+O documento encontra-se estruturado em cinco partes fundamentais, refletindo o ciclo metodológico completo _Diagnóstico $->$ Decisão $->$ Implementação $->$ Avaliação_:
 
-- *Parte I — Enquadramento e Metodologia* (Capítulo 1): contextualização do propósito, restrições de _refactoring_, identificação da _baseline_ oficial e versão dos artefactos de partida.
-- *Parte II — Diagnóstico Arquitetural* (Capítulos 2, 3 e 4, alimentados pelo Exercício 6, Bloco 1): análise do âmbito global da solução e caracterização da bifurcação entre imagem e vídeo, identificação dos estilos arquiteturais atuais (_Microserviços Orientados a Eventos_ global vs. _Pipeline Monolith_ no vídeo) e confronto com padrões alternativos (`ALT-1` a `ALT-3`), com recurso a evidências no código (`EV-01` a `EV-10`) e formulação de hipóteses (`H-01` a `H-03`).
-- *Parte III — Requisitos de Qualidade e Diagnóstico Detalhado* (Capítulos 5 e 6, alimentados pelo Exercício 6, Bloco 2): aprofundamento das justificações da matriz de _trade-offs_, caracterização formal dos cenários de qualidade (`QS-01` a `QS-03`) com os seis elementos prescritos na literatura e seleção dos dois candidatos a RNF (`CAND-1` e `CAND-2`), estabelecendo as escalas e os métodos de quantificação empírica.
-- *Parte IV — Táticas, Decisões e Avaliação Experimental* (Capítulos 7 a 10, alimentados pelo Exercício 7): identificação de táticas candidatas (`TAT-01` a `TAT-06`), formalização das decisões arquiteturais (`DA-1` e `DA-2`), vista arquitetural comparativa Antes/Depois, avaliação de impactos cruzados e plano de medição e de testes de regressão funcional.
-- *Parte V — Síntese, Conclusões e Transparência* (Capítulos 11 e 12): síntese conclusiva sobre a adequação dos padrões, balanço de trade-offs observados, recomendações para evolução futura e registo transparente das ferramentas de Inteligência Artificial utilizadas no apoio às tarefas.
+- *Parte I — Enquadramento e Metodologia* (Capítulo 1): formulação do problema, restrições da fase de _refactoring_, caracterização dos artefactos herdados e taxonomia de rastreabilidade.
+- *Parte II — Diagnóstico Arquitetural* (Capítulos 2, 3 e 4): vista global da arquitetura, identificação da bifurcação operacional entre imagem e vídeo, análise detalhada dos estilos arquiteturais em confronto (_Microsserviços Orientados a Eventos_ vs. _Pipeline Monolith_ no vídeo) e avaliação comparativa de padrões alternativos (`ALT-1` a `ALT-3`), com suporte em evidências no código (`EV-01` a `EV-10`) e formulação de hipóteses (`H-01` a `H-04`).
+- *Parte III — Requisitos de Qualidade e Diagnóstico Detalhado* (Capítulos 5 e 6): caracterização rigorosa dos cenários de qualidade (`QS-01` a `QS-03`) com os seis elementos prescritos pela engenharia de software, priorização baseada no impacto para os _stakeholders_ e risco técnico, e formalização dos candidatos a RNF (`CAND-1` e `CAND-2`) com os respetivos métodos e escalas de quantificação.
+- *Parte IV — Táticas, Decisões e Avaliação Experimental* (Capítulos 7 a 10): identificação de táticas candidatas (`TAT-01` a `TAT-06`), formalização das decisões arquiteturais (`DA-1` e `DA-2`) no modelo ADR, vistas antes e depois, análise de _trade-offs_ e apresentação detalhada dos resultados das medições e dos testes de preservação funcional.
+- *Parte V — Síntese, Conclusões e Transparência* (Capítulos 11 e 12): síntese reflexiva sobre a adequação dos padrões, recomendações práticas para evolução do sistema e registo pormenorizado do recurso a ferramentas de Inteligência Artificial.
 
-O encadeamento conceptual ao longo de todo o documento assenta na estabilidade dos identificadores: as evidências e hipóteses (`EV`/`H`) fundamentam a análise de alternativas (`ALT`) e os cenários de qualidade (`QS`/`CAND`), que por sua vez motivam as táticas (`TAT`) consolidadas nas decisões arquiteturais (`DA`), garantindo rastreabilidade contínua de ponta a ponta.
+A coerência do relatório assenta na preservação estrita de identificadores ao longo de todo o texto: cada constatação factual sustenta-se numa evidência auditada (`EV`), as opções arquiteturais são contrapostas como alternativas (`ALT`), as fragilidades originam cenários formais (`QS`) e requisitos quantificáveis (`CAND`), que determinam a seleção de táticas (`TAT`) consolidadas em decisões arquiteturais (`DA`), posteriormente comprovadas em testes e medições de desempenho (`M`) e preservação funcional (`R`, `P`, `U`).
