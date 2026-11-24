@@ -87,10 +87,10 @@ A arquitetura global do PictuRAS estrutura-se em *Microsserviços Orientados a E
 
 *Ferramenta / notação:*  PlantUML / C4 Component View adaptada com estereótipos explícitos de comunicação e codificação por cores (`arquitetura_global.puml`).
 
-#tab([Legenda da vista da arquitetura global],
+#tab([Legenda da vista da arquitetura],
   tabela(
     colunas: (5.5cm, 1fr),
-    [Elemento (cor, forma ou estilo)], [Significado],
+    [Elemento / Fronteira], [Descrição e papel na arquitetura],
     [Retângulo Laranja (`#FDE7D3` / seta `#C2410C`)], [Caminho e componentes dedicados ao processamento de vídeo (`video_queue`, `video_tool`).],
     [Retângulo Cinza / Azul claro], [Camada perimetral de acesso (Nginx, API Gateway REST e WebSocket Gateway).],
     [Retângulo Branco (`business`)], [Serviços centrais de negócio (`projects`, `users`, `subscriptions`, `imageStorageService`).],
@@ -128,10 +128,10 @@ O processamento de um projeto com ficheiros de vídeo estrutura-se em cinco fase
   caption: [Sequência do processamento em lote de um projeto com vídeos],
 ) <fig-sequencia-pedido>
 
-#tab([Passos do pedido completo de vídeo],
+#tab([Passos do pedido completo],
   tabela(
     colunas: (2.8cm, 3.4cm, 1fr, 3.8cm),
-    [Passo], [Origem $->$ Destino], [Mensagem / _endpoint_ / fila], [Evidência],
+    [Passo], [Origem $->$ Destino], [Ação / Mensagem], [Evidência],
     [Carregamento do vídeo], [Browser $->$ Gateway $->$ `projects` $->$ S3], [`POST /api-gateway/projects/:owner/:project/video` (multipart/form-data)], [`EV-01`: `projects/routes/projects.js:1564-1671` e `projects/utils/video.js:14-80` — o orquestrador despacha imagens passo a passo e vídeos em mensagem única para `video_queue`, e valida contentor, codec de vídeo, duração, resolução e limites de quota via ffprobe.],
     [Definição do _pipeline_], [Browser $->$ Gateway $->$ `projects`], [`POST …/tool` (adicionar) e `POST …/reorder` (reordenar)], [`EV-01`: `apiGateway/routes/projects.js` e controladores em `projects/routes/projects.js`. Atualiza a coleção do projeto no MongoDB.],
     [Submissão (_Apply_)], [Browser $->$ Gateway $->$ `projects` $->$ RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` $->$ publicação na fila `video_queue`], [`EV-02`: `Tools/video/video.py:54, 140, 170, 174` — `prefetch_count=1`, modelo síncrono bloqueante e confirmação manual (`basic_ack`) no fim do processamento; `EV-01`: `projects/utils/processBatch.js:88-142` despacha 1 mensagem por vídeo com pipeline integral.],

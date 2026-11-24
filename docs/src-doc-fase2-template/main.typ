@@ -9,7 +9,7 @@
 #show: project
 
 // Antes de entregar: `false` esconde todas as caixas de orientação.
-#mostrar-orientacoes.update(false)
+#mostrar-orientacoes.update(true)
 
 #cover(
   title: "Fase 2 — Melhoria de Requisitos Não Funcionais",
