@@ -11,8 +11,8 @@ async function dispatchProcessBatch(jobs, { create, remove, send }) {
   }
 }
 
-// Keep the Process row as a run barrier until its output is stored. The final
-// row to settle is the only one allowed to attempt the run commit.
+// Keep each Process row until its output is stored. Concurrent completions can
+// both see zero pending rows. The conditional commit allows only one to win.
 async function persistAndSettleProcess(process, {
   persistResult,
   isCurrent,

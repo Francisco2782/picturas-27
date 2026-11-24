@@ -163,12 +163,9 @@ class ApiClient:
     ) -> Response:
         headers = dict(kwargs.pop("headers", {}))
         if self.jwt is not None:
-            headers["Authorization"] = "Bearer " + self.jwt
             headers["Authorization"] = f"Bearer {self.jwt}"
         if version is not None:
             headers["X-Project-Version"] = str(version)
-        if self.jwt is not None:
-            headers["Authorization"] = "Bearer " + self.jwt
         try:
             response = self.session.request(
                 method, f"{self.base_url}/{path.lstrip('/')}", headers=headers,
