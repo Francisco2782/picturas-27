@@ -132,6 +132,6 @@ O processamento completo de um projeto com vídeos articula-se em cinco fases es
     [Definição do _pipeline_], [Browser → Gateway → `projects`], [`POST …/tool` para adicionar e `POST …/reorder` para reordenar], [`EV-04`: `apiGateway/routes/projects.js` e `projects/routes/projects.js`.],
     [_Apply_], [Browser → Gateway → `projects` → RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` → publica em `video_queue`], [`EV-01`: `Tools/video/video.py:53-54` e `EV-04`: `projects/utils/processBatch.js:88-142` — 1 msg por vídeo com pipeline integral.],
     [Progresso], [`video_tool` → `project_queue` → `projects` → `ws_queue`], [Eventos de progresso. Na revisão final, o orquestrador aceita e persiste o progresso antes da publicação.], [EV-06, `projects/models/project.js` e `projects/utils/processingRun.js`. O snapshot é consultável pela rota `processing-status` (EV-10, rotas de `apiGateway` e `projects`).],
-    [Resultado], [`video_tool` → `project_queue` → `projects` → UI], [Mensagem de sucesso, ack manual, criação de `Result` e evento `process_completed`], [EV-01 e `projects/utils/processBatch.js`. P-02 verificou dois resultados descarregáveis após fecho simultâneo.],
+    [Resultado], [`video_tool` → `project_queue` → `projects` → UI], [Mensagem de sucesso, ack manual, criação de `Result` e evento `process-update`], [EV-01 e `projects/utils/processBatch.js`. P-02 verificou dois resultados descarregáveis após fecho simultâneo.],
   ),
 ) <tab-passos-pedido>
