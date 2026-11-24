@@ -18,6 +18,12 @@ module.exports.create = async (result) => {
   return await Result.create(result);
 };
 
+module.exports.getByDeliveryKey = async (deliveryKey) => {
+  // The unique index must be ready before concurrent result writes.
+  await Result.init();
+  return Result.findOne({ delivery_key: deliveryKey }).exec();
+};
+
 module.exports.update = (user_id, project_id, img_id, result) => {
   return Result.updateOne(
     { user_id: user_id, project_id: project_id, img_id: img_id },
@@ -41,8 +47,4 @@ module.exports.getAllByToken = async (user_id, project_id, token) => {
 
 module.exports.deleteByToken = async (user_id, project_id, token) => {
   return await Result.deleteMany({ user_id, project_id, token }).exec();
-};
-
-module.exports.deleteById = (user_id, project_id, id) => {
-  return Result.deleteOne({ user_id, project_id, _id: id }).exec();
 };

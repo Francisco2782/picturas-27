@@ -131,6 +131,8 @@ async function completeTwoVideos(t, { afterCommit, afterPersist } = {}) {
     counts.push(pending.size);
     return pending.size;
   });
+  t.mock.method(Result, 'getByDeliveryKey', async key =>
+    [...stored.values()].find(result => result.delivery_key === key));
   t.mock.method(Result, 'create', async result => {
     stored.set(result.img_key, result);
     afterPersist?.(project);

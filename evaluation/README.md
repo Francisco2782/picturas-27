@@ -124,4 +124,4 @@ docker exec -i --workdir /app/tests picturas-validation-projects-1 node \
   < projects/tests/project-concurrency.integration.js
 ```
 
-The checks cover progress from two videos delivered out of order, and edits that were read before a worker completed or failed the run. See the [F2 and F3 verification log](../docs/sessoes/2026-11-23-f2-f3.md).
+The checks cover progress from two videos delivered out of order and edits that were read before a worker completed or failed the run. They also replay a completion after its result was recorded and race two copies of the same reply. The replay and race use real MongoDB writes and simulated uploads, and check that the surviving record references the retained upload. [F2 and F3 verification](../docs/sessoes/2026-11-23-f2-f3.md) · [Redelivery regression](../docs/sessoes/2026-11-24-reentrega-resultados.md)

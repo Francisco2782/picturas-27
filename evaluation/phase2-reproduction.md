@@ -1,5 +1,22 @@
 # Phase 2 evidence and reproduction
 
+## Final validation on `3cb1b74`
+
+Obtain `picturas-phase2-final-3cb1b74.tar.gz` and its companion `.sha256` file from the evidence handoff. The package lives under the Git-ignored `evaluation/evidence/` directory. It includes the final raw observations, the environment and source manifest, the summary CSVs and the original D-01 archive.
+
+```sh
+sha256sum -c picturas-phase2-final-3cb1b74.tar.gz.sha256
+tar -xzf picturas-phase2-final-3cb1b74.tar.gz
+cd phase2-final-3cb1b74
+sha256sum -c SHA256SUMS
+python3 verify_final.py
+python3 instruments/summarize.py capacity --runs 3
+```
+
+The mean B wait was 0.123429 s across three valid capacity runs. Chromium scored 12/12 actions, recovered navigation, reload and reconnect in 3/3 trials each, and recorded zero premature completions. The [final validation log](../docs/sessoes/2026-11-24-validacao-final-3cb1b74.md) records the configuration, individual results and verification after clean extraction.
+
+## Original D-01 archive
+
 Extract `picturas-phase2-d01.tar.gz` into an empty directory and run the commands from its `picturas-phase2-d01/` root. Python 3.11+ and a SHA-256 utility are sufficient for this check.
 
 ```sh
