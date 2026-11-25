@@ -26,23 +26,21 @@
   mostrar que perceberam o fluxo completo, do _Apply_ ao resultado, para imagens e vídeos.
 ]
 
-Para garantir a reprodutibilidade integral das observações, dos testes e das medições empíricas, a solução foi instanciada em ambiente controlado a partir do repositório oficial, registando-se as versões de software e as especificações de hardware descritas na @tab-preparacao-ambiente.
+As observações, os testes e as medições foram registados num ambiente controlado, com as versões de software e as especificações de hardware descritas na @tab-preparacao-ambiente. A reprodução independente continua pendente; o arquivo de evidências não inclui a imagem original do worker da baseline nem o driver histórico exato do navegador (`evaluation/phase2-reproduction.md`).
 
 #tab([Preparação e ambiente],
   tabela-campos(
-    [Commit de partida], [`052310226c51fa57a17101c7bd1ad795674aac95` (tag `phase2-base`), checkout `afb84e5c818820f807bb504a8ed9f0a3162cc9dd` em `picturas-um/picturas-27`],
+    [Commit de partida], [`052310226c51fa57a17101c7bd1ad795674aac95` (tag `phase2-base`) e checkout de medição `afb84e5c818820f807bb504a8ed9f0a3162cc9dd`, no repositório de origem `picturas-um/picturas-27`],
     [Comandos de arranque], [Arranque padrão: `docker compose up -d --build`. Escala para duas réplicas no ensaio de capacidade: `docker compose up -d --no-build --scale video_tool=2 video_tool`],
     [Ambiente (SO, CPU, RAM, versões de Docker e Compose)], [Linux 7.0.0-43-generic x86_64, processador Intel Core i7-13650HX (20 CPUs lógicas), 33,36 GB disponíveis ao Docker, Docker Engine v29.9.3 e Docker Compose v5.7.1.],
     [Projetos e amostras de dados], [Capacidade: Projeto A com vídeo com fala longa de 177 s em 1080p (`speech_mandela_177s_1080p.webm`) com legendagem; Projeto B com dois ficheiros de 10 s em 720p (`sample_10s_720p.mp4`) e um de 6 s (`sample_6s.mov`) com brilho. Usabilidade: Projeto A com excerto de fala de 10 s com legendas; Projeto B para navegação na barra de ferramentas.],
-    [Problemas e notas de arranque], [Conflitos com volumes legados do SeaweedFS da Fase 1 exigiram limpeza forçada (`docker compose down -v --remove-orphans`) devido a alterações estruturais de armazenamento; comunicação TLS interna com certificados autoassinados expirados necessitando de bypass `rejectUnauthorized: false`.],
+    [Problemas e notas de arranque], [Conflitos com volumes legados do SeaweedFS da Fase 1 exigiram limpeza forçada (`docker compose down -v --remove-orphans`) devido a alterações estruturais de armazenamento; a validação TLS interna está desativada (`rejectUnauthorized: false`) e os certificados estavam expirados no ambiente observado (`EV-01`: `apiGateway/routes/projects.js:17-20`, `projects/routes/projects.js:79-83`, `projects/utils/httpsAgent.js:7-11`, baseline `0523102`; expiração registada em `AGENTS.md:119-120`, revisão `0f6dbc5`).],
   ),
 ) <tab-preparacao-ambiente>
 
 *Como é orquestrado o processamento em lote de imagens e de vídeos:*
 
-NOTA: REVER PORQUE ERA SUPOSTO SER DE 5 A 8 LINHAS
-
-O utilizador aciona o processamento no frontend através do botão `Apply`, enviando uma chamada HTTP a `POST /api-gateway/projects/:user/:project/process`. O serviço `projects` atua como orquestrador central e inspeciona o tipo de cada elemento multimédia (`media_type`). Para cada imagem, o orquestrador publica uma mensagem individual por ferramenta na respetiva fila e aguarda a confirmação de conclusão na `project_queue` antes de despachar a ferramenta seguinte da cadeia. Para cada vídeo, o orquestrador encapsula todo o pipeline de operações numa única mensagem e publica-a na fila comum `video_queue`. Os efeitos de fotograma contíguos partilham uma única passagem de descodificação e codificação. Operações especializadas (como legendas ou extração de fotogramas) integram-se como etapas adicionais da cadeia. O _worker_ reporta o progresso de execução e o estado terminal para a `project_queue`. O orquestrador persiste as atualizações aceites e retransmite-as via `ws_queue` para o `wsGateway`, que notifica o navegador em tempo real; cada operação abre e fecha uma ligação AMQP própria (`EV-10`: `projects/utils/rabbit_mq.js:11-30` — terminação forçada por `setTimeout(500)`).
+Na revisão validada, `Apply` envia `POST /api-gateway/projects/:user/:project/process` ao serviço `projects`, que regista os trabalhos do lote antes do despacho. Para cada imagem, publica uma mensagem por ferramenta e aguarda a resposta em `project_queue` antes da etapa seguinte. Para cada vídeo, publica uma mensagem com o pipeline completo em `video_queue`; efeitos de fotograma contíguos partilham a descodificação e a codificação. O progresso segue por `project_queue`; `projects` valida e persiste as atualizações aceites antes de as publicar em `ws_queue`, que o `wsGateway` encaminha ao navegador. No fim, `projects` grava os resultados e conclui a execução. O publicador `send_rabbit_msg` abre uma ligação por publicação e agenda o fecho após 500 ms (`EV-02`: `projects/utils/rabbit_mq.js:11-30`, baseline `0523102`). O fluxo e as restantes referências estão detalhados na @tab-passos-pedido.
 
 == Fontes consultadas
 
@@ -78,7 +76,7 @@ A análise estrutural do sistema e o diagnóstico arquitetural fundamentaram-se 
   consistente com o que foi observado na solução em execução, não apenas com a documentação.
 ]
 
-A arquitetura global do PictuRAS estrutura-se em *Microsserviços Orientados a Eventos* (*Event-Driven Microservices*), complementado por uma camada perimetral de acesso e despacho (Nginx + API Gateway + WebSocket Gateway), orquestramento de mensagens assíncrono com RabbitMQ e persistência desacoplada (MongoDB + SeaweedFS S3 + volume de ficheiros `image_data`). a @fig-arquitetura-global, destaca-se a laranja o caminho percorrido pelo processamento de vídeo.
+A arquitetura global do PictuRAS combina *microsserviços orientados a eventos* (*Event-Driven Microservices*) com uma camada perimetral de acesso e despacho (Nginx, API Gateway e WebSocket Gateway), mensageria assíncrona com RabbitMQ e persistência desacoplada (MongoDB, SeaweedFS S3 e volume `image_data`). Na @fig-arquitetura-global, o caminho do processamento de vídeo está destacado a laranja.
 
 #figure(
   image("../images/arquitetura_global_plantuml.svg", width: 95%),
@@ -128,34 +126,37 @@ O processamento de um projeto com ficheiros de vídeo estrutura-se em cinco fase
   caption: [Sequência do processamento em lote de um projeto com vídeos],
 ) <fig-sequencia-pedido>
 
+A sequência descreve o fluxo da revisão validada. Na baseline `0523102`, o worker publicava o progresso diretamente em `ws_queue` (`Tools/video/video.py:112-124`). Na revisão `3cb1b74`, publica eventos tipados em `project_queue`; `projects` valida o token e persiste apenas as atualizações aceites antes de as encaminhar por `ws_queue` ao gateway WebSocket (`EV-06`, revisão `3cb1b74`: mensagem — `Tools/video/progress.py:4-16` e `Tools/video/video.py:121-125`; validação, persistência e publicação — `projects/utils/videoProgress.js:3-75`, `projects/controllers/project.js:96-123`, `projects/routes/projects.js:228-238`, `projects/utils/project_msg.js:124-136`, `wsGateway/index.js:65-75`).
+
+#paisagem[
 #tab([Passos do pedido completo de vídeo],
   tabela(
-    colunas: (2.8cm, 3.4cm, 1fr, 3.8cm),
+    colunas: (3cm, 3.8cm, 1fr, 9.5cm),
+    tamanho: 8.5pt,
     [Passo], [Origem $->$ Destino], [Mensagem / _endpoint_ / fila], [Evidência],
-    [Carregamento do vídeo], [Browser $->$ Gateway $->$ `projects` $->$ S3], [`POST /api-gateway/projects/:owner/:project/video` (multipart/form-data)], [`EV-01`: `projects/routes/projects.js:1564-1671` e `projects/utils/video.js:14-80` — o orquestrador despacha imagens passo a passo e vídeos em mensagem única para `video_queue`, e valida contentor, codec de vídeo, duração, resolução e limites de quota via ffprobe.],
-    [Definição do _pipeline_], [Browser $->$ Gateway $->$ `projects`], [`POST …/tool` (adicionar) e `POST …/reorder` (reordenar)], [`EV-01`: `apiGateway/routes/projects.js` e controladores em `projects/routes/projects.js`. Atualiza a coleção do projeto no MongoDB.],
-    [Submissão (_Apply_)], [Browser $->$ Gateway $->$ `projects` $->$ RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` $->$ publicação na fila `video_queue`], [`EV-02`: `Tools/video/video.py:54, 140, 170, 174` — `prefetch_count=1`, modelo síncrono bloqueante e confirmação manual (`basic_ack`) no fim do processamento; `EV-01`: `projects/utils/processBatch.js:88-142` despacha 1 mensagem por vídeo com pipeline integral.],
-    [Progresso], [`video_tool` $->$ `project_queue` $->$ `projects` $->$ `ws_queue` $->$ UI], [Eventos `video-progress` tipados com token e percentagem], [`EV-03`: `Tools/video/subtitles.py:15-21, 60-63` — legendagem com Faster-Whisper síncrono em CPU/int8; `EV-04`: `projects/models/project.js:35-65` e `projects/utils/processingRun.js` — subdocumento `processingRun` com snapshot atómico, token, estado terminal e progresso monotónico. O orquestrador valida e persiste o snapshot antes de notificar o WebSocket; consultável em `GET …/processing-status` (`EV-05`: `projects/routes/projects.js`, `apiGateway`).],
-    [Consolidação de resultados], [`video_tool` $->$ `project_queue` $->$ `projects` $->$ UI], [Mensagem de conclusão na `project_queue`, confirmação manual (`ack`), commit e `process-update`], [`EV-02`, `EV-04`: criação atómica de registos `Result` no MongoDB e guarda do ficheiro final no S3. O ensaio P-02 confirmou a integridade de dois resultados simultâneos; a hipótese `H-01` (condições de corrida entre trabalhadores paralelos no fecho do lote no MongoDB, avaliada por injeção de finalizações concorrentes com barreiras temporais) foi confirmada na auditoria e corrigida nessa prova.],
+    [Carregamento do vídeo], [Browser $->$ Gateway $->$ `projects` $->$ `imageStorageService` $->$ S3], [`POST /api-gateway/projects/:user/:project/video` (multipart/form-data)], [`EV-03`, baseline `0523102`: upload e limites — `apiGateway/routes/projects.js:458-485`, `projects/routes/projects.js:1275-1317, 1390-1394`, `projects/utils/video.js:10-13, 84-143`; registo e despacho do lote — `projects/utils/processBatch.js:1-12`, `projects/routes/projects.js:1521-1671`.],
+    [Definição do _pipeline_], [Browser $->$ Gateway $->$ `projects`], [`POST …/tool` (adicionar) e `POST …/reorder` (reordenar)], [`EV-03`: `apiGateway/routes/projects.js:506-566`; `projects/routes/projects.js:1397-1518`.],
+    [Submissão (_Apply_)], [Browser $->$ Gateway $->$ `projects` $->$ RabbitMQ], [`POST /api-gateway/projects/:user/:project/process` $->$ publicação na fila `video_queue`], [`EV-04`, baseline `0523102`: `Tools/video/video.py:54, 76-92, 150-170, 172-174` (`prefetch_count=1`, resposta terminal em `project_queue`, processamento síncrono e ack manual após o resultado). `EV-03`: `projects/utils/processBatch.js:1-12`, `projects/routes/projects.js:1521-1671`.],
+    [Progresso], [`video_tool` $->$ `project_queue` $->$ `projects` $->$ `ws_queue` $->$ `wsGateway` $->$ UI], [Eventos `video-progress` tipados com token e percentagem], [`EV-06`. `EV-07`, revisão `3cb1b74`: rota de estado — `projects/routes/projects.js:890-905`, `apiGateway/routes/projects.js:221-235`.],
+    [Consolidação de resultados], [`video_tool` $->$ `project_queue` $->$ `projects` $->$ `ws_queue` $->$ `wsGateway` $->$ UI], [O worker publica a resposta terminal e confirma (`ack`) a entrega original em `video_queue`; `projects` persiste os resultados, comita condicionalmente a execução e envia `process-update`], [`EV-04`, baseline `0523102`: `Tools/video/video.py:76-92, 150-170`. `EV-06`, revisão `3cb1b74`: persistência e commit — `projects/routes/projects.js:437-489, 507-511`, `projects/controllers/result.js:18`, `projects/controllers/project.js:128-160`; notificação — `projects/utils/project_msg.js:69-80`, `wsGateway/index.js:92-112`. `H-01`: finalizações concorrentes de vídeos do mesmo lote podem causar uma corrida e perda de resultados no fecho do lote. Foi reproduzida por uma regressão com barreira antes da correção; após a correção, P-02 confirmou dois resultados distintos e descarregáveis, inclusive com duas réplicas (`docs/sessoes/2026-11-22-p02.md`).],
   ),
 ) <tab-passos-pedido>
+]
 
-
-NOTA: REVER SE ESTE TOPICO É AQUI OU NOUTRO CAPITULO
 
 == Onde e porquê o sistema bifurca entre imagem e vídeo
 
-Embora a aplicação procure oferecer uma experiência unificada na interface, a realidade física e computacional do processamento de vídeo obrigou a bifurcações profundas na orquestração e na execução interna, resumidas na @tab-bifurcacao-media.
+Embora a interface procure oferecer uma experiência unificada, o processamento de vídeo tem requisitos temporais e operacionais distintos dos das imagens. A implementação separa alguns percursos de validação, despacho e execução, resumidos na @tab-bifurcacao-media.
 
 #tab([Pontos de bifurcação entre o caminho de imagens e o caminho de vídeo],
   tabela(
     colunas: (2.4cm, 3.2cm, 3.2cm, 1fr),
     tamanho: 8.5pt,
     [Ponto de bifurcação], [Caminho de imagens], [Caminho de vídeo], [Fundamentação arquitetural (facto / hipótese)],
-    [Validação e Upload], [`POST …/img` (validação rápida de formato raster PNG/JPEG).], [`POST …/video` (inspeção minuciosa de codecs, streams de áudio/vídeo, resolução e duração via ffprobe).], [Facto (`EV-01`): Ficheiros de vídeo possuem dimensões temporais e restrições rigorosas de compatibilidade inexistentes em imagens estáticas.],
-    [Despacho no Orquestrador], [Despacho granular passo a passo: 1 mensagem por cada par (imagem, ferramenta) enviada para `<tool>_queue`.], [Despacho em bloco: 1 mensagem por vídeo com todo o pipeline enviada para `video_queue`.], [Facto (`EV-01`): Evitar o custo incomportável de descodificar e recodificar ficheiros de vídeo pesados a cada filtro sequencial.],
-    [Execução nos Trabalhadores], [Microsserviços PIL/IA autónomos e especializados (16 contentores dedicados).], [Serviço `video_tool` que concentra todos os filtros num único trabalhador.], [Facto (`EV-02`, `EV-06`: `docker-compose.yaml:255-260` — serviço `video_tool` com uma única réplica por omissão): Os efeitos de fotograma contíguos partilham uma passagem em memória, reduzindo overhead de disco e CPU.],
-    [Confirmação AMQP (_Ack_)], [Confirmação automática imediata na receção (`auto_ack=True`).], [Confirmação manual explícita (`ack`) no fim do processamento ou falha tratada.], [Facto (`EV-02`, `EV-07`: `Tools/utils/rabbit_mq.py:28-35` — trabalhadores de imagem usam `auto_ack=True`): Como o processamento de vídeo é demorado, o auto-ack perderia tarefas se o trabalhador falhasse a meio da execução.],
-    [Interface de Utilizador], [Ferramentas de IA (remoção de fundo, super-resolução) e exportação em PDF ativas.], [Filtros de IA e PDF ocultos; filtros exclusivos de vídeo (`trim`, `speed`, `subtitles`).], [Facto (`EV-08`: `frontend/app/dashboard/[pid]/page.tsx` — estado de progresso em memória volátil do componente React e modal bloqueante durante o lote): Os modelos atuais de IA de imagem do sistema não processam sequências temporais e vídeo não é convertível em PDF.],
+    [Validação e Upload], [`POST …/img` rejeita ficheiros identificados como vídeo.], [`POST …/video` valida extensão/MIME e usa ffprobe para obter metadados; codec, duração, tamanho e resolução estão sujeitos a limites por perfil.], [Facto (`EV-03`): A rota de vídeo tem validação específica que não existe no carregamento de imagem.],
+    [Despacho no Orquestrador], [Despacho passo a passo: uma mensagem por cada par (imagem, ferramenta) enviada para `<tool>_queue`.], [Despacho em bloco: uma mensagem por vídeo com o pipeline completo em `video_queue`.], [Facto (`EV-03`): o orquestrador despacha uma mensagem por vídeo com o pipeline completo. `EV-04`, baseline `0523102`: `Tools/video/video_processor.py:190-218` aplica os efeitos de fotograma no mesmo ciclo de descodificação e codificação.],
+    [Execução nos Trabalhadores], [Microsserviços PIL/IA autónomos e especializados.], [Serviço `video_tool`, com uma réplica por omissão no Compose.], [Facto (`EV-04`, `EV-08`: `docker-compose.yaml:255-273` e `Tools/video/video_processor.py:190-218, 316-363`, baseline `0523102`): Os efeitos de fotograma contíguos partilham uma passagem de descodificação e codificação.],
+    [Confirmação AMQP (_Ack_)], [Confirmação automática imediata na receção (`auto_ack=True`).], [Confirmação manual explícita depois do processamento da mensagem.], [Facto (`EV-04`, `EV-09`: `Tools/utils/rabbit_mq.py:37-41`, baseline `0523102` — trabalhadores de imagem usam `auto_ack=True`): o auto-ack pode perder a tarefa se o worker falhar durante o processamento.],
+    [Interface de Utilizador], [Ferramentas de imagem e exportação PDF disponíveis para projetos de imagem.], [Em projetos com vídeo, a aplicação oculta as ferramentas exclusivas de imagem e não oferece exportação PDF; expõe as operações de vídeo (`trim`, `speed`, `subtitles`, `extract_frames`).], [Facto (`EV-10`, baseline `0523102`: `frontend/components/toolbar/toolbar.tsx:51-98` e `frontend/app/dashboard/[pid]/page.tsx:89-93, 841-850, 895-912` — ferramentas disponíveis por tipo de projeto, estado de progresso local, PDF oculto e overlay bloqueante).],
   ),
 ) <tab-bifurcacao-media>

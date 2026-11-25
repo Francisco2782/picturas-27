@@ -22,8 +22,8 @@
     colunas: (1.8cm, 2.2cm, 3cm, 1.8cm, 2.8cm, 3cm, 3.4cm, 3.4cm),
     tamanho: 8pt,
     [Candidato], [Cenário (`QS-nn`)], [Característica / subcaracterística (ISO/IEC 25010)], [Evidência], [Origem (padrão global / vídeo / interação)], [Estímulo a que a tática reage], [Resposta e medida (resumo)], [Escala e método (cap. 6)],
-    [CAND-1], [QS-01], [Eficiência de desempenho, capacidade], [EV-01 a EV-03], [Worker de vídeo], [B chega enquanto A legenda.], [B arranca durante A.], [Segundos entre submissão e primeiro arranque de B.],
-    [CAND-2], [QS-02], [Usabilidade, operabilidade], [EV-05, EV-06 e EV-10], [Interação entre orquestrador e dashboard], [Utilizador alterna projetos e recarrega durante A.], [Progresso recuperável durante a execução.], [Ações e recuperações em três ensaios.],
+    [CAND-1], [QS-01], [Eficiência de desempenho, capacidade], [EV-04, EV-05 e EV-08], [Worker de vídeo], [B chega enquanto A legenda.], [B arranca durante A.], [Segundos entre submissão e primeiro arranque de B.],
+    [CAND-2], [QS-02], [Usabilidade, operabilidade], [EV-06, EV-07 e EV-10], [Interação entre orquestrador e dashboard], [Utilizador alterna projetos e recarrega durante A.], [Progresso recuperável durante a execução.], [Ações e recuperações em três ensaios.],
   ),
 )
 

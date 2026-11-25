@@ -71,3 +71,18 @@ independentes de identidade e ordem no fim.
 
 - Re-leitura integral do PDF renderizado (além da compilação) e revisão por outro elemento da equipa.
 - Os warnings pré-existentes de Typst (`**classe**` nos caps. 3 e 12) foram mantidos intencionalmente.
+
+## Aditamento de 25/11 — correção após auditoria de rastreabilidade
+
+A revisão posterior encontrou dois problemas que invalidavam a verificação acima: `EV-10` era citado na prosa do
+capítulo 2 antes de `EV-01`, e os capítulos 3, 5, 6 e 7 ainda continham várias referências com a numeração original.
+Além disso, a citação do upload apontava para o handler de processamento, não para a rota de upload, e alguns
+intervalos de linhas não continham o facto atribuído.
+
+Com autorização do utilizador, o relatório foi corrigido e a numeração foi refeita pela ordem efetiva da primeira
+utilização: `EV-01` TLS interno, `EV-02` publicador RabbitMQ, `EV-03` upload e despacho, `EV-04` worker de vídeo,
+`EV-05` legendagem, `EV-06` estado persistido, `EV-07` rota de estado, `EV-08` réplica por omissão, `EV-09`
+`auto_ack` das ferramentas de imagem e `EV-10` interface da baseline. A correspondência com os IDs originais do
+Exercício 6 está registada em `docs/EXPLICACAO_PROJETO.md` e os detalhes da correção em
+`docs/sessoes/2026-11-25-revisao-relatorio-inicial.md`. Esta correção substitui o mapa e a declaração de verificação
+final registados acima.

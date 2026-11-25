@@ -32,8 +32,8 @@
   tabela(
     colunas: (4.5cm, 2.6cm, 1fr),
     [Decisão global], [Evidência], [Efeito no vídeo],
-    [Filas e serviços por ferramenta], [EV-02, `docker-compose.yaml` e `rabbitMQ/definitions.json`], [O broker desacopla o despacho da execução.],
-    [Orquestração por tipo de media], [EV-04, `projects/utils/processBatch.js`], [Imagens avançam por efeito. O vídeo é despachado com o pipeline completo.],
+    [Filas e serviços por ferramenta], [EV-03, EV-04, `docker-compose.yaml` e `rabbitMQ/definitions.json`], [O broker desacopla o despacho da execução.],
+    [Orquestração por tipo de media], [EV-03, `projects/utils/processBatch.js`], [Imagens avançam por efeito. O vídeo é despachado com o pipeline completo.],
   ),
 )
 
@@ -42,7 +42,7 @@
     colunas: (2cm, 1fr, 4.2cm, 2.4cm),
     tamanho: 8.5pt,
     [Tipo], [Descrição], [Característica / subcaracterística (ISO/IEC 25010)], [Facto / hipótese],
-    [Benefício], [Escala independente dos módulos.], [Manutenibilidade, modularidade], [EV-04],
+    [Benefício], [Escala independente dos módulos.], [Manutenibilidade, modularidade], [EV-03],
     [Desafio], [Coordenação de resultados entre RabbitMQ, MongoDB e S3.], [Fiabilidade, recuperabilidade], [EV-06 e auditoria F1],
   ),
 )
@@ -58,7 +58,7 @@
 #tabela-campos(
   [Nome do padrão], [Pipeline de vídeo dentro de um worker assíncrono.],
   [Descrição], [Um consumidor executa o pipeline por vídeo. Efeitos contíguos de fotograma partilham descodificação e codificação em `Tools/video/effects.py`.],
-  [Contraste com o caminho de imagens], [As ferramentas de imagem consomem filas próprias e o orquestrador encadeia as etapas (EV-04).],
+  [Contraste com o caminho de imagens], [As ferramentas de imagem consomem filas próprias e o orquestrador encadeia as etapas (EV-03).],
 )
 
 #tab([Benefícios e desafios do padrão do vídeo],
@@ -66,8 +66,8 @@
     colunas: (2cm, 1fr, 4.2cm, 2.4cm),
     tamanho: 8.5pt,
     [Tipo], [Descrição], [Característica / subcaracterística (ISO/IEC 25010)], [Facto / hipótese],
-    [Benefício], [Reutiliza a passagem de descodificação e codificação.], [Eficiência de desempenho, utilização de recursos], [EV-01 e `Tools/video/effects.py`],
-    [Desafio], [A legendagem ocupa o único consumidor e atrasa trabalhos curtos.], [Eficiência de desempenho, capacidade], [EV-01 e EV-03, `Tools/video/subtitles.py`, e baseline oficial],
+    [Benefício], [Reutiliza a passagem de descodificação e codificação.], [Eficiência de desempenho, utilização de recursos], [EV-04 e `Tools/video/effects.py`],
+    [Desafio], [A legendagem ocupa o único consumidor e atrasa trabalhos curtos.], [Eficiência de desempenho, capacidade], [EV-04, EV-05 e baseline oficial],
   ),
 )
 
@@ -89,9 +89,11 @@
     colunas: (2.4cm, 3cm, 3cm, 1.9cm, 2.6cm, 1.8cm),
     tamanho: 8pt,
     [Aspeto], [O que o padrão global prescreve], [O que o vídeo faz], [Segue / afasta-se], [Consequência], [Evidência],
-    [Mensageria], [Despacho assíncrono], [Consumo de `video_queue`], [Segue], [Mantém o desacoplamento entre cliente e execução.], [EV-01 e EV-04],
-    [Decomposição], [Um serviço por ferramenta de imagem], [Pipeline completo por worker de vídeo], [Afasta-se], [Reduz transições intermédias e concentra a carga.], [EV-01 e EV-04],
+    [Mensageria], [Despacho assíncrono], [Consumo de `video_queue`], [Segue], [Mantém o desacoplamento entre cliente e execução.], [EV-03 e EV-04],
+    [Decomposição], [Um serviço por ferramenta de imagem], [Pipeline completo por worker de vídeo], [Afasta-se], [Reduz transições intermédias e concentra a carga.], [EV-03 e EV-04],
   ),
 )
 
 O vídeo herda a mensageria e o armazenamento do sistema. O pipeline local evita transferências intermédias. Com um consumidor e `prefetch_count=1`, a duração do trabalho ativo afeta a espera dos restantes.
+
+`H-02`: o volume partilhado `image_data` pode tornar-se um gargalo de I/O ou um ponto de falha (`docker-compose.yaml:151, 271-273, 565`, baseline `0523102`). Para confirmar ou refutar a hipótese, é necessário medir latência e utilização do volume sob carga e observar o efeito de uma indisponibilidade controlada. O estado desta hipótese é *por confirmar*; esses ensaios ficaram fora do âmbito da Fase 2.

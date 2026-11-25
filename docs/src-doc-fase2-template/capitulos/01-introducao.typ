@@ -38,7 +38,7 @@ O desenvolvimento partiu da versão oficial disponibilizada no repositório GitH
     [Documento de requisitos de base], [doc-ext-requisitos-2627.pdf (Extensão de Requisitos PL1-G4, Fase 1)],
     [Documento de solução arquitetural de base], [doc-sol-arquitetural.pdf],
     [Repositório de partida], [https://github.com/picturas-um/picturas-27 · tag `phase2-base` (`0523102`), checkout de medição `afb84e5`],
-    [Repositório entregue], [NOTA: PREENCHER NO FIM],
+    [Repositório entregue], [https://github.com/Francisco2782/picturas-27 · branch `main`],
     [Diretrizes da Fase 2], [fase-2-guidelines.pdf (Versão 1)],
   ),
 )

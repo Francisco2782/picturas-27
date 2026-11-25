@@ -2,8 +2,8 @@
 
 Receives the video and the whole effect pipeline in a single message,
 processes it with video_processor and replies to the projects orchestrator on
-project_queue. Progress is sent straight to the WebSocket gateway (ws_queue),
-as a percentage.
+project_queue. Progress updates are also published to project_queue for the
+projects orchestrator to persist and forward to ws_queue.
 
 Unlike the image tools, the message is only acknowledged after the job ends:
 if the worker dies midway, RabbitMQ redelivers it.

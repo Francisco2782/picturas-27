@@ -38,9 +38,9 @@
     colunas: (1.2cm, 3.4cm, 2.6cm, 2.2cm, 2.2cm, 2.4cm, 2.2cm, 2.6cm, 3cm),
     tamanho: 7.5pt,
     [ID], [Fragilidade na base (EV-nn)], [Característica (ISO/IEC 25010)], [Fonte do estímulo], [Estímulo], [Artefacto], [Ambiente], [Resposta], [Medida da resposta],
-    [QS-01], [Um consumidor para a fila de vídeo (EV-01 a EV-03)], [Eficiência de desempenho, capacidade], [Cliente HTTP], [Submete B durante a legendagem de A], [`video_queue` e `video_tool`], [Docker, carga concorrente], [B inicia durante A], [Espera média de B ≤ 15 s.],
-    [QS-02], [Estado de apresentação volátil (EV-05)], [Usabilidade, operabilidade], [Utilizador premium], [Alterna projetos e recarrega durante A], [Dashboard e rota de estado], [Chrome, 1280 × 720], [Mantém acesso e recupera o progresso], [12/12 ações, navegação e recarregamento 3/3, zero falsas conclusões.],
-    [QS-03], [A base usa ack manual (EV-01).], [Fiabilidade, recuperabilidade], [Falha de infraestrutura], [Interrompe um worker ou o broker a meio do lote], [RabbitMQ, worker e orquestrador], [Falha transitória], [Retoma após restabelecimento], [Resultado íntegro e zero novos artefactos parciais órfãos. O seguimento verificou os dois tipos de falha.],
+    [QS-01], [Um consumidor para a fila de vídeo (`EV-04`, `EV-05`, `EV-08`)], [Eficiência de desempenho, capacidade], [Cliente HTTP], [Submete B durante a legendagem de A], [`video_queue` e `video_tool`], [Docker, carga concorrente], [B inicia durante A], [Espera média de B ≤ 15 s.],
+    [QS-02], [Estado de apresentação volátil (`EV-10`)], [Usabilidade, operabilidade], [Utilizador premium], [Alterna projetos e recarrega durante A], [Dashboard e rota de estado], [Chrome, 1280 × 720], [Mantém acesso e recupera o progresso], [12/12 ações; recuperação em 3/3 ensaios para navegação, recarregamento e reconexão; zero falsas conclusões.],
+    [QS-03], [A base usa ack manual (`EV-04`).], [Fiabilidade, recuperabilidade], [Falha de infraestrutura], [Interrompe um worker ou o broker a meio do lote], [RabbitMQ, worker e orquestrador], [Falha transitória], [Retoma após restabelecimento], [Resultado íntegro e zero novos artefactos parciais órfãos. O seguimento verificou os dois tipos de falha.],
   ),
 )
 ]

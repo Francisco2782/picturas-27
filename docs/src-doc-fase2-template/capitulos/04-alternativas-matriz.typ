@@ -78,12 +78,16 @@
     [Eficiência de desempenho: capacidade / elasticidade], [Escala por ferramenta.], [Um vídeo de cada vez na base.], [Duas réplicas validadas.], [Escala por etapa.],
     [Fiabilidade: tolerância a falhas / recuperabilidade], [Ack automático nas ferramentas de imagem.], [Ack manual no worker de vídeo.], [Ack manual e fecho concorrente protegido.], [Isolamento por etapa com mais pontos de falha.],
     [Manutenibilidade: modularidade / modificabilidade], [Ferramentas especializadas.], [Efeitos no mesmo serviço.], [Mesma estrutura interna.], [Maior independência por efeito e mais coordenação.],
-    [Segurança], [Gateway no perímetro.], [Percurso existente.], [Mesmos contratos e fronteiras.], [Mais dependências internas.],
+    [Segurança], [Gateway no perímetro; validação TLS interna desativada (`EV-01`).], [Percurso existente.], [Mesmos contratos e fronteiras.], [Mais dependências internas.],
     [Usabilidade: operabilidade], [O estado visível depende do frontend.], [Overlay na base.], [A redução da espera foi medida separadamente da interface.], [Depende de acompanhar as etapas no cliente.],
   ),
 )
 ]
 
 == Adequação do padrão atual
+
+`H-03`: duas réplicas de `video_tool` na fila partilhada devem reduzir a espera média de B (`b_wait_seconds`) para 15 s ou menos. A hipótese foi testada comparando uma e duas réplicas no cenário A/B e confirmada na revisão `3cb1b74`: a espera média de B foi 0,123 s (`docs/sessoes/2026-11-24-validacao-final-3cb1b74.md`).
+
+`H-04`: persistir o snapshot e remover o overlay deve permitir 12/12 ações e recuperar o acompanhamento após navegação, recarregamento e reconexão. A hipótese foi testada em três ensaios no Chromium e confirmada: 12/12 ações e recuperação nos 3/3 ensaios de cada percurso (`docs/sessoes/2026-11-24-validacao-final-3cb1b74.md`).
 
 ALT-1 foi selecionada para preservar o pipeline e limitar as mudanças no despacho. ALT-2 exigiria rever a coordenação e os ficheiros intermédios. ALT-3 exigiria encaminhar trabalhos consoante a carga. As duas últimas ficaram na análise conceptual.

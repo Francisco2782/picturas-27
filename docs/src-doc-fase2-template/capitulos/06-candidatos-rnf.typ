@@ -20,8 +20,8 @@
     colunas: (1.6cm, 2.6cm, 3cm, 2.4cm, 2.8cm, 2.6cm, 2cm, 3cm, 2.8cm),
     tamanho: 7.5pt,
     [\#], [Característica / subcaracterística (ISO/IEC 25010)], [Fragilidade na base (evidência)], [Origem (padrão global / vídeo / interação)], [Impacto nos stakeholders (pertinência)], [Exigência técnica (complexidade)], [Cenário (`QS-nn`, cap. 5)], [Escala e método de medição (esboço)], [Pré-requisitos / efeitos colaterais],
-    [CAND-1], [Eficiência de desempenho, capacidade], [EV-01 a EV-03. Uma legendagem longa ocupa o único consumidor.], [Trabalhos curtos ficam à espera.], [Utilizadores e operação], [Consumo concorrente da fila], [QS-01], [Alta, atraso comum a todos os projetos], [Selecionado],
-    [CAND-2], [Usabilidade, operabilidade], [EV-05, `frontend/app/dashboard/[pid]/page.tsx` na tag `phase2-base`. Overlay e estado volátil no browser.], [O utilizador perde acesso à edição ou ao acompanhamento.], [Utilizadores], [Estado recuperável e interface navegável], [QS-02], [Alta, afeta trabalhos longos], [Selecionado],
+    [CAND-1], [Eficiência de desempenho, capacidade], [`EV-04`, `EV-05` e `EV-08`: uma legendagem longa ocupa o único consumidor.], [Trabalhos curtos ficam à espera.], [Utilizadores e operação], [Consumo concorrente da fila], [QS-01], [Alta, atraso comum a todos os projetos], [Selecionado],
+    [CAND-2], [Usabilidade, operabilidade], [`EV-10`, `frontend/app/dashboard/[pid]/page.tsx` na baseline `0523102`: overlay bloqueante e estado volátil no browser.], [O utilizador perde acesso à edição ou ao acompanhamento.], [Utilizadores], [Estado recuperável e interface navegável], [QS-02], [Alta, afeta trabalhos longos], [Selecionado],
   ),
 )
 
