@@ -45,5 +45,6 @@
 
 - O capítulo 12 agora regista a contribuição Codex desta auditoria, os resultados aceites, o que não foi inferido e as verificações executadas.
 - A redação identifica que os testes locais passaram e que a compilação Typst e a revisão humana não ocorreram nesta etapa.
+- Por orientação do utilizador, a atualização do capítulo 12 fica marcada como pendente até a equipa confirmar ferramentas, modelos, tarefas e redação final.
 
 As prioridades são confirmar o prazo e o formato, alinhar o relatório com o pacote final, obter revisão humana e documentar a reprodução independente. Os comandos e critérios de fecho constam das secções 2, 5 e 7. A aplicação não sofreu alterações.
