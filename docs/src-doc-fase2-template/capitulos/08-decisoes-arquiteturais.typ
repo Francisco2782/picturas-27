@@ -26,7 +26,7 @@
     [Tática(s) escolhida(s)], [TAT-01, replicar a computação.],
     [Estrutura / padrão que a realiza], [Duas réplicas de `video_tool` consomem `video_queue` no ensaio, cada uma com `prefetch_count=1` e confirmação manual.],
     [Alternativas consideradas e razão de rejeição], [TAT-02 exigiria alterar o despacho. TAT-03 reduziria o carregamento do modelo e manteria a serialização.],
-    [Consequências positivas], [A espera média de B atingiu 0,113 s.],
+    [Consequências positivas], [Na campanha final da revisão `3cb1b74`, a espera média de B foi 0,123 s. A campanha anterior registou 0,113 s.],
     [Consequências negativas / riscos], [Maior pico de memória e risco de fechos simultâneos.],
     [Elementos arquiteturais afetados], [Escala no Compose e publicação de resultados em `projects/utils/processBatch.js`.],
     [Origem e âmbito do _refactoring_], [Implantação do worker e integridade da publicação do lote.],

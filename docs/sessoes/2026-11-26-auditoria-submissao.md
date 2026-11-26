@@ -13,4 +13,11 @@
 | `python3 docs/exercicios/check_citations.py`, `python3 -m pytest -p no:cacheprovider docs/exercicios/tests/ -q` | Códigos 2 e 4. Ficheiro e diretório ausentes. Conferência auxiliar com Python, expressão regular sobre citações literais e `git show 0523102:<caminho>`: 30 ocorrências, quatro caminhos abreviados. |
 | `command -v typst`, `docker compose ps --status running --services`, `git check-ignore evaluation/evidence/picturas-phase2-final-3cb1b74.tar.gz` | Sem compilador local; stack corrente parcial; arquivo ignorado por Git. |
 
+## Seguimento — prazo e relatório
+
+- O utilizador indicou 27/11/2026 como prazo de entrega. A auditoria foi atualizada para registar essa data e manter por confirmar o comprovativo e as regras de formato.
+- No capítulo 8, DA-1 agora distingue a campanha final de `3cb1b74` (0,123 s) da campanha anterior (0,113 s).
+- O anexo agora descreve a obtenção do pacote final, validação dos checksums e recontagem, distinguindo-a da repetição ao vivo dos cenários.
+- Compilação Typst não executada nesta máquina. A reprodução independente permanece pendente.
+
 As prioridades são confirmar o prazo e o formato, alinhar o relatório com o pacote final, obter revisão humana e documentar a reprodução independente. Os comandos e critérios de fecho constam das secções 2, 5 e 7. A aplicação não sofreu alterações.

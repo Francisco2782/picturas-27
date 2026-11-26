@@ -12,7 +12,7 @@
   usados no relatório.
 ]
 
-Extrair `picturas-phase2-d01.tar.gz` para um diretório vazio. O ficheiro `evaluation/phase2-reproduction.md`, incluído no arquivo, descreve a verificação SHA-256, a recontagem dos dois requisitos e a repetição dos cenários sobre o sistema. A verificação local confirmou 141 ficheiros do arquivo, três ensaios medidos em cada série de capacidade e os totais de operabilidade da base e do final. A reprodução independente está por registar.
+Para recontar os resultados, obter `picturas-phase2-final-3cb1b74.tar.gz` e o respetivo ficheiro `.sha256` junto da equipa. Confirmar o checksum exterior, extrair o arquivo para um diretório vazio, validar `SHA256SUMS` e executar `verify_final.py` dentro de `phase2-final-3cb1b74`. O script reconta os ensaios arquivados e confirma 0,123429 s de espera média de B, 12/12 ações e 3/3 recuperações por navegação, recarga e reconexão. Isto reconta registos existentes, não repete a campanha sobre o sistema. Para repetir os cenários ao vivo, seguir `evaluation/phase2-reproduction.md`, incluído no arquivo. A reprodução independente está por registar.
 
 = Glossário
 
