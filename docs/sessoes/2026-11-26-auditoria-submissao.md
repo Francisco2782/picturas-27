@@ -20,4 +20,13 @@
 - O anexo agora descreve a obtenção do pacote final, validação dos checksums e recontagem, distinguindo-a da repetição ao vivo dos cenários.
 - Compilação Typst não executada nesta máquina. A reprodução independente permanece pendente.
 
+## Seguimento — citações dos exercícios
+
+- Corrigidas as referências identificadas na auditoria nos slides de táticas e no template do Exercício 6. As citações de base apontam para a revisão `0523102`.
+- Criado `docs/exercicios/check_citations.py`, que verifica caminhos e intervalos `ficheiro:linha` dos Markdown dos exercícios numa revisão Git selecionada, por omissão a base oficial.
+- Criados testes para intervalos válidos, limites fora do ficheiro e intervalos invertidos.
+- `python3 docs/exercicios/check_citations.py`: passou para todos os exercícios na revisão `052310226c51fa57a17101c7bd1ad795674aac95`.
+- `python3 -m pytest -p no:cacheprovider docs/exercicios/tests/ -q`: 3 passaram.
+- A revisão semântica de cada afirmação e a revisão humana integral continuam pendentes.
+
 As prioridades são confirmar o prazo e o formato, alinhar o relatório com o pacote final, obter revisão humana e documentar a reprodução independente. Os comandos e critérios de fecho constam das secções 2, 5 e 7. A aplicação não sofreu alterações.

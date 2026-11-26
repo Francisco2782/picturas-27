@@ -257,7 +257,7 @@ Estímulo: *N* mensagens publicadas, cada uma com ligação AMQP nova. Resposta 
 |---|---|---|---|
 | **Reduzir a sobrecarga: reutilizar ligações** (controlar a procura) | Uma ligação e um canal duradouros eliminam o *handshake* por mensagem | **Não** neste ficheiro | A |
 | **Introduzir concorrência** (gerir recursos) | Publicar em paralelo | **Não** | A |
-| **Agrupar mensagens** (controlar a procura) | Menos operações de rede | **Não**: cada mensagem é publicada individualmente (`processBatch.js:11`) | A |
+| **Agrupar mensagens** (controlar a procura) | Menos operações de rede | **Não**: cada mensagem é publicada individualmente (`projects/utils/processBatch.js:11`, base `0523102`) | A |
 
 > **Porquê só a primeira?** A concorrência não reduz o custo *por mensagem* (mantém uma ligação por mensagem). Agrupar altera o contrato de mensagens que todos os consumidores partilham: risco de regressão alto.
 
@@ -324,10 +324,10 @@ Estímulo: o worker falha a meio de um vídeo. Resposta pretendida: recuperar se
 
 | Tática (categoria) | Evidência na base | Existe? | Classe |
 |---|---|---|---|
-| **Reentrega após falha** (recuperar) | *Ack* manual só no fim: se o worker morre, o RabbitMQ reentrega (`video.py:8-9`) | **Sim** | A |
-| **Escrita atómica** (prevenir · transações / rollback) | Escreve em `.part.mp4` e só então `os.replace`; apaga o parcial se falha (`video_processor.py:198-241`) | **Sim** | A |
+| **Reentrega após falha** (recuperar) | *Ack* manual só no fim: se o worker morre, o RabbitMQ reentrega (`Tools/video/video.py:169-174`, base `0523102`) | **Sim** | A |
+| **Escrita atómica** (prevenir · transações / rollback) | Escreve em `.part.mp4` e só então `os.replace`; apaga o parcial se falha (`Tools/video/video_processor.py:198-241`, base `0523102`) | **Sim** | A |
 | **Reinício do processo** (recuperar · reinício) | `restart: on-failure` no `docker-compose.yaml` | **Parcial** | A |
-| **Retry limitado de falhas transitórias** (recuperar) | Falha respondida como erro e *ack* — nunca repetida (`video.py:166-170`) | **Não** | A |
+| **Retry limitado de falhas transitórias** (recuperar) | Falha respondida como erro e *ack* — nunca repetida (`Tools/video/video.py:166-170`, base `0523102`) | **Não** | A |
 | **Redundância passiva (*spare*)** (recuperar) | Uma só instância de `video_tool`, sem réplicas | **Não** | A |
 
 *Melhorar uma tática **existente** é diferente de introduzir uma **nova**.* — *Tarefa 2 do Exercício 7*
