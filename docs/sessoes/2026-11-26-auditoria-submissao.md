@@ -29,4 +29,10 @@
 - `python3 -m pytest -p no:cacheprovider docs/exercicios/tests/ -q`: 3 passaram.
 - A revisão semântica de cada afirmação e a revisão humana integral continuam pendentes.
 
+## Seguimento — justificação dos limiares
+
+- O capítulo 6 esclarece que os limiares foram fixados na gate B-04 antes da implementação e explica a relação entre a baseline, os alvos e o mínimo operacional.
+- O plano de decisões não regista uma justificação adicional baseada em limites de espera ou falhas aceitáveis para utilizadores. O texto assinala essa lacuna em vez de atribuir uma decisão não documentada à equipa.
+- Confirmação da equipa sobre a fundamentação original permanece pendente.
+
 As prioridades são confirmar o prazo e o formato, alinhar o relatório com o pacote final, obter revisão humana e documentar a reprodução independente. Os comandos e critérios de fecho constam das secções 2, 5 e 7. A aplicação não sofreu alterações.

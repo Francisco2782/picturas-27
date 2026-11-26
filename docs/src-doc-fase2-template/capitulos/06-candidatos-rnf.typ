@@ -53,7 +53,7 @@
 
 == Relação entre os dois candidatos
 
-Os limiares constam da gate B-04 de 17/11/2026. Os dois requisitos permitem trabalhar durante uma execução longa. As réplicas reduzem a espera por processamento e o snapshot mantém o acompanhamento na interface. Os ensaios medem separadamente os dois efeitos. A amostragem de recursos e de tráfego documenta os custos observáveis.
+Os limiares foram aprovados na gate B-04 de 17/11/2026 e fixados antes da implementação. A meta de QS-01 exige reduzir a espera média da baseline de 61,727 s para 15 s; o limite de 30 s define o resultado mínimo aceite. Para QS-02, 12/12 representa o alvo de sucesso em todas as ações, enquanto 3/4 em cada ensaio admite uma falha pontual sem aceitar a perda da recuperação por navegação ou recarregamento nem uma conclusão falsa. O registo consultado não documenta uma justificação adicional baseada em tempos de espera ou ações falhadas considerados aceitáveis pelos utilizadores. Os dois requisitos permitem trabalhar durante uma execução longa. As réplicas reduzem a espera por processamento e o snapshot mantém o acompanhamento na interface. Os ensaios medem separadamente os dois efeitos. A amostragem de recursos e de tráfego documenta os custos observáveis.
 
 == Evidência exploratória (se existir)
 
