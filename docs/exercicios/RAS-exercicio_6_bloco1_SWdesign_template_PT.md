@@ -86,21 +86,21 @@ O botão `Apply` envia um pedido a `POST /api-gateway/projects/:user/:project/pr
 
 | **Passo** | **Origem → Destino** | **Mensagem / endpoint / fila** | **Evidência** |
 |-----------|----------------------|--------------------------------|---------------|
-| Carregamento do vídeo | Browser → `apiGateway` → `projects` → `imageStorageService` → SeaweedFS | `POST /api-gateway/projects/:owner/:project/video` (multipart/form-data) | `EV-04`, `projects/routes/projects.js` |
-| Definição do pipeline | Browser → `apiGateway` → `projects` | `POST /api-gateway/projects/:user/:project/tool` para adicionar e `POST …/reorder` para reordenar | `EV-04`, `projects/controllers/project.js` |
-| *Apply* | Browser → `apiGateway` → `projects` → RabbitMQ | `POST /api-gateway/projects/:user/:project/process` → publicação na `video_queue` (1 msg/vídeo com pipeline integral) | `EV-01`, `EV-04`, `projects/utils/processBatch.js` |
-| Progresso | `video_tool` → `project_queue` → `projects` → `ws_queue` → `wsGateway` → Browser | Eventos `video-progress` tipados com percentagem e token de execução | `EV-03`, `EV-06`, `Tools/video/video.py` |
-| Resultado | `video_tool` → RabbitMQ (`project_queue`) → `projects` → MongoDB (`Result`) e `ws_queue` | Mensagem de sucesso na `project_queue`, ack manual, commit de lote e notificação `process-update` | `EV-01`, `EV-06`, `projects/utils/processBatch.js` |
+| Carregamento do vídeo | Browser → `apiGateway` → `projects` → `imageStorageService` → SeaweedFS | `POST /api-gateway/projects/:owner/:project/video` (multipart/form-data) | `EV-03`, `projects/routes/projects.js` |
+| Definição do pipeline | Browser → `apiGateway` → `projects` | `POST /api-gateway/projects/:user/:project/tool` para adicionar e `POST …/reorder` para reordenar | `EV-03`, `projects/controllers/project.js` |
+| *Apply* | Browser → `apiGateway` → `projects` → RabbitMQ | `POST /api-gateway/projects/:user/:project/process` → publicação na `video_queue` (1 msg/vídeo com pipeline integral) | `EV-04`, `EV-03`, `projects/utils/processBatch.js` |
+| Progresso | `video_tool` → `project_queue` → `projects` → `ws_queue` → `wsGateway` → Browser | Eventos `video-progress` tipados com percentagem e token de execução | `EV-05`, `EV-06`, `Tools/video/video.py` |
+| Resultado | `video_tool` → RabbitMQ (`project_queue`) → `projects` → MongoDB (`Result`) e `ws_queue` | Mensagem de sucesso na `project_queue`, ack manual, commit de lote e notificação `process-update` | `EV-04`, `EV-06`, `projects/utils/processBatch.js` |
 
 ### 1.4 Onde e porquê o sistema bifurca entre imagem e vídeo
 
 | **Ponto de bifurcação** | **Caminho de imagens** | **Caminho de vídeo** | **Evidência** | **Porquê** (facto ou hipótese) |
 |-------------------------|------------------------|----------------------|---------------|--------------------------------|
-| **Validação e Upload** | `POST /:user/:project/img` (validação de formato JPEG/PNG) | `POST /:user/:project/video` (validação de contentor, codec de vídeo, resolução, duração e limites free/premium via ffprobe) | `EV-04`, `projects/utils/video.js:14-80` | **Facto:** Conteúdos de vídeo têm restrições rígidas de compatibilidade e exigem validação de streams áudio/vídeo ausentes em imagens estáticas. |
-| **Despacho no Orquestrador** | Despacho passo-a-passo: 1 mensagem por cada par (imagem, ferramenta) enviada para `<tool>_queue` | Despacho em bloco: 1 mensagem por vídeo contendo todo o pipeline enviada para a `video_queue` | `EV-04`, `projects/routes/projects.js:1564-1671` | **Facto:** Evitar re-codificações e descodificações repetidas de vídeo por ferramenta, que causariam sobrecarga incomportável de I/O e tempo de CPU. |
-| **Execução dos Workers** | Microsserviços PIL/IA independentes e especializados (16 contentores dedicados) | Serviço `video_tool` que executa o pipeline completo, com uma réplica por omissão | `EV-01`, `EV-02`, `docker-compose.yaml:255-260` | **Facto:** Os efeitos de fotograma contíguos partilham uma passagem. A legendagem pode introduzir etapas adicionais. |
-| **Confirmação AMQP (*Ack*)** | Confirmação automática imediata na receção (`auto_ack=True`) em `Tools/utils/rabbit_mq.py:40` | Confirmação manual explícita (`ack`) apenas no final do processamento com sucesso ou falha tratada | `EV-01`, `EV-07`, `Tools/video/video.py:170` | **Facto:** Vídeos são computacionalmente pesados; se o worker falhar a meio, a mensagem não pode ser confirmada antes de tempo. |
-| **Interface / Frontend** | Filtros de IA (remoção de fundo, upgrade, etc.) e exportação PDF ativos | Ferramentas de IA desativadas; adição de ferramentas vídeo (trim, speed, legendas); sem exportação PDF | `EV-05`, `frontend/app/dashboard/[pid]/page.tsx` | **Facto:** Algoritmos de IA de imagem atuais não suportam vídeo no backend do sistema e vídeo não é convertível para formato PDF. |
+| **Validação e Upload** | `POST /:user/:project/img` (validação de formato JPEG/PNG) | `POST /:user/:project/video` (validação de contentor, codec de vídeo, resolução, duração e limites free/premium via ffprobe) | `EV-03`, `projects/utils/video.js:14-80` | **Facto:** Conteúdos de vídeo têm restrições rígidas de compatibilidade e exigem validação de streams áudio/vídeo ausentes em imagens estáticas. |
+| **Despacho no Orquestrador** | Despacho passo-a-passo: 1 mensagem por cada par (imagem, ferramenta) enviada para `<tool>_queue` | Despacho em bloco: 1 mensagem por vídeo contendo todo o pipeline enviada para a `video_queue` | `EV-03`, `projects/routes/projects.js:1564-1671` | **Facto:** Evitar re-codificações e descodificações repetidas de vídeo por ferramenta, que causariam sobrecarga incomportável de I/O e tempo de CPU. |
+| **Execução dos Workers** | Microsserviços PIL/IA independentes e especializados (16 contentores dedicados) | Serviço `video_tool` que executa o pipeline completo, com uma réplica por omissão | `EV-04`, `EV-08`, `docker-compose.yaml:255-260` | **Facto:** Os efeitos de fotograma contíguos partilham uma passagem. A legendagem pode introduzir etapas adicionais. |
+| **Confirmação AMQP (*Ack*)** | Confirmação automática imediata na receção (`auto_ack=True`) em `Tools/utils/rabbit_mq.py:40` | Confirmação manual explícita (`ack`) apenas no final do processamento com sucesso ou falha tratada | `EV-04`, `EV-09`, `Tools/video/video.py:170` | **Facto:** Vídeos são computacionalmente pesados; se o worker falhar a meio, a mensagem não pode ser confirmada antes de tempo. |
+| **Interface / Frontend** | Filtros de IA (remoção de fundo, upgrade, etc.) e exportação PDF ativos | Ferramentas de IA desativadas; adição de ferramentas vídeo (trim, speed, legendas); sem exportação PDF | `EV-10`, `frontend/app/dashboard/[pid]/page.tsx` | **Facto:** Algoritmos de IA de imagem atuais não suportam vídeo no backend do sistema e vídeo não é convertível para formato PDF. |
 
 ---
 
@@ -119,18 +119,18 @@ O botão `Apply` envia um pedido a `POST /api-gateway/projects/:user/:project/pr
 
 | **Decisão global** | **Evidência** | **Efeito no vídeo** |
 |--------------------|---------------|---------------------|
-| Orquestração centralizada baseada em estados (`projects`) | `EV-04`, `projects/routes/projects.js` | O orquestrador tem de manter o ciclo de vida completo do vídeo, controlar quotas e transições, forçando o tratamento diferenciado de vídeo face a imagens. |
-| Intercâmbio de dados através de volume partilhado (`image_data`) | `EV-01`, `docker-compose.yaml:26-30` | Impõe que workers de vídeo corram no mesmo nó físico ou partilhem o sistema de ficheiros local montado, condicionando a escalabilidade distribuída multi-host. |
-| Mensageria assíncrona desacoplada via RabbitMQ | `EV-01`, `EV-04`, `rabbitMQ/definitions.json` | Todo o progresso, cancelamento e confirmação dependem da robustez das filas `video_queue` e `project_queue`. |
+| Orquestração centralizada baseada em estados (`projects`) | `EV-03`, `projects/routes/projects.js` | O orquestrador tem de manter o ciclo de vida completo do vídeo, controlar quotas e transições, forçando o tratamento diferenciado de vídeo face a imagens. |
+| Intercâmbio de dados através de volume partilhado (`image_data`) | `EV-04`, `docker-compose.yaml:26-30` | Impõe que workers de vídeo corram no mesmo nó físico ou partilhem o sistema de ficheiros local montado, condicionando a escalabilidade distribuída multi-host. |
+| Mensageria assíncrona desacoplada via RabbitMQ | `EV-04`, `EV-03`, `rabbitMQ/definitions.json` | Todo o progresso, cancelamento e confirmação dependem da robustez das filas `video_queue` e `project_queue`. |
 
 **Benefícios e desafios do padrão global**
 
 | **Tipo** | **Descrição** | **Característica / subcaracterística (ISO/IEC 25010)** | **Facto / hipótese** |
 |----------|---------------|--------------------------------------------------------|----------------------|
-| Benefício | Desacoplamento de responsabilidades e escalabilidade independente dos módulos de negócio | Manutenibilidade / Modularidade | Facto (`EV-04`) |
-| Benefício | Tolerância a bloqueios no frontend através de processamento em segundo plano orientado a eventos | Eficiência de desempenho / Comportamento temporal | Facto (`EV-04`) |
+| Benefício | Desacoplamento de responsabilidades e escalabilidade independente dos módulos de negócio | Manutenibilidade / Modularidade | Facto (`EV-03`) |
+| Benefício | Tolerância a bloqueios no frontend através de processamento em segundo plano orientado a eventos | Eficiência de desempenho / Comportamento temporal | Facto (`EV-03`) |
 | Desafio | Complexidade de coordenação de transações distribuídas e consistência de dados entre MongoDB, S3 e AMQP | Fiabilidade / Recuperabilidade | Facto (`EV-06`, `fase-2-auditoria.md`) |
-| Desafio | Ponto único de falha e sobrecarga de I/O no volume de armazenamento partilhado | Eficiência de desempenho / Utilização de recursos | Hipótese (`H-04`) |
+| Desafio | Ponto único de falha e sobrecarga de I/O no volume de armazenamento partilhado | Eficiência de desempenho / Utilização de recursos | Hipótese (`H-02`) |
 
 ### 2.2 Padrão do processamento de vídeo
 
@@ -144,10 +144,10 @@ O botão `Apply` envia um pedido a `POST /api-gateway/projects/:user/:project/pr
 
 | **Tipo** | **Descrição** | **Característica / subcaracterística (ISO/IEC 25010)** | **Facto / hipótese** |
 |----------|---------------|--------------------------------------------------------|----------------------|
-| Benefício | Elevada eficiência de processamento por evitar múltiplas descodificações e codificações sequenciais de ficheiros de vídeo pesados | Eficiência de desempenho / Utilização de recursos e Comportamento temporal | Facto (`EV-01`, `Tools/video/effects.py`) |
-| Benefício | Preservação da fidelidade do stream de áudio e mitigação da degradação cumulativa de compressão por perda (lossy codecs) | Adequação funcional / Integridade | Facto (`EV-01`, `Tools/video/video_processor.py`) |
-| Desafio | Efeito de bloqueio (*Head-of-Line Blocking*): uma tarefa longa e pesada (como transcrição de legendas em CPU) bloqueia o único consumidor de vídeo para todos os outros utilizadores | Eficiência de desempenho / Capacidade | Facto (`EV-01`, `EV-03`, baseline oficial `b_wait_seconds = 61,727 s`) |
-| Desafio | Baixa modularidade: falhas em bibliotecas auxiliares (ex.: Faster-Whisper ou Pillow) podem deitar abaixo todo o worker de vídeo | Fiabilidade / Tolerância a falhas | Facto (`EV-01`, `EV-03`) |
+| Benefício | Elevada eficiência de processamento por evitar múltiplas descodificações e codificações sequenciais de ficheiros de vídeo pesados | Eficiência de desempenho / Utilização de recursos e Comportamento temporal | Facto (`EV-04`, `Tools/video/effects.py`) |
+| Benefício | Preservação da fidelidade do stream de áudio e mitigação da degradação cumulativa de compressão por perda (lossy codecs) | Adequação funcional / Integridade | Facto (`EV-04`, `Tools/video/video_processor.py`) |
+| Desafio | Efeito de bloqueio (*Head-of-Line Blocking*): uma tarefa longa e pesada (como transcrição de legendas em CPU) bloqueia o único consumidor de vídeo para todos os outros utilizadores | Eficiência de desempenho / Capacidade | Facto (`EV-04`, `EV-05`, baseline oficial `b_wait_seconds = 61,727 s`) |
+| Desafio | Baixa modularidade: falhas em bibliotecas auxiliares (ex.: Faster-Whisper ou Pillow) podem deitar abaixo todo o worker de vídeo | Fiabilidade / Tolerância a falhas | Facto (`EV-04`, `EV-05`) |
 
 ### 2.3 Relação entre o padrão global e o padrão do vídeo
 
@@ -155,10 +155,10 @@ O botão `Apply` envia um pedido a `POST /api-gateway/projects/:user/:project/pr
 
 | **Aspeto** | **O que o padrão global prescreve** | **O que o vídeo faz** | **Segue / afasta-se** | **Consequência** | **Evidência** |
 |------------|-------------------------------------|-----------------------|-----------------------|------------------|---------------|
-| **Decomposição Funcional** | Um microsserviço independente por ferramenta | Todas as ferramentas de vídeo concentradas no contentor `video_tool` | Afasta-se | Reduz I/O de rede e recodificações, mas cria um serviço monolítico pesado | `EV-01`, `EV-02` |
-| **Granularidade de Despacho** | Uma mensagem por filtro/passo do pipeline | Uma mensagem única contendo todo o array de operações do pipeline | Afasta-se | O orquestrador perde visibilidade direta dos passos intermediários, dependendo de eventos de progresso | `EV-04`, `projects/utils/processBatch.js` |
-| **Comunicação Assíncrona** | Mensageria assíncrona desacoplada via filas RabbitMQ | Consumo de fila assíncrono via `video_queue` | Segue | Mantém alinhamento com a arquitetura assíncrona orientada a eventos global | `EV-01`, `rabbitMQ/definitions.json` |
-| **Armazenamento de Ficheiros** | Volume partilhado `image_data` e S3 | Utiliza `image_data` para I/O e leitura de ficheiros de entrada e saída | Segue | Mantém compatibilidade total com o modelo de persistência perimetral | `EV-01`, `docker-compose.yaml` |
+| **Decomposição Funcional** | Um microsserviço independente por ferramenta | Todas as ferramentas de vídeo concentradas no contentor `video_tool` | Afasta-se | Reduz I/O de rede e recodificações, mas cria um serviço monolítico pesado | `EV-04`, `EV-08` |
+| **Granularidade de Despacho** | Uma mensagem por filtro/passo do pipeline | Uma mensagem única contendo todo o array de operações do pipeline | Afasta-se | O orquestrador perde visibilidade direta dos passos intermediários, dependendo de eventos de progresso | `EV-03`, `projects/utils/processBatch.js` |
+| **Comunicação Assíncrona** | Mensageria assíncrona desacoplada via filas RabbitMQ | Consumo de fila assíncrono via `video_queue` | Segue | Mantém alinhamento com a arquitetura assíncrona orientada a eventos global | `EV-04`, `rabbitMQ/definitions.json` |
+| **Armazenamento de Ficheiros** | Volume partilhado `image_data` e S3 | Utiliza `image_data` para I/O e leitura de ficheiros de entrada e saída | Segue | Mantém compatibilidade total com o modelo de persistência perimetral | `EV-04`, `docker-compose.yaml` |
 
 **O que o vídeo herda do padrão global / que restrições este lhe impõe / que fragilidades resultam do desvio** *(3 a 6 linhas)*:
 
@@ -168,8 +168,8 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 
 | **Funcionalidade** | **Como se integra no padrão do vídeo** | **Impacto nos atributos de qualidade** | **Evidência** |
 |--------------------|----------------------------------------|-----------------------------------------|---------------|
-| **Legendagem automática** (`subtitles`) | Integrada como etapa síncrona dentro de `video_tool`, executando Faster-Whisper CPU com quantização int8 para extrair texto e queimar legendas com `ffmpeg` | Degradação severa do comportamento temporal e capacidade: ocupa o worker a 100% de CPU durante dezenas de segundos, bloqueando toda a `video_queue` | `EV-03`, `Tools/video/subtitles.py` |
-| **Extração de fotogramas** (`extract_frames`) | Integrada no `video_tool` como passo terminal obrigatório, gerando um conjunto de imagens PNG/JPEG ou folha de contacto | Aumenta a pressão no volume partilhado de ficheiros e no MongoDB, exigindo ao orquestrador converter um resultado de vídeo em múltiplos registos de imagem | `EV-01`, `Tools/video/frame_extraction.py`, `AGENTS.md` |
+| **Legendagem automática** (`subtitles`) | Integrada como etapa síncrona dentro de `video_tool`, executando Faster-Whisper CPU com quantização int8 para extrair texto e queimar legendas com `ffmpeg` | Degradação severa do comportamento temporal e capacidade: ocupa o worker a 100% de CPU durante dezenas de segundos, bloqueando toda a `video_queue` | `EV-05`, `Tools/video/subtitles.py` |
+| **Extração de fotogramas** (`extract_frames`) | Integrada no `video_tool` como passo terminal obrigatório, gerando um conjunto de imagens PNG/JPEG ou folha de contacto | Aumenta a pressão no volume partilhado de ficheiros e no MongoDB, exigindo ao orquestrador converter um resultado de vídeo em múltiplos registos de imagem | `EV-04`, `Tools/video/frame_extraction.py`, `AGENTS.md` |
 
 ### 2.5 Suporte aos requisitos não funcionais existentes e regras sem requisito explícito
 
@@ -177,13 +177,13 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 
 | **Requisito / regra** (ID, ou «sem requisito explícito») | **Padrão global suporta?** | **Padrão do vídeo suporta?** | **Porquê** | **Evidência** |
 |----------------------------------------------------------|----------------------------|------------------------------|------------|---------------|
-| `REQ-VID-EDIT-010` (Desempenho da edição de vídeo) | Parcial | Sim | O padrão do vídeo otimiza o tempo ao fazer decode/encode numa única passagem | `EV-01`, `Tools/video/video_processor.py` |
-| `REQ-VID-EDIT-011` (Capacidade de processamento concorrente) | Sim | Não (na base) | A base corre apenas 1 réplica de `video_tool` com `prefetch_count=1`, serializando pedidos | `EV-01`, `EV-02`, baseline oficial |
-| `REQ-VID-EDIT-002` (Sessão não bloqueante durante edição) | Sim | Não (na base) | A interface base bloqueava o dashboard com modal sobreposto durante o processamento ativo | `EV-05`, `frontend/app/dashboard/[pid]/page.tsx` |
-| `REQ-VID-FAIL-004` (Não perder trabalho em falha) | Parcial | Sim | O worker de vídeo faz ack manual apenas no fim e gera ficheiro `.part` atómico | `EV-01`, `Tools/video/video.py:169` |
-| `REQ-VID-STATUS-003` (Acompanhamento em tempo real) | Sim | Parcial | Envia percentagem para WebSocket, mas na base a página bloqueava com modal e perdia estado em reload | `EV-05`, `frontend/app/dashboard/[pid]/page.tsx` |
-| Regra: Extração de fotogramas é terminal e única (sem req. explícito) | N/A | Sim | Validado no orquestrador e garantido pela lógica do pipeline do worker de vídeo | `EV-04`, `AGENTS.md`, `projects/utils/processBatch.js` |
-| Regra: `trim` e `speed` aplicam-se a 1 vídeo e efeitos a todos (sem req. explícito) | Parcial | Sim | O orquestrador discrimina `params.imgId` nos filtros de vídeo | `EV-04`, `AGENTS.md` |
+| `REQ-VID-EDIT-010` (Desempenho da edição de vídeo) | Parcial | Sim | O padrão do vídeo otimiza o tempo ao fazer decode/encode numa única passagem | `EV-04`, `Tools/video/video_processor.py` |
+| `REQ-VID-EDIT-011` (Capacidade de processamento concorrente) | Sim | Não (na base) | A base corre apenas 1 réplica de `video_tool` com `prefetch_count=1`, serializando pedidos | `EV-04`, `EV-08`, baseline oficial |
+| `REQ-VID-EDIT-002` (Sessão não bloqueante durante edição) | Sim | Não (na base) | A interface base bloqueava o dashboard com modal sobreposto durante o processamento ativo | `EV-10`, `frontend/app/dashboard/[pid]/page.tsx` |
+| `REQ-VID-FAIL-004` (Não perder trabalho em falha) | Parcial | Sim | O worker de vídeo faz ack manual apenas no fim e gera ficheiro `.part` atómico | `EV-04`, `Tools/video/video.py:169` |
+| `REQ-VID-STATUS-003` (Acompanhamento em tempo real) | Sim | Parcial | Envia percentagem para WebSocket, mas na base a página bloqueava com modal e perdia estado em reload | `EV-10`, `frontend/app/dashboard/[pid]/page.tsx` |
+| Regra: Extração de fotogramas é terminal e única (sem req. explícito) | N/A | Sim | Validado no orquestrador e garantido pela lógica do pipeline do worker de vídeo | `EV-03`, `AGENTS.md`, `projects/utils/processBatch.js` |
+| Regra: `trim` e `speed` aplicam-se a 1 vídeo e efeitos a todos (sem req. explícito) | Parcial | Sim | O orquestrador discrimina `params.imgId` nos filtros de vídeo | `EV-03`, `AGENTS.md` |
 
 ### 2.6 Registo de evidências e hipóteses
 
@@ -191,23 +191,23 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 
 | **ID** | **Tipo** | **Localização** (ficheiro e linhas, commit, comando) | **O que mostra** |
 |--------|----------|------------------------------------------------------|------------------|
-| EV-01 | Código / Configuração | `Tools/video/video.py:54` (`prefetch_count=1`), `Tools/video/video.py:140` e `Tools/video/video.py:170` (`basic_ack`), `Tools/video/video.py:174` (`auto_ack=False`) — linhas do commit de base `0523102` | Configura `prefetch_count=1`, consumidor síncrono bloqueante e confirmação manual explícita (`basic_ack`) apenas após processamento bem-sucedido ou erro tratado. |
-| EV-02 | Configuração | `docker-compose.yaml:255-260` | Serviço `video_tool` configurado com uma única réplica por omissão, sem política de escalabilidade automática. |
-| EV-03 | Código | `Tools/video/subtitles.py:15-21, 60-63` | Execução síncrona do Faster-Whisper em CPU (int8) para deteção de idioma e transcrição, bloqueando o worker durante a totalidade do processamento. |
-| EV-04 | Código | `projects/routes/projects.js:1564-1671` (despacho do vídeo) e `projects/utils/project_msg.js:3-23` (mapa de filas) | Despacho bifurcado: imagens processadas passo-a-passo através de mensagens individuais para `<tool>_queue`; vídeos despachados com pipeline completo para `video_queue`. |
-| EV-05 | Código | `frontend/app/dashboard/[pid]/page.tsx` na tag `phase2-base` | Estado de progresso mantido exclusivamente na memória volátil do componente React e sobreposição de modal (`overlay`) que bloqueia a interação durante o lote. |
+| EV-01 | Configuração / Código | `apiGateway/routes/projects.js:18`, `apiGateway/routes/users.js:10`, `apiGateway/routes/subscriptions.js:13`, `projects/routes/projects.js:80` e `projects/utils/httpsAgent.js:8` | Serviços internos utilizam certificados TLS autoassinados com bypass de validação (`rejectUnauthorized: false`). |
+| EV-02 | Código | `projects/utils/rabbit_mq.js:11-30` | Abertura e fecho de ligações e canais AMQP individuais por mensagem de despacho com encerramento forçado por `setTimeout(500)`. |
+| EV-03 | Código | `projects/routes/projects.js:1564-1671` (despacho do vídeo) e `projects/utils/project_msg.js:3-23` (mapa de filas) | Despacho bifurcado: imagens processadas passo-a-passo através de mensagens individuais para `<tool>_queue`; vídeos despachados com pipeline completo para `video_queue`. |
+| EV-04 | Código / Configuração | `Tools/video/video.py:54` (`prefetch_count=1`), `Tools/video/video.py:140` e `Tools/video/video.py:170` (`basic_ack`), `Tools/video/video.py:174` (`auto_ack=False`) — linhas do commit de base `0523102` | Configura `prefetch_count=1`, consumidor síncrono bloqueante e confirmação manual explícita (`basic_ack`) apenas após processamento bem-sucedido ou erro tratado. |
+| EV-05 | Código | `Tools/video/subtitles.py:15-21, 60-63` | Execução síncrona do Faster-Whisper em CPU (int8) para deteção de idioma e transcrição, bloqueando o worker durante a totalidade do processamento. |
 | EV-06 | Código | `projects/models/project.js:35-65` e `projects/utils/processingRun.js` | Definição do subdocumento `processingRun` para persistir o snapshot autorizado de execução, token, estado e progresso monotónico no MongoDB. |
-| EV-07 | Código | `Tools/utils/rabbit_mq.py:28-35` | Ferramentas de imagem ativam `auto_ack=True` na subscrição da fila, arriscando perda de trabalhos em caso de falha a meio da execução. |
-| EV-08 | Código | `projects/utils/rabbit_mq.js:11-30` | Abertura e fecho de ligações e canais AMQP individuais por mensagem de despacho com encerramento forçado por `setTimeout(500)`. |
-| EV-09 | Configuração / Código | `apiGateway/routes/projects.js:18`, `apiGateway/routes/users.js:10`, `apiGateway/routes/subscriptions.js:13`, `projects/routes/projects.js:80` e `projects/utils/httpsAgent.js:8` | Serviços internos utilizam certificados TLS autoassinados com bypass de validação (`rejectUnauthorized: false`). |
-| EV-10 | Código | `apiGateway/routes/projects.js` e `projects/routes/projects.js` | Endpoint autenticado `GET /projects/:owner/:project/processing-status` expondo a projeção segura do snapshot de processamento. |
+| EV-07 | Código | `apiGateway/routes/projects.js` e `projects/routes/projects.js` | Endpoint autenticado `GET /projects/:owner/:project/processing-status` expondo a projeção segura do snapshot de processamento. |
+| EV-08 | Configuração | `docker-compose.yaml:255-260` | Serviço `video_tool` configurado com uma única réplica por omissão, sem política de escalabilidade automática. |
+| EV-09 | Código | `Tools/utils/rabbit_mq.py:28-35` | Ferramentas de imagem ativam `auto_ack=True` na subscrição da fila, arriscando perda de trabalhos em caso de falha a meio da execução. |
+| EV-10 | Código | `frontend/app/dashboard/[pid]/page.tsx` na tag `phase2-base` | Estado de progresso mantido exclusivamente na memória volátil do componente React e sobreposição de modal (`overlay`) que bloqueia a interação durante o lote. |
 
 | **ID** | **Hipótese** | **Como confirmar ou refutar** | **Estado** |
 |--------|--------------|-------------------------------|------------|
-| H-01 | A execução de duas réplicas de `video_tool` sob a mesma fila `video_queue` reduzirá a média do tempo de espera de B (`b_wait_seconds`) para 15 segundos ou menos. | Executar o cenário automatizado A/B com uma e duas réplicas. | Confirmada no cenário medido: média de 0,113 s nos três ensaios finais. [M-02](../sessoes/2026-11-22-fecho-fase-2.md#final-capacity-and-same-instrument-baseline) |
-| H-02 | A persistência do snapshot e a remoção do overlay permitirão 12/12 ações e recuperação após recarregamento e navegação no cenário A/B. | Executar três ensaios no Chromium com utilizador premium e projetos novos durante a legendagem de A. | Confirmada no cenário medido: 12/12 ações, 3/3 nos dois percursos e zero conclusões prematuras. [M-03](../sessoes/2026-11-22-fecho-fase-2.md#measurement-configuration-and-usability) |
-| H-03 | Finalizações concorrentes de trabalhos do mesmo lote por réplicas distintas podem gerar condições de corrida e perda de resultados no orquestrador `projects`. | Executar testes de concorrência com finalizações simultâneas de vídeos. | Reproduzida antes da correção. A [P-02](../sessoes/2026-11-22-p02.md) confirmou dois resultados preservados após a correção. |
-| H-04 | O volume partilhado pode tornar-se um gargalo de I/O ou ponto de falha. | Medir latência e utilização do volume sob carga e observar o efeito de uma indisponibilidade controlada. | por confirmar |
+| H-01 | Finalizações concorrentes de trabalhos do mesmo lote por réplicas distintas podem gerar condições de corrida e perda de resultados no orquestrador `projects`. | Executar testes de concorrência com finalizações simultâneas de vídeos. | Reproduzida antes da correção. A [P-02](../sessoes/2026-11-22-p02.md) confirmou dois resultados preservados após a correção. |
+| H-02 | O volume partilhado pode tornar-se um gargalo de I/O ou ponto de falha. | Medir latência e utilização do volume sob carga e observar o efeito de uma indisponibilidade controlada. | por confirmar |
+| H-03 | A execução de duas réplicas de `video_tool` sob a mesma fila `video_queue` reduzirá a média do tempo de espera de B (`b_wait_seconds`) para 15 segundos ou menos. | Executar o cenário automatizado A/B com uma e duas réplicas. | Confirmada no cenário medido: média de 0,113 s nos três ensaios finais. [M-02](../sessoes/2026-11-22-fecho-fase-2.md#final-capacity-and-same-instrument-baseline) |
+| H-04 | A persistência do snapshot e a remoção do overlay permitirão 12/12 ações e recuperação após recarregamento e navegação no cenário A/B. | Executar três ensaios no Chromium com utilizador premium e projetos novos durante a legendagem de A. | Confirmada no cenário medido: 12/12 ações, 3/3 nos dois percursos e zero conclusões prematuras. [M-03](../sessoes/2026-11-22-fecho-fase-2.md#measurement-configuration-and-usability) |
 
 ---
 
@@ -251,7 +251,7 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 
 | | |
 |---|---|
-| **Coerência com o padrão global** | Mantém os microsserviços assíncronos e o pipeline completo por vídeo. Altera o encaminhamento no orquestrador e a topologia RabbitMQ (`EV-01`, `EV-04`). |
+| **Coerência com o padrão global** | Mantém os microsserviços assíncronos e o pipeline completo por vídeo. Altera o encaminhamento no orquestrador e a topologia RabbitMQ (`EV-04`, `EV-03`). |
 | **Efeito nos atributos de qualidade** | Consumidores dedicados podem reduzir a interferência entre tipos de carga. O ganho depende da distribuição da procura e dos recursos disponíveis. |
 | **Vantagens potenciais** | Capacidade reservada para efeitos rápidos e configuração de escala por tipo de carga. |
 | **Desvantagens ou riscos** | Filas com procura desigual podem deixar capacidade ociosa. A classificação de pipelines mistos acrescenta caminhos a validar. |
@@ -264,12 +264,12 @@ O processamento de vídeo herda do padrão global a infraestrutura de transporte
 | **Atributo de qualidade (ISO/IEC 25010)** | **Padrão global atual (referência)** | **Padrão atual do vídeo** | **ALT-1** | **ALT-2 (projeção)** | **ALT-3 (projeção)** |
 |-------------------------------------------|--------------------------------------|---------------------------|-----------|-----------|-----------|
 | Relação com o padrão global | — | Afasta-se (Pipeline Monolith) | Mantém o padrão global e do vídeo | Aproxima o vídeo do padrão distribuído das imagens | Mantém o padrão global e altera o encaminhamento de vídeo |
-| Eficiência de desempenho — comportamento temporal | Médio — depende do encadeamento passo a passo (`EV-04`) | Baixo — bloqueado por tarefas longas de legendagem (`EV-01`, `EV-03`) | Alto no cenário A/B — dois consumidores podem avançar em paralelo (`H-01`) | Baixo — recodificações adicionais | Alto para tarefas rápidas quando há capacidade reservada |
-| Eficiência de desempenho — capacidade / elasticidade | Alto — ferramentas de imagem escalam individualmente (`EV-07`) | Baixo — réplica única, um vídeo de cada vez (`EV-02`) | Duas réplicas validadas em P-01. A relação com escalas superiores ficou por medir. | Médio — escala por ferramenta, com possível saturação de CPU e disco | Médio — escala por fila, com risco de capacidade ociosa |
-| Fiabilidade — tolerância a falhas / recuperabilidade | Média — ferramentas de imagem usam auto-ack (`EV-07`) | Ack manual e limpeza de ficheiros `.part` (`EV-01`) | Preserva ack manual. A P-02 verificou a proteção do fecho simultâneo. | Isola falhas por ferramenta e acrescenta pontos de falha | Preserva ack manual se mantiver o protocolo. Acrescenta dependências de encaminhamento. |
-| Manutenibilidade — modularidade / modificabilidade | Alta — serviços independentes (`EV-04`) | Média — o worker concentra as operações de vídeo (`EV-01`) | Média — mantém a estrutura do worker | Alta — isola operações em serviços separados | Média — reutiliza o worker e acrescenta regras de classificação |
-| Segurança | Validação no gateway e dívida de TLS interno (`EV-09`) | Isolamento em contentores Docker | Mantém as mesmas interfaces | Requer controlo de acessos nos serviços e filas adicionais | Requer controlo de acessos às novas filas |
-| Usabilidade — operabilidade | Operações desacopladas no backend | Bloqueio de UI na base (`EV-05`) | A recuperação na UI resulta do painel e do snapshot (`H-02`) | Depende do frontend. A maior demora prevista pode afetar a experiência. | Pode reduzir a espera das tarefas rápidas. A recuperação depende do frontend. |
+| Eficiência de desempenho — comportamento temporal | Médio — depende do encadeamento passo a passo (`EV-03`) | Baixo — bloqueado por tarefas longas de legendagem (`EV-04`, `EV-05`) | Alto no cenário A/B — dois consumidores podem avançar em paralelo (`H-03`) | Baixo — recodificações adicionais | Alto para tarefas rápidas quando há capacidade reservada |
+| Eficiência de desempenho — capacidade / elasticidade | Alto — ferramentas de imagem escalam individualmente (`EV-09`) | Baixo — réplica única, um vídeo de cada vez (`EV-08`) | Duas réplicas validadas em P-01. A relação com escalas superiores ficou por medir. | Médio — escala por ferramenta, com possível saturação de CPU e disco | Médio — escala por fila, com risco de capacidade ociosa |
+| Fiabilidade — tolerância a falhas / recuperabilidade | Média — ferramentas de imagem usam auto-ack (`EV-09`) | Ack manual e limpeza de ficheiros `.part` (`EV-04`) | Preserva ack manual. A P-02 verificou a proteção do fecho simultâneo. | Isola falhas por ferramenta e acrescenta pontos de falha | Preserva ack manual se mantiver o protocolo. Acrescenta dependências de encaminhamento. |
+| Manutenibilidade — modularidade / modificabilidade | Alta — serviços independentes (`EV-03`) | Média — o worker concentra as operações de vídeo (`EV-04`) | Média — mantém a estrutura do worker | Alta — isola operações em serviços separados | Média — reutiliza o worker e acrescenta regras de classificação |
+| Segurança | Validação no gateway e dívida de TLS interno (`EV-01`) | Isolamento em contentores Docker | Mantém as mesmas interfaces | Requer controlo de acessos nos serviços e filas adicionais | Requer controlo de acessos às novas filas |
+| Usabilidade — operabilidade | Operações desacopladas no backend | Bloqueio de UI na base (`EV-10`) | A recuperação na UI resulta do painel e do snapshot (`H-04`) | Depende do frontend. A maior demora prevista pode afetar a experiência. | Pode reduzir a espera das tarefas rápidas. A recuperação depende do frontend. |
 
 ### 3.4 Adequação do padrão atual
 

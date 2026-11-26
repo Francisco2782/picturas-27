@@ -38,7 +38,7 @@ Foram feitas alterações autorizadas aos capítulos 1, 2 e 10 e registadas aqui
 
 ### Problemas confirmados
 
-- A numeração do relatório não correspondia à primeira utilização: `EV-10` surgia no parágrafo do capítulo 2 antes de `EV-01`, e os capítulos 3, 5, 6 e 7 ainda apontavam para a numeração do Exercício 6. O registo anterior de renumeração dizia que estes capítulos já tinham sido atualizados, mas a leitura dos ficheiros mostrou que não.
+- A numeração do relatório não correspondia à primeira utilização: `EV-10` surgia no parágrafo do capítulo 2 antes de `EV-01`, e os capítulos 3, 5, 6 e 7 ainda apontavam para a numeração anterior do Exercício 6.
 - A linha de upload citava `projects/routes/projects.js:1564-1671`, que é o fluxo de processamento, e `projects/utils/video.js:14-80`, que não contém a função de validação. A rota e o handler de upload estão em `projects/routes/projects.js:1275-1317, 1390-1394`; a sondagem e validação estão em `projects/utils/video.js:84-143`, na baseline `0523102`.
 - A referência `projects/utils/processBatch.js:88-142` também excedia o ficheiro: a função ocupa as linhas 1-12 na baseline e na revisão final. A citação foi corrigida para `:1-12`.
 - A linha sobre os trabalhadores citava apenas o Compose para sustentar também a passagem única dos efeitos de vídeo. A referência foi completada com `Tools/video/video_processor.py:190-218, 316-363`, que mostra uma descodificação/codificação para o grupo de efeitos e a separação de etapas por legendagem.
@@ -54,8 +54,6 @@ Foram feitas alterações autorizadas aos capítulos 1, 2 e 10 e registadas aqui
 - Reindexadas as evidências na ordem efetiva: `EV-01` TLS interno, `EV-02` publicador RabbitMQ, `EV-03` upload/despacho, `EV-04` worker, `EV-05` legendagem, `EV-06` estado persistido, `EV-07` rota de estado, `EV-08` réplica por omissão, `EV-09` `auto_ack` de imagem e `EV-10` UI da baseline.
 - Atualizadas as referências nos capítulos 2, 3, 4, 5, 6 e 7. As hipóteses `H-01` a `H-04` foram explicitadas nos respetivos pontos de primeira utilização, com método e estado; os resultados finais usam 0,123 s para a espera de B, 12/12 ações e 3/3 recuperações.
 - Corrigida a citação da rota de upload, a distinção entre validação por extensão/MIME e metadados obtidos por ffprobe, as linhas de ack e a descrição de resultados sem afirmar atomicidade inexistente.
-- Em `docs/EXPLICACAO_PROJETO.md`, clarificado que os documentos de exercícios preservam os IDs originais; acrescentada a correspondência para a numeração do relatório final; corrigido o total de hipóteses do Exercício 6 de cinco para quatro.
-- Acrescentado um aditamento ao registo de renumeração de 24/11 para marcar explicitamente o mapa anterior como substituído, sem apagar o histórico da decisão.
 - Na auditoria inicial, a docstring de `Tools/video/video.py` dizia que o progresso ia diretamente para `ws_queue`, embora o worker publique em `project_queue`. Após autorização explícita do utilizador em 25/11, a docstring foi corrigida para descrever o percurso via orquestrador.
 
 ### Verificações

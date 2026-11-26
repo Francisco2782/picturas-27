@@ -371,33 +371,14 @@ Na revisão final, as quatro ações de cada ensaio foram realizadas com A ainda
 A equipa elaborou os trabalhos práticos intercalares que servem de alicerce ao relatório final:
 
 1. **Exercício 6 (Bloco 1) — Identificação e Comparação de Padrões Arquiteturais (`docs/exercicios/RAS-exercicio_6_bloco1_SWdesign_template_PT.md`)**:
-   - *O que foi feito:* Mapeou-se a arquitetura de base e as alterações relevantes, catalogando as evidências factuais do código (`EV-01` a `EV-10`) e quatro hipóteses técnicas (`H-01` a `H-04`) na numeração original do exercício. Identificaram-se os padrões existentes: Microsserviços e Arquitetura Orientada a Eventos no padrão global; e Filtros e Condutas (*Pipes and Filters*) combinados com Trabalhador Monolítico no processamento de vídeo. Formularam-se 4 alternativas arquiteturais de evolução (`ALT-1` a `ALT-4`).
-   - *Versão do exercício:* Na numeração original do Exercício 6, os resultados registados confirmam H-01 e H-02 nos cenários da campanha de 22/11.
+   - *O que foi feito:* Mapeou-se a arquitetura de base e as alterações relevantes, catalogando as evidências factuais do código (`EV-01` a `EV-10`) e quatro hipóteses técnicas (`H-01` a `H-04`). Identificaram-se os padrões existentes: Microsserviços e Arquitetura Orientada a Eventos no padrão global; e Filtros e Condutas (*Pipes and Filters*) combinados com Trabalhador Monolítico no processamento de vídeo. Formularam-se 4 alternativas arquiteturais de evolução (`ALT-1` a `ALT-4`).
+   - *Versão do exercício:* Os resultados registados confirmam H-03 e H-04 nos cenários da campanha de 22/11.
 2. **Exercício 6 (Bloco 2) — Cenários de Qualidade e Candidatos a RNF (`docs/exercicios/RAS-exercicio_6_bloco2_SWdesign_template_PT.md`)**:
    - *O que foi feito:* Caracterizaram-se formalmente os cenários de qualidade segundo a norma ISO/IEC 25010:2011: `QS-01` (para o candidato de Capacidade `CAND-1`) e `QS-02` (para o candidato de Usabilidade/Operabilidade `CAND-2`). Criou-se a matriz de compromissos (*trade-offs*) analisando o impacto cruzado das táticas sobre atributos como Fiabilidade, Portabilidade, Modularidade e Custo de Recursos.
    - *Versão do exercício:* A tabela de síntese contém os valores medidos de 22/11. Os resultados da revisão final constam da secção 4.6 deste documento.
 3. **Exercício 7 — Táticas Arquiteturais e Decisões de Design (`docs/exercicios/RAS-exercicio_7_taticas_SWdesign_template_PT.md`)**:
    - *O que foi feito:* Selecionaram-se e justificaram-se as táticas arquiteturais: `TAT-01` (escalação horizontal de réplicas com fila partilhada) para satisfazer `DA-1` (Decisão Arquitetural 1); e `TAT-04` (persistência assíncrona do estado com reconciliação no cliente) para satisfazer `DA-2` (Decisão Arquitetural 2). As táticas que introduziam novas funcionalidades aos utilizadores foram explicitamente rejeitadas para respeitar a diretriz docente de refactoring puro.
    - *Versão do exercício:* O documento referencia as regressões P-02 e U-04 e as medições de 22/11 para as duas decisões.
-
-Os documentos dos exercícios mantêm os seus identificadores originais. O relatório Typst reindexa as mesmas evidências e hipóteses pela ordem da primeira utilização; os números não devem ser comparados sem esta correspondência:
-
-| Tipo | ID original do exercício | ID no relatório final | Assunto |
-| --- | --- | --- | --- |
-| EV | EV-01 | EV-04 | Worker de vídeo: prefetch e confirmação manual |
-| EV | EV-02 | EV-08 | Uma réplica de vídeo por omissão no Compose |
-| EV | EV-03 | EV-05 | Faster-Whisper síncrono em CPU/int8 |
-| EV | EV-04 | EV-03 | Validação de upload e despacho por tipo de media |
-| EV | EV-05 | EV-10 | Estado volátil e modal bloqueante na interface |
-| EV | EV-06 | EV-06 | Snapshot persistente do processamento |
-| EV | EV-07 | EV-09 | `auto_ack=True` nas ferramentas de imagem |
-| EV | EV-08 | EV-02 | Ligação RabbitMQ aberta por publicação |
-| EV | EV-09 | EV-01 | Validação TLS interna desativada |
-| EV | EV-10 | EV-07 | Rota autenticada de estado do processamento |
-| H | H-01 | H-03 | Capacidade: espera de B com uma e duas réplicas |
-| H | H-02 | H-04 | Usabilidade: ações e recuperação do estado |
-| H | H-03 | H-01 | Condições de corrida no fecho do lote |
-| H | H-04 | H-02 | Possível gargalo ou falha do volume partilhado |
 
 ---
 
@@ -453,10 +434,10 @@ Para garantir que o leitor compreende todos os identificadores que surgem no có
 - **DA-1 e DA-2 (Decisões Arquiteturais)**: Decisões de refactoring consolidadas no Exercício 7:
   - `DA-1`: Implementar 2 réplicas de `video_tool` consumindo de `video_queue` com prefetch 1;
   - `DA-2`: Persistir o estado da execução no MongoDB e desacoplar o dashboard através de um painel global partilhado.
-- **EV-01 a EV-10 (Evidências de Arquitetura)**: Evidências do código da arquitetura de base e das alterações da Fase 2, registadas com a numeração original no Exercício 6 Bloco 1. Nessa numeração, `EV-01` identifica o worker de vídeo e `EV-05` a interface com estado volátil e modal bloqueante; o relatório final usa a correspondência acima.
+- **EV-01 a EV-10 (Evidências de Arquitetura)**: Evidências do código da arquitetura de base e das alterações da Fase 2, alinhadas entre os exercícios e o relatório final.
 - **F1 a F9 (Falhas e Defeitos da Auditoria)**: Catálogo dos 9 pontos críticos identificados na auditoria de 21 de novembro (detalhados na secção 4.5).
 - **ffmpeg / ffprobe**: Conjunto de ferramentas e bibliotecas de linha de comando em código aberto líderes de mercado para manipulação, conversão, descodificação e análise de formatos multimédia de áudio e vídeo.
-- **H-01 a H-04 (Hipóteses de Arquitetura)**: Quatro suposições técnicas formuladas no Exercício 6 Bloco 1, na numeração original, que necessitavam de validação empírica nos testes de laboratório.
+- **H-01 a H-04 (Hipóteses de Arquitetura)**: Quatro suposições técnicas formuladas no Exercício 6 Bloco 1, alinhadas com o relatório final, que necessitavam de validação empírica nos testes de laboratório.
 - **H.264 (AVC)**: Norma de codificação e compressão de vídeo amplamente compatível com todos os navegadores web modernos, utilizada como formato de exportação no PictuRAS.
 - **ISO/IEC 25010:2011**: Norma internacional da ISO que estabelece um modelo de referência de qualidade de produto de software, decomposto em 8 características principais (como Eficiência de Desempenho, Usabilidade e Fiabilidade).
 - **JWT (JSON Web Token)**: Padrão aberto de segurança para partilha de declarações de identidade autenticadas entre cliente e servidor, assinado digitalmente por chave secreta.
