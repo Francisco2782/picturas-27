@@ -41,4 +41,9 @@
 - A arquitetura herdada é descrita como analisada a partir do repositório de base e da documentação efetivamente disponível.
 - `command -v typst` não encontrou o compilador nesta máquina. A compilação e a revisão visual continuam pendentes.
 
+## Seguimento — registo de utilização de IA
+
+- O capítulo 12 agora regista a contribuição Codex desta auditoria, os resultados aceites, o que não foi inferido e as verificações executadas.
+- A redação identifica que os testes locais passaram e que a compilação Typst e a revisão humana não ocorreram nesta etapa.
+
 As prioridades são confirmar o prazo e o formato, alinhar o relatório com o pacote final, obter revisão humana e documentar a reprodução independente. Os comandos e critérios de fecho constam das secções 2, 5 e 7. A aplicação não sofreu alterações.
