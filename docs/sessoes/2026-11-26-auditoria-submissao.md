@@ -35,4 +35,10 @@
 - O plano de decisões não regista uma justificação adicional baseada em limites de espera ou falhas aceitáveis para utilizadores. O texto assinala essa lacuna em vez de atribuir uma decisão não documentada à equipa.
 - Confirmação da equipa sobre a fundamentação original permanece pendente.
 
+## Seguimento — fonte de arquitetura herdada
+
+- A tabela de artefactos da introdução e a lista de fontes do capítulo 2 agora indicam que `doc-sol-arquitetural.pdf` é mencionado nas diretrizes, mas não estava disponível. O relatório deixa de o apresentar como fonte consultada.
+- A arquitetura herdada é descrita como analisada a partir do repositório de base e da documentação efetivamente disponível.
+- `command -v typst` não encontrou o compilador nesta máquina. A compilação e a revisão visual continuam pendentes.
+
 As prioridades são confirmar o prazo e o formato, alinhar o relatório com o pacote final, obter revisão humana e documentar a reprodução independente. Os comandos e critérios de fecho constam das secções 2, 5 e 7. A aplicação não sofreu alterações.

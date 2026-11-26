@@ -58,7 +58,7 @@ A análise estrutural do sistema e o diagnóstico arquitetural fundamentaram-se 
     [Fonte], [Versão / data], [Usada para],
     [`README.md`, `AGENTS.md`], [Commit `0f6dbc5`], [Topologia de serviços, convenções operacionais, instruções de arranque,  mapeamento de portas e restrições de bifurcação imagem/vídeo.],
     [`doc-ext-requisitos-2627.pdf`], [PL1-G4 (2026)], [Especificação de requisitos funcionais e não funcionais herdados da extensão de vídeo da Fase 1 (`REQ-VID-*`).],
-    [`doc-sol-arquitetural.pdf`], [Fase 1 (2026)], [Documento de arquitetura herdada com descrição dos padrões originais de imagem.],
+    [`doc-sol-arquitetural.pdf`], [Indicado nas diretrizes; não disponibilizado], [Não consultado. A arquitetura herdada foi analisada a partir do repositório de base e da documentação disponível.],
     [Slides das aulas teóricas e suporte], [Novembro de 2026], [Taxonomia de estilos arquiteturais (Camadas, Microsserviços, Event-Driven, Pipes & Filters) e táticas de desenho de software (Bass et al.).],
     [Diretrizes da Fase 2 (`fase-2-guidelines.md`)], [Versão 1], [Regras de refactoring, restrições metodológicas e critérios de aceitação.],
     [Arquivo de evidência D-01], [Medições de 17 e 22–23/11/2026], [Versões do ambiente, métricas, eventos e condições dos ensaios.],
