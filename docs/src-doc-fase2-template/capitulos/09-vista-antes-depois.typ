@@ -15,18 +15,35 @@
 
 == Antes
 
-#figure(kind: image,
-  raw("Browser [overlay, estado React] ← Socket.IO ← projects\nprojects → video_queue → video_tool [uma réplica]\nvideo_tool → project_queue → projects → armazenamento", block: true),
+#figure(
+  image("../images/vista_antes.svg", width: 95%),
   caption: [Vista arquitetural antes das decisões DA-1 e DA-2],
-)
+) <fig-vista-antes>
 
 == Depois
 
-#figure(kind: image,
-  raw("Browser [painel no layout] ← Socket.IO ← projects ↔ MongoDB [snapshot]\nBrowser → gateway → projects [consulta autenticada de estado]\nprojects → video_queue → video_tool [duas réplicas no ensaio]\nworkers → project_queue → projects [fecho seguro] → armazenamento", block: true),
+#figure(
+  image("../images/vista_depois.svg", width: 95%),
   caption: [Vista arquitetural depois das decisões DA-1 e DA-2],
-)
+) <fig-vista-depois>
 
 == Legenda e notas
 
-As setas indicam a direção das chamadas ou mensagens. Os rótulos entre parênteses retos mostram as opções de implantação ou os pontos do refactoring. DA-1 intervém no consumo e no fecho do lote. DA-2 intervém na persistência e na leitura do estado.
+*Ferramenta / notação:* Graphviz (fontes em `images/vista_antes.dot` e `images/vista_depois.dot`). Vista esquemática de componentes e fluxos em tempo de execução.
+
+As setas indicam o sentido das chamadas HTTPS/WebSocket ou das mensagens AMQP, e as filas pertencem à exchange `picturas`. As duas vistas usam a mesma notação e os mesmos elementos de contexto. A diferença entre @fig-vista-antes e @fig-vista-depois é percebida a olho.
+
+#tab([Legenda dos destaques das vistas antes/depois],
+  tabela(
+    colunas: (5.5cm, 1fr),
+    [Elemento (cor, estilo)], [Significado],
+    [Contorno vermelho (vista de @fig-vista-antes)], [Fragilidade observada na solução de base, correspondendo à evidência `EV-04`/`EV-05`/`EV-08` e `EV-10` da tabela de candidatos.],
+    [Contorno e fundo laranja], [Elemento introduzido ou modificado pelas táticas, assinalado com o estereótipo `«tática: TAT-nn»` (apenas na vista de @fig-vista-depois).],
+    [Caixas amareladas], [Filas RabbitMQ da exchange `picturas` (presentes nas duas vistas).],
+    [Seta tracejada laranja], [Nova interação: consulta autenticada de estado (`TAT-04`).],
+  ),
+)
+
+- *O que mudou com DA-1 (`TAT-01`)*: o consumo de `video_queue` passa a admitir réplicas concorrentes (`video_tool`), e o orquestrador `projects` passa a proteger atomicamente o fecho do lote e a limpar ficheiros temporários por saída.
+- *O que mudou com DA-2 (`TAT-04`, `TAT-05`, `TAT-06`)*: o progresso deixa de seguir diretamente do trabalhador para `ws_queue`, passando a ser validado e persistido em `projects` (`processingRun` no MongoDB) antes da difusão por Socket.IO; na interface, o _overlay_ bloqueante dá lugar a um painel global desacoplado com reconciliação sobre a rota autenticada de estado.
+
