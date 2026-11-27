@@ -14,7 +14,7 @@
 
 **Estado à data da auditoria, 21/11.** A configuração final ainda precisava de demonstrar os mínimos. A prioridade era corrigir a falha de concorrência antes das medições. Os seguimentos acima registam a validação da P-02 e o cumprimento dos dois alvos.
 
-Âmbito auditado: árvore de `0f6dbc5`, histórico Git, documentação docente disponível, código, testes locais e evidência ignorada pelo Git presente nesta máquina. A referência docente é a [diretriz V1](fase-2-guidelines.md), em conjunto com a [extensão do PL1-G4](doc-ext-requisitos-2627.md). A V1 indica entrega a **20/11/2026** e defesa a **23–27/11/2026**. O recibo de submissão, uma eventual prorrogação, a versão posterior da grelha e os documentos de requisitos e arquitetura da base anterior não constam das fontes examinadas. A data já passou. O estado administrativo da entrega precisa de confirmação da equipa.
+Âmbito auditado: árvore de `0f6dbc5`, histórico Git, documentação docente disponível, código, testes locais e evidência ignorada pelo Git presente nesta máquina. A referência inicial era a [diretriz V1](fase-2-guidelines.md), em conjunto com a [extensão do PL1-G4](doc-ext-requisitos-2627.md). O [aviso posterior dos docentes](sessoes/2026-11-27-aviso-entrega-defesa.md) fixa a entrega em **27/11/2026 às 23:59** e as defesas em **30/11 e 02/12**, no gabinete **DI 2.07**. O comprovativo da entrega, as regras detalhadas da página de submissão e o horário agendado continuam por confirmar.
 
 **Evidência repetida nesta auditoria.** O sumarizador reproduziu as oito métricas do desempenho inicial. Os JSON dos ensaios 6–8 e as notas registam a baseline de usabilidade. À data, passaram 12 testes do instrumento, 28 de projetos, 7 de lógica do cliente e 76 do worker. A validação integrada de navegação foi feita posteriormente e consta da sessão de fecho.
 
@@ -44,7 +44,7 @@ As primeiras linhas traduzem a diretriz docente. Os IDs CAP e USE são da [espec
 | G6. Medir novamente cada RNF e avaliar impacto cruzado | Requisito Mínimo | Em Falta | M-02 a M-04 sem conjunto final identificado. O pico de 1,85 GiB de P-03 é de um teste operacional. | Comparar o mesmo cenário e documentar metas falhadas e limitações. |
 | G7. Evidência de regressão e entrega reproduzível | Entrega | Parcial | Suites e instruções existem. A prova oficial local e o vídeo curto estão fora do Git. | Entregar arquivo saneado com roteiro e verificar recuperação a partir de outro checkout. |
 | G8. Documentar IA, skills, tarefas e validação humana no código e relatório | Entrega | Parcial | Há skills e orientação de agentes, registo por tarefa e histórico da Fase 1. D-02 está aberto. | Registar por alteração a ferramenta realmente usada, revisão humana, teste e correção aceite/rejeitada. |
-| G9. Formato final e submissão | Entrega | Não Verificável | A V1 remete estrutura e entregáveis para versão seguinte. | Obter grelha vigente, enunciado geral e comprovativo de entrega. |
+| G9. Formato final e submissão | Entrega | Parcial | O aviso dos docentes confirma prazo, percurso na plataforma, exclusão de artefactos de build e avaliações individuais. | Consultar a nomenclatura e o procedimento das avaliações na página de submissão e guardar o comprovativo. |
 
 ## 3. Falhas e pontos críticos
 

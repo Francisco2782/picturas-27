@@ -14,10 +14,11 @@ user-facing documentation; this file is the short version an agent needs before 
 - Completion replies reuse recorded outputs on redelivery. MongoDB tests cover interruption after recording a result and simultaneous copies of the same delivery. [Redelivery regression](docs/sessoes/2026-11-24-reentrega-resultados.md)
 - QS-01 and QS-02 passed again on the combined application revision `fb18924`: 0.142 s mean B wait, 12/12 browser actions, and 3/3 recoveries for navigation, reload and reconnect. The same revision passed the production frontend build, MongoDB concurrency checks and real API regression for image, video, mixed batches, frame extraction, permissions and quota. [Delivery validation](docs/sessoes/2026-11-24-validacao-entrega.md)
 - On `3cb1b74`, both full campaigns passed after the redelivery fix: 0.123 s mean B wait, 12/12 browser actions and 3/3 recoveries for navigation, reload and reconnect. The local final evidence package includes the official D-01 baseline and a verifier for the final raw observations. [Final validation](docs/sessoes/2026-11-24-validacao-final-3cb1b74.md)
-- Still open: independent reproduction, team review of the report and AI record, and confirmation of submission or deadline extension.
+- The teaching notice sets the submission deadline at 23:59 on 27 November 2026 and defenses on 30 November and 2 December in DI 2.07. [Submission and defense instructions](docs/sessoes/2026-11-27-aviso-entrega-defesa.md)
+- Still open: independent reproduction, team review of the report and AI record, confirmation of submission and booking of the defense slot.
 - D-01 has a local, Git-ignored archive at `evaluation/evidence/picturas-phase2-d01.tar.gz`. A clean extraction passed the SHA-256 checks and reproduced the recorded aggregates. D-02 has a Typst draft based on those records. [Reproduction guide](evaluation/phase2-reproduction.md) · [Session log](docs/sessoes/2026-11-23-d01-d02.md)
 - Recount the archived measured runs with `PYTHONDONTWRITEBYTECODE=1 python3 evaluation/summarize.py evaluation/evidence/phase2-final-2026-11-22/performance-retry --runs 3`. [Original handoff](docs/sessoes/2026-11-22-fecho-fase-2.md#session-handoff)
-- Next, have another team member run the capacity and browser scenarios, record the team's manual review of the report and AI use, and confirm submission status and the applicable deadline.
+- Next, have another team member run the capacity and browser scenarios, record the team's manual review of the report and AI use, and confirm submission status and the defense slot.
 
 ## What the app is
 
