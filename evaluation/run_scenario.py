@@ -6,11 +6,13 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -126,6 +128,7 @@ class ScenarioRun:
     samples: list[ResourceSample] = field(default_factory=list)
     log_matches: list[dict[str, str]] = field(default_factory=list)
     worker_lifecycle: dict[str, dict[str, Any]] = field(default_factory=dict)
+    elasticity: dict[str, Any] | None = None
 
 
 @dataclass
@@ -300,6 +303,7 @@ def parse_stats(output: str, timestamp: str | None = None) -> ResourceSample:
 def discover_workers(
     service: str = "video_tool", project: str = "picturas",
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    *, include_stopped: bool = False,
 ) -> list[dict[str, str]]:
     """Discover running Compose workers by service and project labels."""
     command = [
@@ -307,6 +311,8 @@ def discover_workers(
         "--filter", f"label=com.docker.compose.project={project}",
         "--format", "{{.ID}}\t{{.Names}}",
     ]
+    if include_stopped:
+        command.insert(2, "--all")
     try:
         result = runner(command, check=True, capture_output=True, text=True)
     except (OSError, subprocess.SubprocessError) as exc:
@@ -467,7 +473,7 @@ class Sampler:
                     )
                 if self.worker_count is None:
                     self.worker_count = len(workers)
-                elif len(workers) != self.worker_count:
+                elif len(workers) != self.worker_count and not getattr(self.args, "elastic", False):
                     raise ScenarioError(
                         f"Worker replica count changed during run: expected "
                         f"{self.worker_count}, found {len(workers)}"
@@ -600,7 +606,8 @@ def validate_sample_coverage(run: ScenarioRun, sample_interval: float) -> None:
     ):
         raise ScenarioError("Worker set or lifecycle changed during the run")
     if not run.samples or any(
-        sample.errors or set(worker.container_id for worker in sample.workers) != expected or
+        sample.errors or (run.elasticity is None and
+                          set(worker.container_id for worker in sample.workers) != expected) or
         None in (sample.ready, sample.unacked, sample.cpu_percent, sample.memory_bytes)
         for sample in run.samples
     ):
@@ -615,10 +622,108 @@ def validate_sample_coverage(run: ScenarioRun, sample_interval: float) -> None:
         raise ScenarioError(f"Queue or worker sample gap too long: {max(gaps):.3f}s")
 
 
+def probe_video(path, timeout):
+    probe = subprocess.check_output(["ffprobe", "-v", "error", "-show_entries",
+        "stream=codec_name:format=duration", "-of", "json", str(path)],
+        text=True, timeout=timeout)
+    metadata = json.loads(probe)
+    return float(metadata["format"]["duration"]), sorted(
+        stream["codec_name"] for stream in metadata["streams"])
+
+
+def verify_elasticity(api, args, run, paths):
+    initial = set(run.worker_lifecycle["before"])
+    workers = discover_workers(args.video_worker_service, args.compose_project, include_stopped=True)
+    run.log_matches = collect_logs(args, run.started_at, workers)
+    starts = {label: [item for item in run.log_matches if item["label"] == label] for label in ("A", "B")}
+    if len(starts["A"]) != 1 or len(starts["B"]) != 3 or len({
+        item["message"] for item in run.log_matches
+    }) != 4:
+        raise ScenarioError("Expected four distinct video starts with no redeliveries")
+    a_start, b_start = starts["A"][0], starts["B"][0]
+    b_submission = parse_timestamp(run.projects["B"].submission_at)
+    if (a_start["container_id"] not in initial or b_start["container_id"] in initial
+            or not parse_timestamp(a_start["timestamp"]) < b_submission
+            <= parse_timestamp(b_start["timestamp"]) < parse_timestamp(run.projects["A"].finished_at)):
+        raise ScenarioError("B did not start on an added replica while A was running")
+
+    drained = False
+    deadline = time.monotonic() + args.drain_timeout
+    while time.monotonic() < deadline:
+        response = requests.get(args.rabbit_url, auth=(args.rabbit_user, args.rabbit_password),
+                                timeout=args.timeout)
+        response.raise_for_status()
+        queue = response.json()
+        running = discover_workers(args.video_worker_service, args.compose_project)
+        if ({worker["container_id"] for worker in running} == initial
+                and (queue["messages_ready"], queue["messages_unacknowledged"], queue["consumers"]) == (0, 0, 1)):
+            drained = True
+            break
+        time.sleep(args.sample_interval)
+    if not drained:
+        raise ScenarioError("Timed out waiting for the autoscaler to return to one worker")
+    run.elasticity["returned_to_one_at"] = iso_now()
+    run.worker_lifecycle["after"] = worker_lifecycle(args)
+
+    command = ["docker", "events", "--since", run.started_at, "--until", iso_now(),
+               "--filter", "type=container", "--filter", f"label=com.docker.compose.project={args.compose_project}",
+               "--filter", f"label=com.docker.compose.service={args.video_worker_service}", "--format", "{{json .}}"]
+    events = [json.loads(line) for line in subprocess.check_output(command, text=True, timeout=args.timeout).splitlines()]
+    run.elasticity["events"] = events
+    started = {event["Actor"]["ID"] for event in events if event["Action"] == "start"}
+    stopped = {event["Actor"]["ID"] for event in events if event["Action"] == "die"}
+    added_worker_starts = [event for event in events if event["Action"] == "start"
+                           and event["Actor"]["ID"] == b_start["container_id"]]
+    if not started or started != stopped or started & initial or b_start["container_id"] not in started or any(
+        event["Action"] in {"oom", "restart"} or
+        (event["Action"] == "die" and event["Actor"]["Attributes"].get("exitCode") != "0")
+        for event in events
+    ) or len(added_worker_starts) != 1:
+        raise ScenarioError("Unexpected worker lifecycle events during elasticity run")
+    worker_started = dt.datetime.fromtimestamp(added_worker_starts[0]["timeNano"] / 1e9, tz=dt.timezone.utc)
+    if not b_submission <= worker_started <= parse_timestamp(b_start["timestamp"]):
+        raise ScenarioError("The replica processing B did not start after B was submitted")
+    run.elasticity["b_worker_started_at"] = worker_started.isoformat()
+
+    run.elasticity["downloads"] = {}
+    durations = {key: probe_video(path, args.timeout)[0] for key, path in paths.items()}
+    expected_durations = {"A": [durations["long"]],
+                          "B": sorted([durations["six"], durations["short"], durations["short"]])}
+    for label, project in run.projects.items():
+        results = api.results(project)
+        if not validate_results(project, results):
+            raise ScenarioError(f"Results disappeared after scale-in for project {label}")
+        records = []
+        for result in results["imgs"]:
+            try:
+                response = requests.get(result["url"], verify=args.verify_tls, timeout=args.timeout)
+            except requests.RequestException as error:
+                raise ScenarioError(f"Download failed for project {label}") from error
+            if response.status_code != 200:
+                raise ScenarioError(f"Download for project {label} returned HTTP {response.status_code}")
+            with tempfile.NamedTemporaryFile(suffix=".mp4") as media:
+                media.write(response.content)
+                media.flush()
+                duration, codecs = probe_video(media.name, args.timeout)
+            if codecs != ["aac", "h264"]:
+                raise ScenarioError(f"Unexpected codecs for project {label}: {codecs}")
+            records.append({"id": result["result_id"], "http": response.status_code,
+                            "bytes": len(response.content),
+                            "sha256": hashlib.sha256(response.content).hexdigest(), "codecs": codecs,
+                            "duration": duration})
+        durations = sorted(item["duration"] for item in records)
+        if any(abs(actual - expected) > 0.25 for actual, expected in zip(durations, expected_durations[label])):
+            raise ScenarioError(f"Unexpected durations for project {label}: {durations}")
+        run.elasticity["downloads"][label] = records
+
+
 def run_once(api: ApiClient, args: argparse.Namespace, kind: str, paths: dict[str, Path]) -> ScenarioRun:
     run = ScenarioRun(uuid.uuid4().hex, kind)
     run.started_at = iso_now()
     sampler = Sampler(args, run)
+    elastic = getattr(args, "elastic", False)
+    if elastic:
+        run.elasticity = {}
     try:
         run.projects["A"] = prepare_project(
             api, "A", run.run_id, [(paths["long"], None)], ("subtitles", {}),
@@ -643,13 +748,17 @@ def run_once(api: ApiClient, args: argparse.Namespace, kind: str, paths: dict[st
         api.process(b)
         wait_for_results(api, [a, b], args)
         sampler.stop()
-        run.worker_lifecycle["after"] = worker_lifecycle(args)
+        if elastic:
+            verify_elasticity(api, args, run, paths)
+        else:
+            run.worker_lifecycle["after"] = worker_lifecycle(args)
         validate_sample_coverage(run, args.sample_interval)
-        observed_workers = {
-            worker.container_id: {"container_id": worker.container_id, "name": worker.name}
-            for sample in run.samples for worker in sample.workers
-        }
-        run.log_matches = collect_logs(args, run.started_at, list(observed_workers.values()))
+        if not elastic:
+            observed_workers = {
+                worker.container_id: {"container_id": worker.container_id, "name": worker.name}
+                for sample in run.samples for worker in sample.workers
+            }
+            run.log_matches = collect_logs(args, run.started_at, list(observed_workers.values()))
         metrics = calculate_metrics(run, run.samples)
         run.status = "valid"
         run.ended_at = iso_now()
@@ -719,6 +828,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--compose-project", default=os.getenv("COMPOSE_PROJECT_NAME", "picturas"))
     parser.add_argument("--video-worker-service", default=os.getenv("VIDEO_WORKER_SERVICE", "video_tool"))
     parser.add_argument("--expected-workers", type=int, choices=(1, 2))
+    parser.add_argument("--elastic", action="store_true", help="Require a real scale-out and return to one worker")
+    parser.add_argument("--drain-timeout", type=float, default=90.0)
     parser.add_argument("--sample-interval", type=float, default=1.0)
     parser.add_argument("--dispatch-delay", type=float, default=1.5)
     parser.add_argument("--poll-interval", type=float, default=2.0)
@@ -730,6 +841,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.elastic:
+        if args.expected_workers not in (None, 1) or args.drain_timeout <= 0:
+            raise SystemExit("An elastic run requires one initial worker and a positive drain timeout")
+        args.expected_workers = 1
     if args.runs < 1:
         raise SystemExit("--runs must be at least 1")
     if args.warmup < 0:
