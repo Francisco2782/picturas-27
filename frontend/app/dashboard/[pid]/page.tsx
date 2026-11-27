@@ -513,7 +513,7 @@ if (project.isError) {
     );
 
 const handleCancel = () => {
-  if (!canEdit || processingStatus.isError || processingStatusData?.state !== "running") return;
+  if (!canEdit || activeRunToken === null) return;
   cancelProcess.mutate(
     {
       projectVersion: project.data.version
@@ -558,11 +558,11 @@ const handleCancel = () => {
   return (
     <ProjectProvider
       project={project.data}
-      currentImage={currentImage}
+      currentImage={mode === "edit" && view === "grid" ? project.data.imgs[0] ?? null : currentImage}
       preview={{ waiting: waitingForPreview, setWaiting: setWaitingForPreview }}
       ownerId={ownerId}
       shareId={shareId}
-      canEdit={canEdit && !processing}
+      canEdit={canEdit && !processing && activeRunToken === null}
     >
       <div className="flex flex-col h-screen relative">
         {/* Barra de aviso quando o link partilhado é revogado */}
@@ -584,7 +584,7 @@ const handleCancel = () => {
             </div>
           </div>
           <div className="flex items-center justify-between w-full xl:w-auto gap-2">
-            <SidebarTrigger variant="outline" className="h-9 w-10 lg:hidden" />
+            <SidebarTrigger variant="outline" className="h-9 w-10 lg:hidden" title="Toggle sidebar" />
                       <div className="flex items-center gap-2 flex-wrap justify-end xl:justify-normal w-full xl:w-auto">
               {mode !== "results" && (
                 <>
@@ -726,11 +726,13 @@ const handleCancel = () => {
                 )}
                 </>
               )}
-              {canEdit && !processingStatus.isError && processingStatusData?.state === "running" && (
+              {canEdit && (processing || activeRunToken !== null) && (
                 <Button
                   variant="outline"
-                  disabled={cancelProcess.isPending}
+                  disabled={activeRunToken === null || cancelProcess.isPending}
                   onClick={handleCancel}
+                  title="Cancel processing"
+                  aria-label="Cancel processing"
                 >
                   {cancelProcess.isPending ? <LoaderCircle className="animate-spin" /> : "Cancel"}
                 </Button>
@@ -742,6 +744,7 @@ const handleCancel = () => {
                     variant="outline"
                     className="px-3"
                     title="Download project"
+                    aria-label="Download project"
                     disabled={
                       downloadProjectImages.isPending ||
                       downloadProjectResults.isPending ||
@@ -839,12 +842,14 @@ const handleCancel = () => {
         </div>
         {/* Main Content */}
 
-        <div className="h-full overflow-x-hidden flex">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
         <Toolbar />
-        <ProjectImageList
-          setCurrentImageId={setCurrentImage}
-          results={projectResults.data}
-        />
+        <div className="min-w-0 flex-1">
+          <ProjectImageList
+            setCurrentImageId={setCurrentImage}
+            results={projectResults.data}
+          />
+        </div>
       </div>
       </div>
     </ProjectProvider>

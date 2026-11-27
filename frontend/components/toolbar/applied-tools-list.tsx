@@ -236,7 +236,7 @@ export function AppliedToolsList() {
 
   return (
     <div className="mt-3 flex w-full flex-col gap-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start gap-1">
         <span className="text-xs text-gray-500">Applied</span>
 
         <div className="flex items-center gap-1">
@@ -272,7 +272,7 @@ export function AppliedToolsList() {
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={tools.map((t) => t._id)} strategy={verticalListSortingStrategy}>
-          <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+          <div className="flex max-h-40 flex-col gap-1 overflow-x-hidden overflow-y-auto">
             {tools.map((tool) => (
               <SortableToolItem key={tool._id} tool={tool} onRemove={handleRemove} />
             ))}

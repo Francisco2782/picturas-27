@@ -49,7 +49,7 @@ export function ProjectImage({ image, animation = true, active = true }: ImageIt
   const [loaded, setLoaded] = useState<boolean>(false);
   const [open, setOpen] = useState<boolean>(false);
 
-  const { _id: pid, version } = useProjectInfo();
+  const { _id: pid } = useProjectInfo();
   const session = useSession();
   const ownerId = searchParams.get("owner") ?? session.user._id;
   const shareId = searchParams.get("share") ?? undefined;
@@ -81,7 +81,8 @@ export function ProjectImage({ image, animation = true, active = true }: ImageIt
                   playsInline
                   preload="metadata"
                   className="size-full object-contain"
-                  onLoadedData={() => setLoaded(true)}
+                  onLoadedMetadata={() => setLoaded(true)}
+                  onError={() => setLoaded(true)}
                 />
                 <div className="absolute top-2 left-2 flex items-center gap-1 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
                   <Film className="size-3" />

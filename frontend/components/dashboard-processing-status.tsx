@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useGetProjectProcessingStatus, useGetSocket, useResolveShareLink } from "@/lib/queries/projects";
 import { useCancelProjectProcess } from "@/lib/mutations/projects";
+import { useUpdateSession } from "@/lib/mutations/session";
 import { applyVideoProgressEvent, shouldRefreshProcessingStatus } from "@/lib/processing-status";
 import type { ProcessingRunStatus } from "@/lib/projects";
 import { useSession } from "@/providers/session-provider";
@@ -63,6 +64,7 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
     tracked?.ownerId,
     tracked?.shareId,
   );
+  const updateSession = useUpdateSession();
   const canEdit = tracked && tracked.userId === session.user._id && (tracked.shareId
     ? !share.isError && share.data?.permission === "edit" &&
       share.data.ownerId === tracked.ownerId && share.data.projectId === tracked.projectId
@@ -103,10 +105,11 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
   }, []);
 
   const cancelTrackedRun = () => {
-    if (!tracked || !canEdit || status.isError || status.data?.state !== "running" ||
+    if (!tracked || !canEdit || status.data?.state !== "running" ||
         tracked.projectVersion === undefined || !Number.isFinite(tracked.projectVersion)) return;
     setCancelError(false);
     cancelProcess.mutate({ projectVersion: tracked.projectVersion }, {
+      onSuccess: () => updateSession.mutate({ userId: session.user._id, token: session.token }),
       onError: (error) => {
         setCancelError(true);
         if (!isAxiosError(error) || error.response?.status !== 409) return;
@@ -208,20 +211,22 @@ export function DashboardProcessingStatus({ children }: { children: React.ReactN
               {status.isError && <div className="text-xs text-muted-foreground">Open the project to check access and retry.</div>}
               {cancelError && <div className="text-xs text-destructive">Could not cancel processing. Reopen the project and try again.</div>}
               <Link href={projectHref} className="text-xs underline underline-offset-2">Open project</Link>
-              {running && canEdit && !isTrackedProjectOpen && Number.isFinite(tracked.projectVersion) && (
+              {status.data?.state === "running" && canEdit && !isTrackedProjectOpen && Number.isFinite(tracked.projectVersion) && (
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={cancelProcess.isPending}
                   onClick={cancelTrackedRun}
                   className="ml-2 h-7"
+                  title="Cancel processing"
+                  aria-label="Cancel processing"
                 >
                   {cancelProcess.isPending ? <LoaderCircle className="size-3 animate-spin" /> : "Cancel"}
                 </Button>
               )}
             </div>
             {terminal && (
-              <Button variant="ghost" size="icon" className="size-7" onClick={dismiss} aria-label="Dismiss processing status">
+              <Button variant="ghost" size="icon" className="size-7" onClick={dismiss} title="Dismiss processing status" aria-label="Dismiss processing status">
                 <X className="size-4" />
               </Button>
             )}

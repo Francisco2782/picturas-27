@@ -187,10 +187,12 @@ export const useDownloadProjectImage = (edited?: boolean) => {
     mutationFn: downloadProjectImage,
     onSuccess: async (image) => {
       const blobUrl = await createBlobUrlFromFile(image.file);
-      downloadBlob(
-        edited ? image.name.split(".")[0] + "_edited" : image.name,
-        blobUrl,
-      );
+      const name = image.file.name;
+      const extensionStart = name.lastIndexOf(".");
+      const editedName = extensionStart > 0
+        ? `${name.slice(0, extensionStart)}_edited${name.slice(extensionStart)}`
+        : `${name}_edited`;
+      downloadBlob(edited ? editedName : name, blobUrl);
     },
   });
 };

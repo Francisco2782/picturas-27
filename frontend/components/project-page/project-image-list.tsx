@@ -190,17 +190,17 @@ useEffect(() => {
       <div className="size-full">
         {view === "grid" || project.imgs.length <= 0 ? (
           // Grid view
-          <div className="size-full flex flex-col items-center">
+          <div className="size-full overflow-y-auto">
             {(mode === "edit" && project.imgs.length > 0) ||
             (mode === "results" &&
               (results.imgs.length > 0 || results.texts.length > 0)) ? (
               <>
                 {mode !== "results" && (
-                  <div className="relative pt-4 pb-2 text-gray-500 text-sm after:h-2 after:bg-gradient-to-b after:from-background after:to-background/10 after:w-full after:absolute after:bottom-0 after:translate-y-2 after:z-50 w-full text-center flex flex-col">
-                    To start editing, select an image from the grid.
+                  <div className="px-3 pt-4 pb-2 text-center text-sm text-muted-foreground">
+                    Project tools apply to all supported media. Select an item to open it.
                   </div>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 p-2 overflow-scroll overflow-x-hidden h-fit">
+                <div className="grid w-full grid-cols-1 gap-2 p-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                   {(mode === "results" ? results.imgs : project.imgs).map(
                     (image, index) => (
                       <button
@@ -292,8 +292,8 @@ useEffect(() => {
                     </CarouselItem>
                   ))}
               </CarouselContent>
-              <CarouselPrevious className="hidden sm:flex" />
-              <CarouselNext className="hidden sm:flex" />
+              <CarouselPrevious className="hidden sm:flex" title="Previous item" />
+              <CarouselNext className="hidden sm:flex" title="Next item" />
             </Carousel>
             <div className="py-2 text-center text-sm text-muted-foreground">
               {current} / {count}

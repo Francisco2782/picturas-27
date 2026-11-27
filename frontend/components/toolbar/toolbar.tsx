@@ -16,7 +16,7 @@ import TextAITool from "./text-ai-tool";
 import UpgradeAITool from "./upgrade-ai-tool";
 import { useClearProjectTools } from "@/lib/mutations/projects";
 import { useSession } from "@/providers/session-provider";
-import { useProjectInfo } from "@/providers/project-provider";
+import { useCanEditProject, useProjectInfo } from "@/providers/project-provider";
 import { Button } from "../ui/button";
 import { AppliedToolsList } from "./applied-tools-list";
 import {
@@ -42,14 +42,13 @@ export function Toolbar() {
   const view = searchParams.get("view") ?? "grid";
   const mode = searchParams.get("mode") ?? "edit";
 
-  // desativar ferramentas se estiver em grid OU em results
-  const disabled = view === "grid" || mode === "results";
-
   const project = useProjectInfo();
   const session = useSession();
+  const canEdit = useCanEditProject();
+  const disabled = mode === "results" || project.imgs.length === 0;
 
   // Projects with videos only show the effects the video worker supports
-  // (AI tools and watermark are image-only) and only when a media item is selected
+  // (AI tools and watermark are image-only).
   const hasVideos = project.imgs.some((i) => isVideo(i));
 
   const [open, setOpen] = useState<boolean>(false);
@@ -64,12 +63,12 @@ export function Toolbar() {
     shareId,
   );
 
-  if (hasVideos && view === "grid") return null;
+  if (mode === "results") return null;
 
   return (
-    <div className="flex h-full w-24 flex-col justify-between items-stretch border-r bg-background p-2">
+    <div className="flex h-full w-24 shrink-0 flex-col justify-between gap-3 overflow-x-hidden overflow-y-auto border-r bg-background p-2">
       <div className="flex flex-col gap-2 items-center">
-        <span className="text-sm text-gray-500">Tools</span>
+        <span className="text-center text-sm text-gray-500">Project tools</span>
         <BrightnessTool disabled={disabled} />
         <ContrastTool disabled={disabled} />
         <SaturationTool disabled={disabled} />
@@ -78,9 +77,12 @@ export function Toolbar() {
         <CropTool disabled={disabled} />
         <ResizeTool disabled={disabled} />
         <BorderTool disabled={disabled} />
-        {/* Only shown when the project has videos */}
-        <TrimTool disabled={disabled} />
-        <SpeedTool disabled={disabled} />
+        {hasVideos && view === "carousel" && (
+          <>
+            <TrimTool disabled={disabled} />
+            <SpeedTool disabled={disabled} />
+          </>
+        )}
         {hasVideos && <SubtitlesTool disabled={disabled} />}
         {hasVideos && <ExtractFramesTool disabled={disabled} />}
         {!hasVideos && (
@@ -95,14 +97,16 @@ export function Toolbar() {
             <UpgradeAITool disabled={disabled} />
           </>
         )}
-        <AppliedToolsList />
+        {canEdit && <AppliedToolsList />}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button
             variant="outline"
             className="text-red-400 size-8"
-            disabled={project.tools.length === 0}
+            disabled={!canEdit || project.tools.length === 0}
+            title="Clear all project tools"
+            aria-label="Clear all project tools"
           >
             <Eraser />
           </Button>
