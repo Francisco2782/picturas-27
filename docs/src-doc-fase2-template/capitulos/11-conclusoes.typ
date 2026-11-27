@@ -24,3 +24,9 @@ Na Fase 3, novas ferramentas de vídeo podem reutilizar o contrato de acompanham
 
 == Âmbito da validação
 O seguimento QS-03 verificou a recuperação de uma execução de legendagem após interrupções do worker e do broker. O teste de polling quantificou o tráfego HTTP de um observador. As conclusões aplicam-se às cargas, às réplicas e aos percursos registados nos ensaios locais.
+
+== Estado final e recomendação
+
+Os resultados arquivados demonstram a melhoria nos dois cenários exigidos, dentro das cargas e dos limites documentados. A solução de duas réplicas é apropriada para o cenário avaliado; a escala automática continua opcional e deve ser usada apenas com monitorização da utilização de memória e da fila.
+
+Mantêm-se os seguintes pontos de entrega ou validação: reprodução independente por um segundo membro da equipa, registo formal da revisão humana deste relatório e confirmação da submissão com comprovativo. Estes pontos não alteram a comparação antes/depois nem invalidam a recontagem já realizada.
