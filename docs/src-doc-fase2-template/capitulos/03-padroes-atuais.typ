@@ -80,7 +80,6 @@ O desvio em relação ao padrão global é deliberado. Repetir a decomposição 
   ),
 ) <tab-beneficios-video>
 
-#pagebreak(weak: true)
 == Relação entre o padrão global e o padrão do vídeo
 
 #orientacao[

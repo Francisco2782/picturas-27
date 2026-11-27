@@ -105,7 +105,6 @@ Em *operabilidade* (`QS-02`), o projeto A manteve o estado visível nas quatro a
 
 Num ensaio complementar com quatro pares sobre o mesmo vídeo de 10 s, uma consulta de estado por segundo acrescentou quatro pedidos e 1 048 bytes de corpo HTTP em quatro segundos. A mediana por pedido foi 7,75 ms. O ensaio quantificou o tráfego HTTP e a latência de um observador.
 
-#pagebreak(weak: true)
 == Ensaio complementar de elasticidade do vídeo
 
 O controlador opcional, introduzido em `c4ddc6c`, consulta os pedidos em espera na fila `video_queue` e ajusta a escala de `video_tool` através do Docker Compose. Inicia-se com uma réplica e usa um máximo configurável, por omissão três. A redução da escala exige que os contadores de mensagens em espera e sem confirmação permaneçam a zero. Uma réplica que já tenha recebido trabalho publica a resposta terminal e confirma a mensagem antes de sair. O controlador corre no host, e a alocação de CPU e memória por réplica fica a cargo do operador.
@@ -127,7 +126,6 @@ Com máximo três, a escala passou de uma a três réplicas e regressou a uma em
 
 Numa prova separada, um pedido de saída durante uma legendagem permitiu que o mesmo trabalho concluísse antes de o contentor terminar com código zero. O resultado foi descarregado e descodificado na íntegra. O protocolo e os dados deste seguimento estão em `evaluation/README.md` e `docs/sessoes/2026-11-27-video-autoscaling.md`.
 
-#pagebreak(weak: true)
 == Preservação funcional
 
 Em alinhamento com o método de _refactoring_, a preservação do comportamento externo foi verificada através de uma suíte de testes de auto-verificação e regressão. `R-01` a `R-04` passaram na validação de 22/11 com 38 testes Node, 76 testes do trabalhador de vídeo, 14 testes do instrumento e o _build_ de produção do frontend.

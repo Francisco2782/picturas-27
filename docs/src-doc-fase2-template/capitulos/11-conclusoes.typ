@@ -37,6 +37,3 @@ Os seguimentos registados no capítulo 10 fecharam as verificações técnicas p
 - A janela entre o _upload_ de um resultado e a gravação do respetivo registo no MongoDB ainda pode deixar um objeto órfão no armazenamento, porque as duas operações não são transacionais. A correção da reentrega cobriu apenas a janela entre gravação e remoção do trabalho.
 
 Quanto à ligação à Fase 3, ao desacoplar o estado de execução no MongoDB (`processingRun`) da interface cliente e consolidar uma suíte de testes de auto-verificação sobre lotes simples e mistos, o _refactoring_ facilita a integração de novas funcionalidades: novas ferramentas ou operações de vídeo podem reutilizar o mesmo contrato tipado de progresso e o mecanismo de recuperação após navegação, recarregamento ou reconexão, sem reintroduzir acoplamento à UI. A gravação idempotente de resultados torna seguras as reentregas e a repetição de trabalhos, e o encerramento controlado da réplica permite que a escala evolua sem perder trabalho em curso. Em contrapartida, cada nova funcionalidade de vídeo percorre mais caminhos concorrentes e sensíveis a permissões, pelo que as evoluções futuras devem manter e alargar os testes de regressão criados nesta fase.
-
-=
-

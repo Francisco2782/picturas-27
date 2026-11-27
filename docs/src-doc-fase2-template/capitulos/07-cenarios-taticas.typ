@@ -37,7 +37,6 @@
   ),
 )
 
-#pagebreak(weak: true)
 == Táticas candidatas
 
 #orientacao[
