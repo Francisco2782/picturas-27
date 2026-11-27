@@ -135,11 +135,11 @@ CAND-1 reduz a espera de B e CAND-2 mantém o trabalho na interface possível en
 
 **Adequação do padrão atual (global e do vídeo):**
 
-A arquitetura mantém os microsserviços orientados a eventos e o pipeline completo por vídeo. A P-02 confirmou a integridade do fecho simultâneo, e a U-04 passou os cenários A/B e F5 em Chromium. Os dois RNF atingiram os respetivos alvos nos cenários medidos. A recuperação perante interrupção de infraestrutura do QS-03 exige um ensaio próprio. [Evidência](../sessoes/2026-11-22-fecho-fase-2.md)
+A arquitetura mantém os microsserviços orientados a eventos e o pipeline completo por vídeo. A P-02 confirmou a integridade do fecho simultâneo, a U-04 passou os cenários A/B e F5 em Chromium e os dois RNF atingiram os respetivos alvos na campanha final da revisão `3cb1b74`. O seguimento QS-03 passou duas interrupções do trabalhador e duas do _broker_ com o mesmo trabalho retomado, resultado descarregável e zero ficheiros parciais, e a reentrega de respostas passou a ser idempotente com provas próprias em MongoDB. O controlador opcional de escala automática completou o quadro: com máximo de três réplicas, a espera média de B foi de 7,902 s, abaixo do alvo de referência de 15 s. [Evidência](../sessoes/2026-11-22-fecho-fase-2.md) · [QS-03 e _polling_](../sessoes/2026-11-23-recuperacao-e-polling.md) · [Reentrega](../sessoes/2026-11-24-reentrega-resultados.md) · [Elasticidade](../sessoes/2026-11-27-video-autoscaling.md)
 
 **Sugestões de otimização:**
 
-- Manter uma réplica por omissão e usar duas na mesma `video_queue` no cenário de capacidade medido.
+- Manter uma réplica por omissão e usar duas na mesma `video_queue` no cenário de capacidade medido; para cargas variáveis, usar o controlador opcional de escala automática (máximo três), que mediu 7,902 s de espera média de B e regressou a uma réplica após o lote.
 - Consolidar a política de reconciliação de estado com debounce inteligente para diminuir o número de pedidos HTTP à rota `/processing-status`.
 - Eliminar gradualmente a dívida técnica dos certificados TLS autoassinados internos através de uma autoridade de certificação local automatizada.
 
@@ -147,6 +147,7 @@ A arquitetura mantém os microsserviços orientados a eventos e o pipeline compl
 
 - Introdução de aceleração por hardware (GPU/NVENC/VideoToolbox) no contentor de vídeo para acelerar o Faster-Whisper e a transcodificação H.264.
 - Partição de filas por prioridade de plano (e.g. fila dedicada para utilizadores premium vs fila comum para free/anónimos).
+- Produção do controlador de elasticidade: integrar a sua configuração no Compose, definir limites de recursos por réplica e validar com perfis de carga mistos (hoje corre no _host_ e foi validado apenas no cenário A/B _premium_).
 
 **Riscos para a preservação funcional e mitigação**
 
