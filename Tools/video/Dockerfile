@@ -13,3 +13,4 @@ RUN pip install --no-cache-dir -r ./utils/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 CMD [ "python", "-u", "video.py" ]
+LABEL org.picturas.video-drain="signal-v1"

@@ -11,6 +11,7 @@ if the worker dies midway, RabbitMQ redelivers it.
 import datetime
 import json
 import os
+import signal
 import time
 import uuid
 
@@ -45,6 +46,8 @@ def now():
 
 class VideoWorker:
     def __init__(self):
+        self._draining = False
+        signal.signal(signal.SIGUSR1, self._request_drain)
         self._connection = self._connect()
         self._channel = self._connection.channel()
         self._channel.exchange_declare(exchange=EXCHANGE,
@@ -55,6 +58,10 @@ class VideoWorker:
         self._channel.basic_qos(prefetch_count=1)
         self._result_channel = self._connection.channel()
         self._result_channel.confirm_delivery()
+
+    def _request_drain(self, _signal, _frame):
+        # Signal handlers must not call Pika while it is dispatching or publishing.
+        self._draining = True
 
     @staticmethod
     def _connect():
@@ -174,10 +181,16 @@ class VideoWorker:
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def run(self):
-        self._channel.basic_consume(queue=VIDEO_QUEUE, on_message_callback=self.callback,
-                                    auto_ack=False)
-        print("[video] waiting for jobs on video_queue", flush=True)
-        self._channel.start_consuming()
+        deliveries = self._channel.consume(VIDEO_QUEUE, inactivity_timeout=0.5)
+        try:
+            while not self._draining:
+                method, properties, body = next(deliveries)
+                if method is not None and not self._draining:
+                    self.callback(self._channel, method, properties, body)
+        finally:
+            if self._connection.is_open:
+                self._connection.close()
+        print("[video] drained and stopped", flush=True)
 
 
 if __name__ == "__main__":
