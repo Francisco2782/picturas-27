@@ -43,7 +43,7 @@
     [Contexto], [O acompanhamento dependia do estado volátil em React e de um _overlay_ bloqueante (`EV-10`), perdendo visibilidade perante navegação ou recarregamento (F5).],
     [Tática(s) escolhida(s)], [TAT-04 (persistir _snapshot_), TAT-05 (desacoplar painel global) e TAT-06 (reconciliar eventos).],
     [Estrutura / padrão que a realiza], [Combinação de modelo centrado em estado persistido (`processingRun` no MongoDB) com padrão _Observer_ / _Publish-Subscribe_ (Socket.IO via `ws_queue`) e reconciliação por consulta autenticada à rota de estado (`EV-06`, `EV-07`).],
-    [Alternativas consideradas e razão de rejeição], [Armazenamento exclusivo no browser (`localStorage`) restringiria a recuperação ao mesmo dispositivo; depender apenas de WebSocket exigiria aguardar novo evento após reconexão. Nenhuma tática de classe C foi considerada.],
+    [Alternativas consideradas e razão de rejeição], [`TAT-07` restringiria a recuperação ao mesmo browser e poderia repor um estado antigo. `TAT-08` obrigaria a aguardar um novo evento após a reconexão.],
     [Consequências positivas], [Permite edição paralela sem bloqueio (12/12 ações) e garante recuperação consistente após navegação, recarregamento e reconexão (3/3 por percurso, zero falsas conclusões).],
     [Consequências negativas / riscos], [Escritas adicionais de progresso em MongoDB e pedidos HTTP extras de consulta de estado durante a execução.],
     [Elementos arquiteturais afetados], [`projects` (persistência e rota de estado), `apiGateway` (encaminhamento autenticado) e frontend Next.js (painel global no layout do dashboard).],

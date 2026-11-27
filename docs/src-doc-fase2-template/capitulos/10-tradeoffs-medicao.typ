@@ -28,8 +28,8 @@
     colunas: (1.6cm, 2.8cm, 3.2cm, 2.3cm, 2.4cm, 3.2cm, 1fr),
     tamanho: 8.5pt,
     [Decisão], [Desempenho], [Disponibilidade / Fiabilidade], [Segurança], [Usabilidade], [Manutenibilidade / Testabilidade], [Justificação],
-    [DA-1], [↑ Capacidade e menor espera de B.\ ↓ Maior pico de RAM (+1,39 GB).], [↑ Fecho concorrente protegido e limpeza em falha.], [\= Mesmas fronteiras e contratos.], [↑ B inicia sem bloquear atrás de A.], [↓ Mais caminhos concorrentes a testar.], [Duas réplicas em `video_queue` com `prefetch_count=1` reduzem o tempo bloqueado. O custo de RAM é gerido mantendo 1 réplica por omissão no Compose; a complexidade concorrente é coberta pela regressão P-02.],
-    [DA-2], [↓ Mais pedidos HTTP e escritas de estado.], [↑ Recuperação 3/3 após recarregamento e reconexão.], [↑ Cancelamento verificado por permissão.], [↑ 12/12 ações sem _overlay_ bloqueante.], [↓ Requer testes de reconciliação e precedência.], [O _snapshot_ em MongoDB e a rota de estado garantem observabilidade contínua. O tráfego extra (7,75 ms de mediana no ensaio de polling) é gerido por eventos tipados e consulta sob demanda.],
+    [DA-1], [↑ Capacidade e menor espera de B.\ ↓ Maior pico de RAM (+1,39 GB).], [↑ Fecho concorrente protegido e limpeza em falha.], [\= Mesmas fronteiras e contratos.], [\= A decisão preserva a interação da interface.], [↓ Mais caminhos concorrentes a testar.], [Duas réplicas em `video_queue` com `prefetch_count=1` reduzem a espera de B. Manter uma réplica por omissão limita o custo de RAM. A regressão P-02 verifica o fecho concorrente.],
+    [DA-2], [↓ Mais pedidos HTTP e escritas de estado.], [↑ Recuperação 3/3 após recarregamento e reconexão.], [\= Permissões de cancelamento preservadas.], [↑ 12/12 ações sem _overlay_ bloqueante.], [↓ Requer testes de reconciliação e precedência.], [O _snapshot_ em MongoDB e a rota de estado permitem recuperar o acompanhamento. Os eventos tipados e a consulta a pedido limitam o tráfego. No ensaio de polling, a mediana por consulta foi 7,75 ms.],
   ),
 )
 ]
@@ -51,8 +51,8 @@
     colunas: (1.6cm, 3.2cm, 3cm, 2.6cm, 2.4cm, 2.8cm),
     tamanho: 8pt,
     [Cenário], [Cenário de teste e carga], [Ambiente (máquina, recursos, versões)], [O que se regista], [Repetições e agregação], [Onde ficam os _scripts_ e os dados],
-    [QS-01], [A legenda 177 s. B aplica brilho a dois MP4 de 10 s e um MOV de 6 s após a resposta de A mais 1,5 s.], [i7-13650HX, 20 CPUs lógicos, Docker Engine 29.9.3, Compose 5.7.1.], [Pedidos, arranques, resultados, RabbitMQ, CPU e RAM por worker e por grupo.], [Um aquecimento e três ensaios válidos por série. Média e amplitude.], [`evaluation/run_scenario.py` e arquivo D-01.],
-    [QS-02], [A legenda um excerto de 10 s. O utilizador abre B, usa a barra e regressa a A durante o processamento.], [Chrome 157.0.8103.50, 1280 × 720, sessão premium.], [Quatro ações, recuperação, conclusões prematuras, pedidos, eventos e download.], [Um aquecimento e três ensaios válidos. Contagem de ações e recuperações.], [`browser_u04.py` e registos no arquivo D-01.],
+    [QS-01], [A legenda 177 s. B aplica brilho a dois MP4 de 10 s e um MOV de 6 s após a resposta de A mais 1,5 s.], [i7-13650HX, 20 CPUs lógicos, Docker Engine 29.9.3, Compose 5.7.1.], [Pedidos, arranques, resultados, RabbitMQ, CPU e RAM por worker e por grupo.], [Um aquecimento e três ensaios válidos por série. Média e amplitude.], [`evaluation/run_scenario.py`. Base em D-01 e série final em `phase2-final-3cb1b74` (Anexo A).],
+    [QS-02], [A legenda um excerto de 10 s. O utilizador abre B, usa a barra e regressa a A durante o processamento.], [Chrome 157.0.8103.50, 1280 × 720, sessão premium.], [Quatro ações, recuperação, conclusões prematuras, pedidos, eventos e download.], [Um aquecimento e três ensaios válidos. Contagem de ações e recuperações.], [Protocolo da base em D-01. `browser_u04.py` e registos finais em `phase2-final-3cb1b74` (Anexo A).],
   ),
 )
 
@@ -79,7 +79,7 @@
 
 *Análise dos resultados* (por requisito não funcional):
 
-Em *capacidade* (`QS-01`), na série oficial com uma réplica, o único consumidor executava a legendagem longa enquanto B aguardava na fila. Na série final (`3cb1b74`), o primeiro vídeo de B arrancou na segunda réplica antes de A terminar nos três ensaios válidos. O intervalo medido começa imediatamente antes do pedido HTTP de B e termina no primeiro arranque registado pelo trabalhador, incluindo despacho e entrega AMQP. Os três ficheiros de entrada mantêm os mesmos SHA-256 nos manifestos; entre campanhas, alteraram-se a revisão da aplicação, as imagens e o limite de volumes do SeaweedFS. A repetição com uma réplica sob o instrumento final confirmou o mesmo comportamento de bloqueio, com espera média de 82,242 s (imagens reconstruídas e acesso direto por HTTP em loopback).
+Em *capacidade* (`QS-01`), na série oficial com uma réplica, o único consumidor executava a legendagem longa enquanto B aguardava na fila. Na série final (`3cb1b74`), o primeiro vídeo de B arrancou na segunda réplica antes de A terminar nos três ensaios válidos. Em cada série, a espera começa imediatamente antes do pedido HTTP de B e termina no primeiro arranque registado pelo trabalhador. Os três ficheiros de entrada têm os mesmos SHA-256 nos manifestos. A repetição com uma réplica, usando o instrumento final, confirmou a espera pelo consumidor ocupado e registou uma média de 82,242 s.
 
 #block(breakable: false, tab([Capacidade por campanha. Média e amplitude nas duas séries com o instrumento final],
   tabela(
@@ -91,19 +91,41 @@ Em *capacidade* (`QS-01`), na série oficial com uma réplica, o único consumid
     [Espera de B (s)], [61,727], [82,242 (79,325–84,393)], [0,123 (0,113–0,137)],
     [Duração do lote (s)], [69,925], [91,755 (88,370–94,460)], [89,749 (86,369–92,456)],
     [Fila pronta, máximo], [3], [3 (3–3)], [2 (2–2)],
-    [Mensagens por confirmar, máximo], [1], [1 (1–1)], [2 (2–2)],
+    [Máximo de mensagens sem confirmação AMQP], [1], [1 (1–1)], [2 (2–2)],
     [Pico de CPU do grupo (%)], [830,810], [756,550 (673,600–803,450)], [754,277 (746,190–761,180)],
     [Pico de RAM do grupo (GB)], [3,051], [2,860 (2,848–2,869)], [4,252 (4,233–4,266)],
   ),
 ))
 
-Confirmando o _trade-off_ previsto na matriz de efeitos, a média do pico de RAM subiu de 2,86 para 4,25 GB face à base repetida, enquanto as amplitudes dos picos de CPU se sobrepõem. Como ameaça à validade comparativa, o instrumento inicial aguardava a conclusão de A para observar B, ao passo que o instrumento final consulta ambos em cada ronda; assim, as durações iniciais permanecem como referência histórica, e as diferenças de imagens e de acesso limitam a atribuição das variações de duração absoluta apenas ao número de réplicas.
+Confirmando o _trade-off_ previsto na matriz de efeitos, a média do pico de RAM subiu de 2,86 para 4,25 GB face à base repetida, enquanto as amplitudes dos picos de CPU se sobrepõem. O instrumento inicial aguardava a conclusão de A para observar B. O instrumento final consulta ambos em cada ronda. As diferenças de imagem Docker, limite de volumes do SeaweedFS, percurso HTTP/HTTPS e observação dos resultados limitam a comparação direta de durações e utilização de recursos entre séries.
 
 Os valores finais de `QS-01` e `QS-02` correspondem à campanha da revisão `3cb1b74`, com os ensaios e dados individuais registados em `docs/sessoes/2026-11-24-validacao-final-3cb1b74.md`.
 
-Em *operabilidade* (`QS-02`), o projeto A manteve o estado visível nas quatro ações de cada ensaio final. A navegação, o recarregamento e a reconexão registaram 3/3 recuperações cada, sem conclusões prematuras e com downloads HTTP 200 nos três ensaios. A baseline tinha registado 6/12 ações e 0/3 recuperações por navegação e por recarregamento. A duração média das legendas passou de 6,029 para 7,243 s. Observaram-se 28 pedidos de API por ensaio na base e 40, 41 e 41 na revisão `3cb1b74` (com 6 pedidos de estado na base e 9 em cada ensaio final), refletindo navegação, hidratação e a reconexão explícita. Como a base registou zero eventos de progresso reconhecíveis, a comparação direta de duplicados e ordenação carece de observações equivalentes.
+Em *operabilidade* (`QS-02`), o projeto A manteve o estado visível nas quatro ações de cada ensaio final. A navegação, o recarregamento e a reconexão registaram 3/3 recuperações cada, sem conclusões prematuras e com downloads HTTP 200 nos três ensaios. A baseline registou 6/12 nas mesmas quatro ações e 0/3 recuperações por navegação e por recarregamento. A reconexão explícita foi aferida na série final. A duração média das legendas passou de 6,029 para 7,243 s. Observaram-se 28 pedidos de API por ensaio na base e 40, 41 e 41 na revisão `3cb1b74`, com 6 pedidos de estado na base e 9 em cada ensaio final. Como a base registou zero eventos de progresso reconhecíveis, a comparação direta de duplicados e ordenação carece de observações equivalentes.
 
-Num ensaio complementar com quatro pares sobre o mesmo vídeo de 10 s, uma consulta de estado por segundo acrescentou quatro pedidos e 1 048 bytes de corpo HTTP em quatro segundos (mediana de 7,75 ms por pedido), quantificando o custo HTTP de um observador; o respetivo custo em CPU e memória fica por medir.
+Num ensaio complementar com quatro pares sobre o mesmo vídeo de 10 s, uma consulta de estado por segundo acrescentou quatro pedidos e 1 048 bytes de corpo HTTP em quatro segundos. A mediana por pedido foi 7,75 ms. O ensaio quantificou o tráfego HTTP e a latência de um observador.
+
+#pagebreak(weak: true)
+== Ensaio complementar de elasticidade do vídeo
+
+O controlador opcional, introduzido em `c4ddc6c`, consulta os pedidos em espera na fila `video_queue` e ajusta a escala de `video_tool` através do Docker Compose. Inicia-se com uma réplica e usa um máximo configurável, por omissão três. A redução da escala exige que os contadores de mensagens em espera e sem confirmação permaneçam a zero. Uma réplica que já tenha recebido trabalho publica a resposta terminal e confirma a mensagem antes de sair. O controlador corre no host, e a alocação de CPU e memória por réplica fica a cargo do operador.
+
+O ensaio reutiliza a carga do QS-01. Mede a espera de B desde a submissão até ao início do primeiro vídeo e inclui a deteção da fila e o arranque da segunda réplica. O controlador consulta a fila a cada segundo, espera cinco segundos entre decisões e exige dez segundos de inatividade observada antes de reduzir a escala. A série principal começou com um aquecimento seguido de três ensaios válidos. Os controlos de uma e duas réplicas foram executados uma vez cada, na mesma pilha, com a mesma imagem, os mesmos dados e a mesma conta.
+
+#tab([Espera de B no ensaio complementar de elasticidade],
+  tabela(
+    colunas: (1fr, 2cm, 3cm),
+    [Configuração], [Ensaios], [Espera de B (s)],
+    [Uma réplica fixa], [1], [69,917],
+    [Duas réplicas fixas já ativas], [1], [0,099],
+    [Escala automática, máximo três], [3], [7,902 em média (7,704–8,031)],
+    [Escala automática, máximo duas], [1], [6,474],
+  ),
+)
+
+Com máximo três, a escala passou de uma a três réplicas e regressou a uma em todos os ensaios. A e B produziram quatro vídeos descarregáveis após a redução, e as réplicas adicionais saíram com código zero. O retorno a uma réplica foi observado entre 32,8 e 36,9 s após a conclusão de A e B. Em média, decorreram 7,771 s da submissão de B ao arranque do contentor adicional e mais 0,131 s até ao início do trabalho. A espera média ficou abaixo do alvo de referência de 15 s. Este resultado caracteriza a carga A/B definida no protocolo. A campanha oficial de capacidade corresponde à revisão `3cb1b74`.
+
+Numa prova separada, um pedido de saída durante uma legendagem permitiu que o mesmo trabalho concluísse antes de o contentor terminar com código zero. O resultado foi descarregado e descodificado na íntegra. O protocolo e os dados deste seguimento estão em `evaluation/README.md` e `docs/sessoes/2026-11-27-video-autoscaling.md`.
 
 #pagebreak(weak: true)
 == Preservação funcional
@@ -115,6 +137,8 @@ Em alinhamento com o método de _refactoring_, a preservação do comportamento 
 `F8` corrigiu uma falha herdada de reembolso da quota de vídeo ao cancelar, verificada separadamente com contas gratuitas (cancelamentos concorrentes, repetição após indisponibilidade temporária e projeto partilhado), uma vez que as campanhas principais usaram contas premium.
 
 No seguimento de `F2` e `F3`, três regressões em MongoDB verificaram a preservação do estado terminal após edição e a aceitação de eventos pela ordem de cada vídeo. Pela API, renomear um projeto durante a execução preservou os dois resultados descarregáveis e o teste de reembolso voltou a passar (as medições comparativas acima pertencem à campanha imediatamente anterior a este seguimento).
+
+Na revisão de código `c2f4a3f`, uma regressão detetada em Chromium foi corrigida: a lista de efeitos aplicados voltou a aparecer para titulares de um link de leitura. O ensaio confirmou a consulta pelo leitor, a remoção por um editor autorizado e a visibilidade da lista durante o processamento com os controlos de alteração bloqueados. Passaram 38 testes automatizados e a compilação de produção do frontend (`docs/sessoes/2026-11-27-applied-tools-read-only.md`).
 
 #tab([Preservação funcional e testes de regressão],
   tabela(

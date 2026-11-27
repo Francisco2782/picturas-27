@@ -27,7 +27,7 @@
   ),
 )
 
-== Alterações feitas ao capítulo 5 (se existirem)
+== Ajuste do protocolo de verificação
 
 #tab([Alterações aos cenários],
   tabela(
@@ -61,6 +61,8 @@
     [TAT-04], [QS-02], [Usabilidade / Disponibilidade $->$ Manter cópias de dados], [Persistir o _snapshot_ de execução], [Recarregamento ou reconexão durante A $->$ o cliente obtém token, estado e progresso persistidos em MongoDB via API $->$ acompanhamento restaurado.], [Não: estado residia apenas em React (`EV-10`).], [A],
     [TAT-05], [QS-02], [Usabilidade $->$ Apoio ao utilizador (tarefas concorrentes)], [Desacoplar painel global do modal bloqueante], [Utilizador muda para B durante A $->$ remove o _overlay_ e move o progresso para o layout global $->$ navegação e edição livres.], [Não: o _overlay_ bloqueava o ecrã (`EV-10`).], [B],
     [TAT-06], [QS-02], [Disponibilidade $->$ Deteção e recuperação de falhas], [Reconciliar eventos e validar sequência], [Eventos Socket.IO perdidos ou fora de ordem $->$ cliente valida token/precedência e reconcilia via rota de estado $->$ zero falsas conclusões.], [Não: dependia apenas de eventos recebidos (`EV-10`).], [A],
+    [TAT-07], [QS-02], [Usabilidade $->$ Recuperar contexto], [Persistir o último estado no browser], [O utilizador recarrega $->$ `localStorage` restaura o último estado observado nesse browser.], [Ausente: o estado da baseline era volátil (`EV-10`).], [A],
+    [TAT-08], [QS-02], [Disponibilidade $->$ Recuperar após falha], [Restaurar progresso a partir de novos eventos], [A ligação é restabelecida $->$ o cliente volta a subscrever e aguarda o próximo evento de progresso.], [Parcial: já existiam eventos Socket.IO (`EV-10`).], [A],
   ),
 )
 ]

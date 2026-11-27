@@ -1,10 +1,13 @@
 # Phase 2 evidence and reproduction
 
+Run each archive procedure below from the repository root in a fresh shell.
+
 ## Final validation on `3cb1b74`
 
-Obtain `picturas-phase2-final-3cb1b74.tar.gz` and its companion `.sha256` file from the evidence handoff. The package lives under the Git-ignored `evaluation/evidence/` directory. It includes the final raw observations, the environment and source manifest, the summary CSVs and the original D-01 archive.
+The final evidence package and its companion `.sha256` file are in `evaluation/evidence/` as `picturas-phase2-final-3cb1b74.tar.gz` and `picturas-phase2-final-3cb1b74.tar.gz.sha256`. The package includes the final raw observations, the environment and source manifest, the summary CSVs and the original D-01 archive.
 
 ```sh
+cd evaluation/evidence
 sha256sum -c picturas-phase2-final-3cb1b74.tar.gz.sha256
 tar -xzf picturas-phase2-final-3cb1b74.tar.gz
 cd phase2-final-3cb1b74
@@ -17,11 +20,12 @@ The mean B wait was 0.123429 s across three valid capacity runs. Chromium scored
 
 ## Complementary video elasticity evidence
 
-Obtain `video-elasticity-2026-11-27.tar.gz` and its `.sha256` file from the evidence
-handoff. The archive contains the dynamic trials, same-stack fixed controls,
+The `evaluation/evidence/` directory contains `video-elasticity-2026-11-27.tar.gz`
+and its `.sha256` file. The archive contains the dynamic trials, same-stack fixed controls,
 controller logs, environment metadata and the instrument snapshots.
 
 ```sh
+cd evaluation/evidence
 sha256sum -c video-elasticity-2026-11-27.tar.gz.sha256
 tar -xzf video-elasticity-2026-11-27.tar.gz
 cd video-elasticity-2026-11-27
@@ -40,6 +44,9 @@ the official capacity results.
 Extract `picturas-phase2-d01.tar.gz` into an empty directory and run the commands from its `picturas-phase2-d01/` root. Python 3.11+ and a SHA-256 utility are sufficient for this check.
 
 ```sh
+cd evaluation/evidence
+tar -xzf picturas-phase2-d01.tar.gz
+cd picturas-phase2-d01
 sha256sum -c SHA256SUMS
 python3 evaluation/verify_phase2_evidence.py
 python3 evaluation/summarize.py evaluation/evidence/official-baseline-performance-2026-11-17 --runs 3

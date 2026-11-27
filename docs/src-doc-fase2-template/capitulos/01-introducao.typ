@@ -36,9 +36,9 @@ O desenvolvimento partiu da versão oficial disponibilizada no repositório GitH
     colunas: (5.5cm, 1fr),
     [Artefacto], [Versão / referência],
     [Documento de requisitos de base], [doc-ext-requisitos-2627.pdf (Extensão de Requisitos PL1-G4, Fase 1)],
-    [Documento de solução arquitetural de base], [doc-sol-arquitetural.pdf (Fornecido na Fase 1)],
+    [Referência de arquitetura da edição anterior], [`doc-sol-arquitetural.pdf` (Fase 2, 2025/2026, janeiro de 2026)],
     [Repositório de partida], [https://github.com/picturas-um/picturas-27 · tag `phase2-base` (`0523102`), checkout de medição `afb84e5`],
-    [Repositório entregue], [https://github.com/Francisco2782/picturas-27 · branch `main`],
+    [Repositório e revisão do código], [https://github.com/Francisco2782/picturas-27 · `main`, revisão `c2f4a3f` após a correção de leitura de projetos partilhados. A campanha principal foi medida em `3cb1b74`.],
     [Diretrizes da Fase 2], [fase-2-guidelines.pdf (Versão 1)],
   ),
 )
@@ -70,7 +70,7 @@ O documento encontra-se estruturado em cinco partes fundamentais, refletindo o c
 - *Parte I — Enquadramento e Metodologia* (Capítulo 1): formulação do problema, restrições da fase de _refactoring_, caracterização dos artefactos herdados e taxonomia de rastreabilidade.
 - *Parte II — Diagnóstico Arquitetural* (Capítulos 2, 3 e 4): vista global da arquitetura, identificação da bifurcação operacional entre imagem e vídeo, análise detalhada dos estilos arquiteturais em confronto (_Microsserviços Orientados a Eventos_ vs. _Pipeline batch-sequential / pipe-and-filter interno encapsulado_ no vídeo) e avaliação comparativa de padrões alternativos (`ALT-1` a `ALT-3`), com suporte em evidências no código (`EV-01` a `EV-10`) e formulação de hipóteses (`H-01` a `H-04`).
 - *Parte III — Requisitos de Qualidade e Diagnóstico Detalhado* (Capítulos 5 e 6): caracterização rigorosa dos cenários de qualidade (`QS-01` a `QS-03`) com os seis elementos prescritos pela engenharia de software, priorização baseada no impacto para os _stakeholders_ e risco técnico, e formalização dos candidatos a RNF (`CAND-1` e `CAND-2`) com os respetivos métodos e escalas de quantificação.
-- *Parte IV — Táticas, Decisões e Avaliação Experimental* (Capítulos 7 a 10): identificação de táticas candidatas (`TAT-01` a `TAT-06`), formalização das decisões arquiteturais (`DA-1` e `DA-2`) no modelo ADR, vistas antes e depois, análise de _trade-offs_ e apresentação detalhada dos resultados das medições e dos testes de preservação funcional.
+- *Parte IV — Táticas, Decisões e Avaliação Experimental* (Capítulos 7 a 10): identificação de táticas candidatas (`TAT-01` a `TAT-08`), formalização das decisões arquiteturais (`DA-1` e `DA-2`) no modelo ADR, vistas antes e depois, análise de _trade-offs_ e apresentação detalhada dos resultados das medições e dos testes de preservação funcional.
 - *Parte V — Síntese, Conclusões e Transparência* (Capítulos 11 e 12): síntese reflexiva sobre a adequação dos padrões, recomendações práticas para evolução do sistema e registo pormenorizado do recurso a ferramentas de Inteligência Artificial.
 
 A coerência do relatório assenta na preservação estrita de identificadores ao longo de todo o texto: cada constatação factual sustenta-se numa evidência auditada (`EV`), as opções arquiteturais são contrapostas como alternativas (`ALT`), as fragilidades originam cenários formais (`QS`) e requisitos quantificáveis (`CAND`), que determinam a seleção de táticas (`TAT`) consolidadas em decisões arquiteturais (`DA`), posteriormente comprovadas em testes e medições de desempenho (`M`) e preservação funcional (`R`, `P`, `U`).

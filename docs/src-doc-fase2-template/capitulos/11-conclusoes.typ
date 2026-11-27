@@ -17,10 +17,10 @@
 A orquestração assíncrona mantém a execução em lote para imagem e vídeo. O serviço de vídeo agrupa o pipeline para reaproveitar a descodificação e codificação entre efeitos compatíveis. A fila comum admite consumidores concorrentes e a publicação de resultados exige proteção contra fechos simultâneos.
 
 == Sugestões de otimização
-A configuração validada para a carga de capacidade usa duas réplicas, e o Compose conserva uma por omissão. O dimensionamento para outras cargas precisa de observar em conjunto a espera dos trabalhos curtos, o pico de memória e a duração do lote.
+A configuração validada em QS-01 usa duas réplicas, e o Compose conserva uma por omissão. A escala automática complementar reduziu a espera face ao controlo local com uma réplica fixa e voltou ao mínimo após o lote. Para outras cargas, convém medir a espera dos trabalhos curtos, o pico de memória e a duração do lote antes de escolher a escala.
 
 == Considerações para evolução futura
-O estado persistido permite acompanhar execuções longas através do mesmo endpoint após navegação, recarregamento ou reconexão. A evolução de ferramentas de vídeo pode reutilizar esse contrato de acompanhamento e os testes de regressão de lotes mistos.
+Na Fase 3, novas ferramentas de vídeo podem reutilizar o contrato de acompanhamento das execuções longas após navegação, recarregamento ou reconexão. Os testes de regressão de lotes mistos dão à equipa uma forma de verificar se essas integrações preservam o processamento de imagens e vídeos.
 
-== Trabalho futuro
-O seguimento QS-03 validou a recuperação de uma execução de legendagem em dois tipos de interrupção. O teste de polling quantificou o custo HTTP de um observador. Cargas com vários clientes e a atribuição de CPU e memória ficam por avaliar. Para fechar a entrega, falta repetir os cenários por outro membro da equipa e registar a revisão humana do relatório e da utilização de IA.
+== Âmbito da validação
+O seguimento QS-03 verificou a recuperação de uma execução de legendagem após interrupções do worker e do broker. O teste de polling quantificou o tráfego HTTP de um observador. As conclusões aplicam-se às cargas, às réplicas e aos percursos registados nos ensaios locais.

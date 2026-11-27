@@ -14,34 +14,31 @@
   que o resultado foi verificado.
 ]
 
-== Ferramentas, modelos e configuração
+== Ferramentas e tarefas apoiadas
 
 #tabela(
   colunas: (3.5cm, 1fr),
-  [Ferramenta / modelo], [Configuração e utilização (_skills_, instruções de projeto, MCP, …)],
-  [Gemini e Claude Code], [Os exercícios registam apoio ao diagnóstico e à formulação das táticas. O exercício 7 regista Gemini 3.8 Flash. A versão do modelo usado através de Claude Code fica por confirmar.],
-  [Codex (GPT-6)], [Retoma do D-01 e redação do D-02 com as instruções de `AGENTS.md`. Nesta etapa, leu o repositório, executou as verificações locais e usou a skill PDF para conferir a renderização do rascunho.],
+  [Ferramenta], [Utilização registada],
+  [Gemini e Claude Code], [Apoio à análise estática, à identificação de evidências e à formulação de táticas. O Exercício 7 identifica o modelo Gemini 3.8 Flash.],
+  [Codex (GPT-6)], [Apoio à implementação, instrumentação dos ensaios, análise de regressões e preparação e revisão da documentação técnica. Foram usadas as instruções do repositório em `AGENTS.md` e a _skill_ PDF na conferência da composição do documento.],
 )
 
-== Tarefas apoiadas e validação
+== Verificação dos contributos
 
-#tab([Tarefas apoiadas por IA e validação],
+#tab([Tarefas apoiadas e verificações registadas],
   tabela(
-    colunas: (2.6cm, 2.4cm, 2.4cm, 2.8cm, 2.8cm),
+    colunas: (3.4cm, 1fr, 1fr),
     tamanho: 8.5pt,
-    [Ferramenta / modelo / _skill_], [Tarefa apoiada (capítulo)], [O que foi aceite], [O que foi rejeitado e porquê], [Como foi validado pela equipa],
-    [Gemini e Claude Code], [Análise estática e classificação das táticas], [Referências de código, TAT-01 a TAT-06 e classes A/B.], [Filas dedicadas e mudanças de formato das mensagens foram excluídas por excederem o âmbito.], [Os exercícios registam inspeção do código e consulta das referências da unidade curricular.],
-    [Codex], [Inventário, recontagem e preparação dos capítulos finais], [Arquivo D-01 e rascunho das medições, regressões e limitações.], [A primeira recontagem de operabilidade tratava como lista um contador inteiro. A execução local detetou o erro e a correção foi verificada após extração.], [A conferência automática local passou. A revisão humana e a reprodução por outro membro estão pendentes.],
-    [Codex (GPT-6 Luna)], [Auditoria documental, alinhamento dos resultados do relatório e referências dos exercícios.], [Prazo indicado pela equipa, distinção das campanhas, instruções de recontagem, referências corrigidas e verificador de citações.], [Não foi inventada uma fundamentação para os limiares nem afirmada consulta do documento de arquitetura indisponível.], [O verificador de citações e três testes passaram. `git diff --check` passou. A compilação Typst não foi possível neste ambiente. A revisão humana continua pendente.],
+    [Área], [Resultado incorporado], [Verificação registada],
+    [Diagnóstico e táticas], [Evidências de código e alternativas para capacidade e operabilidade.], [Inspeções de código e consulta de fontes registadas nos Exercícios 6 e 7.],
+    [Medição e documentação], [Instrumentos A/B, arquivo D-01 e revisão de referências.], [Recontagem após extração, verificação de checksums e conferência de citações na revisão `0523102`.],
+    [Recuperação e concorrência], [Persistência, reconexão e limpeza no worker.], [Ensaios de interrupção, regressões em MongoDB e verificação de resultados pela API.],
+    [Elasticidade e editor], [Controlador, saída graciosa e correção da lista de efeitos aplicada a projetos partilhados.], [Ensaios com Docker e regressão em Chromium para dono, leitor e editor. Revisões `c4ddc6c`, `bb1d671` e `c2f4a3f`.],
   ),
 )
 
 == Análise crítica
 
-Os registos de fecho distinguem ensaios válidos de tentativas incompletas. A inspeção dos logs do worker e do SeaweedFS esclareceu a falha de armazenamento na primeira campanha de capacidade. No browser, a correção do seletor de notificações e a espera pela confirmação do estado ativo permitiram verificar os casos de conflito do cancelamento. A classificação de cada execução e a evidência de regressão podem ser revistas nos registos P-02, U-04 e de fecho. O repositório contém definições de skills Spec Kit. O uso por tarefa nas sessões anteriores e a revisão humana final ficam por confirmar com a equipa.
+A separação de filas por tipo de carga foi rejeitada pelo custo de alterar o encaminhamento e os contratos existentes. Durante a validação, a execução do verificador detetou que a primeira recontagem de operabilidade interpretava um contador como lista. No ensaio de elasticidade, o primeiro aquecimento expôs a leitura incorreta do identificador do contentor nos eventos Docker. O arquivo conserva essa execução inválida e os resultados obtidos após a correção do instrumento.
 
-Na auditoria documental de 26/11, Codex verificou os resultados arquivados, corrigiu as referências identificadas e criou um verificador para caminhos e intervalos citados. Os testes confirmaram a resolução das citações na revisão-base `0523102`. A justificação original dos limiares não estava registada, pelo que o relatório explicita essa limitação. **Pendente:** a equipa deve rever e validar este capítulo, confirmar as ferramentas, modelos e tarefas aqui registados e aprovar a redação final. A compilação do documento também continua pendente.
-
-No seguimento de QS-03, Codex escreveu as provas de interrupção e do polling, reproduziu duas falhas e implementou persistência, reconexão e limpeza por saída. Os dois ensaios com falha injetada, a regressão de extração de fotogramas e as suites locais verificaram a correção. Os dados estão no registo de recuperação e polling.
-
-Para F2 e F3, Codex escreveu três regressões em MongoDB, confirmou as falhas na revisão anterior e implementou as correções. As mesmas regressões passaram na revisão corrigida. A prova pela API confirmou os dois resultados após uma edição durante o processamento.
+A validação técnica apresentada reúne inspeções, testes executados e medições instrumentadas. Os registos P-02, U-04, de recuperação, de elasticidade e de acesso em modo de leitura documentam as verificações. A composição do relatório foi conferida por compilação e renderização com Tinymist.

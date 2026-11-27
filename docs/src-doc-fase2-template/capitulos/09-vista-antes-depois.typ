@@ -31,7 +31,7 @@
 
 *Ferramenta / notação:* Graphviz (fontes em `images/vista_antes.dot` e `images/vista_depois.dot`). Vista esquemática de componentes e fluxos em tempo de execução.
 
-As setas indicam o sentido das chamadas HTTPS/WebSocket ou das mensagens AMQP, e as filas pertencem à exchange `picturas`. As duas vistas usam a mesma notação e os mesmos elementos de contexto. A diferença entre @fig-vista-antes e @fig-vista-depois é percebida a olho.
+As setas indicam o sentido das chamadas HTTPS/WebSocket ou das mensagens AMQP. As filas pertencem à exchange `picturas`. Os destaques distinguem os componentes e fluxos afetados pelas decisões. Na vista posterior, `processingRun` representa um campo do documento do projeto no MongoDB, não uma coleção autónoma.
 
 #tab([Legenda dos destaques das vistas antes/depois],
   tabela(
@@ -44,6 +44,6 @@ As setas indicam o sentido das chamadas HTTPS/WebSocket ou das mensagens AMQP, e
   ),
 )
 
-- *O que mudou com DA-1 (`TAT-01`)*: o consumo de `video_queue` passa a admitir réplicas concorrentes (`video_tool`), e o orquestrador `projects` passa a proteger atomicamente o fecho do lote e a limpar ficheiros temporários por saída.
+- *O que mudou com DA-1 (`TAT-01`)*: o consumo de `video_queue` passa a admitir réplicas concorrentes (`video_tool`); o worker limpa os seus ficheiros de staging ao recuperar uma entrega interrompida, e o orquestrador `projects` protege atomicamente o fecho do lote.
 - *O que mudou com DA-2 (`TAT-04`, `TAT-05`, `TAT-06`)*: o progresso deixa de seguir diretamente do trabalhador para `ws_queue`, passando a ser validado e persistido em `projects` (`processingRun` no MongoDB) antes da difusão por Socket.IO; na interface, o _overlay_ bloqueante dá lugar a um painel global desacoplado com reconciliação sobre a rota autenticada de estado.
 

@@ -58,14 +58,14 @@ Os dois candidatos são independentes: nenhum é condição do outro, pois `CAND
  
 
 
-== Evidência exploratória (se existir)
+== Evidência exploratória
 
 #tab([Evidência exploratória],
   tabela(
     colunas: (4cm, 5cm, 1fr),
     [Descrição], [Localização (_scripts_, dados, resultados)], [Como repetir],
-    [Ensaio de capacidade com duas réplicas do _worker_ (P-01).], [`docs/fase-2-implementacao.md` (incremento P-01), `docs/sessoes/2026-11-22-fecho-fase-2.md` e registos em `evaluation/evidence/final-performance/`.], [`docker compose up -d --no-build --scale video_tool=2 video_tool` e `python3 evaluation/run_scenario.py --runs 3 --warmup 1 --expected-workers 2 --output-dir evaluation/evidence/final-performance` (ver `evaluation/README.md`).],
-    [Repetição da baseline com uma réplica e o instrumento final: média de 82,242 s, corroborando o bloqueio por _worker_ ocupado que motiva o `CAND-1`.], [`docs/sessoes/2026-11-23-espera-b.md` e `evaluation/evidence/phase2-final-2026-11-22/comparison-baseline/`.], [`python3 evaluation/summarize.py evaluation/evidence/phase2-final-2026-11-22/performance-retry --runs 3`; ver o guia em `docs/sessoes/2026-11-23-espera-b.md`.],
+    [Verificação de dois consumidores na fila de vídeo (P-01).], [`docs/fase-2-implementacao.md` (incremento P-01) e registos em `evaluation/evidence/phase2-p01-smoke-2026-11-17/`.], [`docker compose up -d --no-build --scale video_tool=2 video_tool`. Em seguida, executar `docker compose exec -T rabbitmq rabbitmqctl -q list_consumers queue_name ack_required prefetch_count` e verificar duas entradas para `video_queue`, com confirmação manual e prefetch 1.],
+    [Repetição da baseline com uma réplica e o instrumento final: média de 82,242 s, corroborando o bloqueio por _worker_ ocupado que motiva o `CAND-1`.], [`docs/sessoes/2026-11-23-espera-b.md` e `evaluation/evidence/phase2-final-2026-11-22/comparison-baseline/`.], [`python3 evaluation/summarize.py evaluation/evidence/phase2-final-2026-11-22/comparison-baseline --runs 3`; ver o guia em `docs/sessoes/2026-11-23-espera-b.md`.],
     [Custo HTTP de um observador de estado a 1 Hz: 4 pedidos incrementais e 1048 bytes por janela de 4 s, latência mediana de 7,75 ms, sem efeito observável na conclusão.], [`evaluation/measure_status_polling.py`, `docs/sessoes/2026-11-23-recuperacao-e-polling.md` e `evaluation/evidence/phase2-followup-2026-11-23/polling.json`.], [`python3 evaluation/measure_status_polling.py --output evaluation/evidence/phase2-followup-2026-11-23/polling.json` com a pilha de validação ativa.],
   ),
 )
