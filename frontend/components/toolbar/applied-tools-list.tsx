@@ -18,7 +18,7 @@ import { Undo2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 
-export function AppliedToolsList() {
+export function AppliedToolsList({ canEdit }: { canEdit: boolean }) {
   const project = useProjectInfo();
   const setTools = useSetProjectTools();
   const session = useSession();
@@ -239,29 +239,31 @@ export function AppliedToolsList() {
       <div className="flex flex-col items-start gap-1">
         <span className="text-xs text-gray-500">Applied</span>
 
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-6 w-6"
-            onClick={handleUndo}
-            disabled={tools.length === 0 || deleteTool.isPending}
-            title="Reverter última edição"
-          >
-            <Undo2 className="h-3 w-3" />
-          </Button>
+        {canEdit && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleUndo}
+              disabled={tools.length === 0 || deleteTool.isPending}
+              title="Reverter última edição"
+            >
+              <Undo2 className="h-3 w-3" />
+            </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={handleReset}
-            disabled={tools.length === 0 || clearTools.isPending}
-            title="Reset para versão original"
-          >
-            <RotateCcw className="h-3 w-3" />
-          </Button>
-        </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleReset}
+              disabled={tools.length === 0 || clearTools.isPending}
+              title="Reset para versão original"
+            >
+              <RotateCcw className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {tools.length === 0 && (
@@ -270,11 +272,11 @@ export function AppliedToolsList() {
         </p>
       )}
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={canEdit ? handleDragEnd : undefined}>
         <SortableContext items={tools.map((t) => t._id)} strategy={verticalListSortingStrategy}>
           <div className="flex max-h-40 flex-col gap-1 overflow-x-hidden overflow-y-auto">
             {tools.map((tool) => (
-              <SortableToolItem key={tool._id} tool={tool} onRemove={handleRemove} />
+              <SortableToolItem key={tool._id} tool={tool} onRemove={canEdit ? handleRemove : undefined} />
             ))}
           </div>
         </SortableContext>

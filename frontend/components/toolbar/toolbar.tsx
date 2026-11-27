@@ -97,7 +97,7 @@ export function Toolbar() {
             <UpgradeAITool disabled={disabled} />
           </>
         )}
-        {canEdit && <AppliedToolsList />}
+        <AppliedToolsList canEdit={canEdit} />
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
