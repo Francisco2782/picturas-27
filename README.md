@@ -255,9 +255,14 @@ OOM-killed.
 
 1. Open <https://localhost:8080> and accept the certificate.
 2. Register an account, or use the anonymous mode.
-3. Create a project and upload an image or a video (samples in `samples/video/`).
-4. Build a pipeline with the toolbar (filters, geometry, AI tools) and run it.
-5. Watch the progress arrive live over the WebSocket, then download the results.
+3. Create a project and upload an image. Signed-in users can also upload video
+   (samples in `samples/video/`).
+4. Build and run a pipeline using **Project tools** in the edit grid. To trim a video or
+   change its speed, open that video in the carousel first.
+5. Follow the progress in the editor or processing panel. Download the whole batch as a ZIP,
+   or open an individual result's context menu to download it with `_edited` before its extension.
+
+To prepare the browser demo locally, see the [sample video guide](samples/video/README.md#browser-demo).
 
 ---
 
@@ -400,6 +405,46 @@ written to the host at `./backups/mongo` (git-ignored). `docker compose down -v`
 Containers are named `picturas-<service>-<n>` (from `name: picturas` in `docker-compose.yaml`),
 independently of the directory you cloned into. Use `docker compose -p <other-name>` to run a
 second, separate stack.
+
+#### Automatic video worker scaling (optional)
+
+On a Linux Compose host, rebuild and start with one worker while the video queue is
+idle. Then run the controller from the repository root in a separate terminal with
+Docker access. Set `RABBITMQ_MANAGEMENT_PASSWORD` in that terminal to the broker's
+management password.
+
+```sh
+docker compose up -d --build --scale video_tool=1 video_tool
+VIDEO_WORKERS_MAX=3 python3 scripts/autoscale_video.py
+```
+
+The controller polls the RabbitMQ management API for `video_queue`. It adds one
+replica at a time when messages are ready. It waits for both ready and
+unacknowledged messages to stay at zero before requesting that a replica drain.
+A worker that has already started a video completes it, confirms the terminal
+reply and acknowledges the job before exiting. Deliveries received during drain
+that have yet to start are returned to RabbitMQ when the connection closes.
+
+| Environment variable | Default | Purpose |
+| --- | --- | --- |
+| `VIDEO_WORKERS_MIN` | `1` | Minimum running replicas |
+| `VIDEO_WORKERS_MAX` | `3` | Maximum running replicas started by the controller |
+| `VIDEO_WORKERS_INTERVAL` | `1` | Queue polling interval in seconds |
+| `VIDEO_WORKERS_COOLDOWN` | `5` | Pause between scale decisions in seconds |
+| `VIDEO_WORKERS_IDLE_SECONDS` | `10` | Continuous observed idle time before a drain |
+
+Set `COMPOSE_PROJECT_NAME`, `RABBITMQ_MANAGEMENT_URL` and `RABBITMQ_MANAGEMENT_USER`
+for a different stack or broker. `Ctrl+C` stops the controller and leaves the running
+replicas in service. Run one controller per stack and let it finish any drain before
+changing the replica count manually. CPU and RAM allocation stay under operator control
+in Compose. The controller scales `video_tool` horizontally, from one to the configured
+maximum by default. Sustained-load behavior has yet to be measured.
+
+The fixed-worker QS-01 **capacity** trials measured a mean wait for B of **61.727 s**
+with one worker and **0.123 s** with two. In the separate **elasticity** trials,
+B waited **7.902 s** on average across three runs (range **7.704–8.031 s**),
+including replica startup. Every run scaled from one to three and back to one,
+and all four results remained downloadable. [A/B reproduction steps](evaluation/README.md#video-worker-elasticity)
 
 ### Enabling the ELK stack (optional)
 
@@ -605,8 +650,9 @@ is a valid MP4, MOV or WebM. Videos must go to `POST /:user/:project/video`; the
 endpoint rejects them.
 
 **A video stays at 0% or never finishes**
-There is a single `video_tool` with no replicas, so videos are processed one at a time. Check
-`docker compose logs -f video_tool` and the depth of `video_queue` in RabbitMQ.
+Each `video_tool` replica processes one video at a time. The default Compose
+configuration has one replica. Check `docker compose logs -f video_tool` and the
+depth of `video_queue` in RabbitMQ.
 
 **`expand_ai` fails**
 It depends on `generative-mock` being healthy. Check <http://localhost:7860> and

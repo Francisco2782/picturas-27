@@ -15,6 +15,26 @@ python3 instruments/summarize.py capacity --runs 3
 
 The mean B wait was 0.123429 s across three valid capacity runs. Chromium scored 12/12 actions, recovered navigation, reload and reconnect in 3/3 trials each, and recorded zero premature completions. The [final validation log](../docs/sessoes/2026-11-24-validacao-final-3cb1b74.md) records the configuration, individual results and verification after clean extraction.
 
+## Complementary video elasticity evidence
+
+Obtain `video-elasticity-2026-11-27.tar.gz` and its `.sha256` file from the evidence
+handoff. The archive contains the dynamic trials, same-stack fixed controls,
+controller logs, environment metadata and the instrument snapshots.
+
+```sh
+sha256sum -c video-elasticity-2026-11-27.tar.gz.sha256
+tar -xzf video-elasticity-2026-11-27.tar.gz
+cd video-elasticity-2026-11-27
+sha256sum -c SHA256SUMS
+python3 instruments/summarize.py dynamic --runs 3
+```
+
+The expected mean B wait is 7.902 s (range 7.704–8.031 s), including the start of
+the added replica. Use the [elasticity procedure](README.md#video-worker-elasticity)
+for a live rerun and the [session log](../docs/sessoes/2026-11-27-video-autoscaling.md)
+for the measurements and limits. The fixed-replica protocols below reproduce
+the official capacity results.
+
 ## Original D-01 archive
 
 Extract `picturas-phase2-d01.tar.gz` into an empty directory and run the commands from its `picturas-phase2-d01/` root. Python 3.11+ and a SHA-256 utility are sufficient for this check.

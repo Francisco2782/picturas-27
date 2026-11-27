@@ -1,4 +1,4 @@
-# Video baseline evaluation
+# Video capacity and elasticity evaluation
 
 This evaluation-only harness measures contention between subtitle job A and
 brightness workload B. It leaves application and deployment code unchanged.
@@ -38,8 +38,9 @@ container names and IDs are discovered at runtime. The API defaults to
 `https://localhost:8080/api-gateway`; RabbitMQ management defaults to
 `http://localhost:15672/api/queues/%2F/video_queue`.
 
-For a measured baseline, run one replica; for the final capacity configuration,
-run two replicas. The harness does not change Compose scaling:
+For the fixed-replica capacity scenario, keep the controller inactive. Run one
+replica for the baseline and two for the final configuration. The harness
+observes the scale set by Compose or the controller:
 
 ```sh
 docker compose up -d --scale video_tool=1  # baseline
@@ -48,9 +49,9 @@ docker compose up -d --scale video_tool=2  # final configuration
 
 Set `COMPOSE_PROJECT_NAME` if the stack uses a Compose project name other than
 `picturas`. Override `VIDEO_WORKER_SERVICE` only if the Compose service is named
-differently. The runner requires at least one running worker and fails a sample if
-the number of replicas changes during the run or any replica has missing or
-malformed resource data.
+differently. The runner requires at least one running worker and rejects samples
+with missing or malformed resource data. Fixed-replica mode also rejects
+changes in replica count.
 
 ## Run the scenario
 
@@ -72,10 +73,10 @@ sums. Per-worker peaks are retained in each `summary.json` and printed separatel
 by the summarizer. B's wait uses the earliest matching brightness log timestamp
 found across all observed replicas minus B's submission timestamp. Queue depth is
 corroborating evidence and the worker log is the processing-start measurement.
-If the worker replica count changes, or a replica cannot be observed, the run is
-invalid. The runner also checks worker identity, start time, restart count and
-OOM status before and after the run. It rejects missing queue or worker samples
-and gaps exceeding the sampling interval plus five seconds for Docker stats.
+In fixed-replica mode, the run is invalid if the replica count or identity
+changes, a replica cannot be observed, or a worker restarts or is OOM-killed.
+The runner rejects missing queue or worker samples and gaps exceeding the
+sampling interval plus five seconds for Docker stats.
 It polls A and B in each round and validates exact counts and distinct source
 and result IDs. Older evidence collected by polling A to completion before B
 remains comparable for log-derived wait. Remeasure with the same runner before
@@ -102,6 +103,38 @@ No evidence files, credentials, JWTs, or authorization headers are committed.
 Keep generated evidence under `evaluation/evidence/`; it is ignored by Git.
 
 For the Phase 2 delivery archive, see the [reproduction guide](phase2-reproduction.md).
+
+## Video worker elasticity
+
+Use a dedicated validation stack with empty video and project queues, the same
+three inputs, a warmed Whisper cache, a premium account and `ffprobe` on the
+host. Start with a single `video_tool` and run the optional controller from the
+[scaling instructions](../README.md#automatic-video-worker-scaling-optional).
+Keep the controller output with the run records. In a separate terminal, export
+the credentials above and run:
+
+```sh
+python3 evaluation/run_scenario.py --elastic --expected-workers 1 \
+  --runs 3 --warmup 1 --process-timeout 240 \
+  --output-dir evaluation/evidence/video-elasticity/dynamic
+```
+
+Use the same 1.5-second dispatch gap, workload, account and stack for fixed
+controls. Stop the controller with `Ctrl+C` after it returns to one replica.
+With the queue idle, set the desired fixed count and run the same command
+without `--elastic`, using `--expected-workers 1` or `--expected-workers 2` and a
+different output directory for each. Keep the archived official QS-01 results
+as historical references. The supplementary controls on 27 November used
+`--runs 1 --warmup 0` for each fixed count, after the elastic series.
+
+Elastic mode requires B's first brightness job to start on a worker that starts
+after B is submitted, while A is still pending. B wait is measured from
+submission to first processing start, including broker observation and worker
+startup. Each run requires four distinct video jobs, no worker crash or OOM,
+clean exits of the added replicas, the original worker still running and an
+empty queue with one consumer. After scale-in it downloads all four results,
+checks unique IDs, codecs and durations, and records SHA-256 digests and Docker
+lifecycle events. The optional controller's default maximum remains three.
 
 ## Infrastructure recovery and status polling
 

@@ -5,7 +5,7 @@ user-facing documentation; this file is the short version an agent needs before 
 
 ## Phase 2 status and next steps
 
-- The official baseline is recorded. Compose defaults to one video worker. The capacity scenario uses two.
+- The official baseline is recorded. Compose defaults to one video worker. The capacity scenario uses two. The optional [video autoscaler](README.md#automatic-video-worker-scaling-optional) and [elasticity scenario](evaluation/README.md#video-worker-elasticity) exercise dynamic replicas separately.
 - P-02 preserved two distinct, downloadable results in the local race regression and in the two-replica check with MongoDB and real storage. [P-02 evidence](docs/sessoes/2026-11-22-p02.md)
 - U-04 passed the Chromium A/B and F5 acceptance checks. R-01 through R-04 passed with 128 automated tests and the production frontend build. M-01 through M-04 met both targets: 0.113 s mean B wait, 12/12 usability actions and 3/3 recoveries for navigation, reload and reconnect. [Validation log](docs/sessoes/2026-11-22-fecho-fase-2.md) · [B wait definition and comparison](docs/sessoes/2026-11-23-espera-b.md)
 - QS-03 passed two in-flight worker interruptions and two broker interruptions on the updated validation stack. In each run, the same job resumed, the output was downloadable and no new staging files remained. A separate polling experiment measured one 1 Hz observer's HTTP cost. [Follow-up evidence](docs/sessoes/2026-11-23-recuperacao-e-polling.md)

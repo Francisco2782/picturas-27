@@ -19,3 +19,6 @@ __pycache__/
 
 # local evaluation evidence
 evaluation/evidence/
+
+# local browser demo copies and excerpts
+/demo/
