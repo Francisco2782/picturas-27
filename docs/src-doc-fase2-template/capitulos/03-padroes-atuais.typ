@@ -28,11 +28,11 @@
   [Descrição], [Nas estruturas estáticas, os serviços de negócio (`projects`, `users`, `subscriptions`, `imageStorageService`) e as ferramentas estão decompostos em módulos autónomos com baixo acoplamento. Nas estruturas dinâmicas, Nginx, gateway REST e Socket.IO medeiam o acesso do browser, enquanto o RabbitMQ desacopla o despacho da execução.],
 )
 
-Em poucas palavras: o exterior fala com o PictuRAS por pedidos síncronos mediados pela camada perimetral, mas todo o processamento interno --- despacho de trabalhos, progresso e resultados --- viaja por filas RabbitMQ e é executado por serviços autónomos que não se conhecem entre si. É esta combinação de decomposição por serviço, mensageria assíncrona e persistência desacoplada que define o estilo global; as decisões que daí resultam e condicionam o vídeo resumem-se na @tab-decisoes-globais.
 
 #tab([Decisões globais que condicionam o vídeo],
   tabela(
-    colunas: (4.5cm, 2.6cm, 1fr),
+    colunas: (3.8cm, 3.4cm, 1fr),
+    tamanho: 8.5pt,
     [Decisão global], [Evidência], [Efeito no vídeo],
     [Filas e serviços por ferramenta], [EV-03, EV-04 e EV-08 (`docker-compose.yaml:255-273`, `rabbitMQ/definitions.json`)], [O _broker_ desacopla produtores e consumidores, permitindo escalar ou substituir trabalhadores sem alterar o contrato de entrada.],
     [Orquestração por tipo de media], [EV-03, `projects/utils/processBatch.js`], [As imagens seguem um encadeamento etapa a etapa; o vídeo é despachado com o _pipeline_ completo numa única mensagem para `video_queue`.],
@@ -52,7 +52,6 @@ Em poucas palavras: o exterior fala com o PictuRAS por pedidos síncronos mediad
   ),
 ) <tab-beneficios-globais>
 
-`H-02`: o volume partilhado `image_data` pode tornar-se um gargalo de I/O ou um ponto único de falha sob maior concorrência (`docker-compose.yaml:151, 271-273, 565`, baseline `0523102`). Para confirmar ou refutar a hipótese, é necessário medir latência e utilização do volume sob carga e observar o efeito de uma indisponibilidade controlada. O estado desta hipótese é *por confirmar*; esses ensaios ficaram fora do âmbito da Fase 2.
 
 == Padrão do processamento de vídeo
 
@@ -68,7 +67,7 @@ Em poucas palavras: o exterior fala com o PictuRAS por pedidos síncronos mediad
   [Contraste com o caminho de imagens], [As ferramentas de imagem materializam um _pipe-and-filter_ distribuído: consomem filas próprias (`<tool>_queue`) e o orquestrador `projects` encadeia as etapas via `project_queue` (EV-03). O vídeo concentra todas as etapas num único serviço para evitar múltiplas recodificações e transferências em disco.],
 )
 
-O desvio em relação ao padrão global é deliberado. Repetir a decomposição por ferramenta multiplicaria o custo de CPU e de I/O: cada etapa reabriria, descodificaria e recodificaria o ficheiro de vídeo, em vez de pagar uma única passagem partilhada entre efeitos contíguos (EV-04, `Tools/video/effects.py`). O custo desta escolha é a perda de isolamento que o padrão global dá por garantida: enquanto um vídeo ocupa o único consumidor (`prefetch_count=1`), nenhum outro trabalho de vídeo avança; uma falha numa dependência interna do serviço único afeta todos os efeitos; e evoluir um efeito obriga a alterar o mesmo serviço. Os benefícios e desafios resumem-se na @tab-beneficios-video.
+O desvio em relação ao padrão global é deliberado. Repetir a decomposição por ferramenta multiplicaria o custo de CPU e de I/O: cada etapa reabriria, descodificaria e recodificaria o ficheiro de vídeo, em vez de pagar uma única passagem partilhada entre efeitos contíguos (EV-04, `Tools/video/effects.py`). O custo desta escolha é a perda de isolamento que o padrão global dá por garantida: enquanto um vídeo ocupa o único consumidor (`prefetch_count=1`), nenhum outro trabalho de vídeo avança. Uma falha numa dependência interna do serviço único afeta todos os efeitos e evoluir um efeito obriga a alterar o mesmo serviço. Os benefícios e desafios resumem-se na @tab-beneficios-video.
 
 #tab([Benefícios e desafios do padrão do vídeo],
   tabela(
@@ -77,7 +76,7 @@ O desvio em relação ao padrão global é deliberado. Repetir a decomposição 
     [Tipo], [Descrição], [Característica / subcaracterística (ISO/IEC 25010)], [Facto / hipótese],
     [Benefício], [Reduz a sobrecarga computacional e de I/O ao reutilizar a descodificação e codificação entre efeitos contíguos.], [Eficiência de desempenho, utilização de recursos], [EV-04 e `Tools/video/effects.py`],
     [Desafio], [A legendagem síncrona em CPU ocupa o único consumidor disponível e gera elevado tempo bloqueado (*blocked time*) para trabalhos curtos na fila.], [Eficiência de desempenho, capacidade], [EV-04 e EV-05; espera média de B = 61,727 s na baseline oficial (`evaluation/evidence/official-baseline-performance-2026-11-17/`)],
-    [Desafio], [Baixa modularidade: uma falha numa dependência interna (ex.: Faster-Whisper ou Pillow) afeta o _worker_ inteiro, e evoluir um efeito obriga a alterar o serviço único.], [Fiabilidade, tolerância a falhas], [EV-04 e EV-05],
+    [Desafio], [Baixa modularidade: uma falha numa dependência interna afeta o _worker_ inteiro, e evoluir um efeito obriga a alterar o serviço único.], [Fiabilidade, tolerância a falhas], [EV-04 e EV-05],
   ),
 ) <tab-beneficios-video>
 
@@ -96,7 +95,7 @@ O desvio em relação ao padrão global é deliberado. Repetir a decomposição 
 
 #tab([Relação entre o padrão global e o padrão do vídeo],
   tabela(
-    colunas: (2.4cm, 3cm, 3cm, 1.9cm, 2.6cm, 1.8cm),
+    colunas: (2.2cm, 2.9cm, 2.9cm, 1.8cm, 2.6cm, 2.1cm),
     tamanho: 8pt,
     [Aspeto], [O que o padrão global prescreve], [O que o vídeo faz], [Segue / afasta-se], [Consequência], [Evidência],
     [Comunicação assíncrona], [Despacho assíncrono via RabbitMQ], [Consumo assíncrono de `video_queue`], [Segue], [Mantém o desacoplamento temporal entre cliente e execução.], [EV-03 e EV-04],
