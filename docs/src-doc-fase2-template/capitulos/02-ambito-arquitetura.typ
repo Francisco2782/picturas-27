@@ -63,6 +63,7 @@ A análise estrutural do sistema e o diagnóstico arquitetural fundamentaram-se 
     [`doc-ext-requisitos-2627.pdf`], [PL1-G4 (2026)], [Especificação de requisitos funcionais e não funcionais herdados da extensão de vídeo da Fase 1 (`REQ-VID-*`).],
     [`doc-sol-arquitetural.pdf`], [Fase 1 (2026)], [Documento de arquitetura herdada. A arquitetura foi analisada a partir do repositório de base e da documentação disponível.],
     [Slides das aulas teóricas e suporte], [Novembro de 2026], [Taxonomia de estilos arquiteturais (Camadas, Microsserviços, Event-Driven, Pipes & Filters) e táticas de desenho de software (Bass et al.).],
+    [Documento de apoio de padrões arquiteturais (`docs/exercicios/RAS_support_doc_architectural_patterns_PT.html`)], [Material de apoio ao Exercício 6 (2026/2027)], [Descrição dos padrões considerados e do seu nível de análise (secções 1–7); fundamenta o padrão global, o padrão do vídeo e as alternativas `ALT-1` a `ALT-3` do capítulo 4.],
     [Diretrizes da Fase 2 (`fase-2-guidelines.md`)], [Versão 1], [Regras de refactoring, restrições metodológicas e critérios de aceitação.],
     [Arquivo de evidência D-01], [Medições de 17 e 22–23/11/2026], [Versões do ambiente, métricas, eventos e condições dos ensaios.],
   ),
