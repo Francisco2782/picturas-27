@@ -14,5 +14,6 @@
 #tabela(
   colunas: (1.5cm, 2.3cm, 1fr, 3.5cm),
   [Versão], [Data], [Alterações], [Autores],
-  [Rascunho], [23/11/2026], [Integração dos exercícios, medições, regressões e registo de IA.], [PL3-G5, com apoio de Codex],
+  [v0.1], [23/11/2026], [Integração dos exercícios, medições, regressões e registo de IA.], [PL3-G5, com apoio de Codex],
+  [v1.0], [26/11/2026], [Revisão global de escrita], [PL3-G5],
 )
