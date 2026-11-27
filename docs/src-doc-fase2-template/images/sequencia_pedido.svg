@@ -69,7 +69,7 @@
   <text x="220" y="240" text-anchor="middle" font-size="9" font-weight="bold" fill="#C2410C">POST .../process</text>
 
   <line x1="365" y1="260" x2="515" y2="260" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <text x="440" y="255" text-anchor="middle" font-size="9" fill="#374151">Cria Process e inicia processingRun</text>
+  <text x="440" y="255" text-anchor="middle" font-size="9" fill="#374151">Cria Process (lote registado antes do despacho)</text>
 
   <line x1="365" y1="280" x2="665" y2="280" stroke="#C2410C" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
   <text x="515" y="275" text-anchor="middle" font-size="9" font-weight="bold" fill="#C2410C">Publica em video_queue (1 msg/vídeo, pipeline integral)</text>
@@ -85,13 +85,10 @@
   <text x="835" y="371" font-size="8.5" fill="#7C2D12">Faster-Whisper (se subtitles)</text>
 
   <line x1="815" y1="395" x2="665" y2="395" stroke="#C2410C" stroke-width="1.2" marker-end="url(#arrow-orange)"/>
-  <text x="740" y="390" text-anchor="middle" font-size="9" fill="#C2410C">Publica project_queue (video-progress %)</text>
+  <text x="740" y="390" text-anchor="middle" font-size="9" fill="#C2410C">Publica ws_queue (video-progress %)</text>
 
-  <line x1="665" y1="410" x2="365" y2="410" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <text x="515" y="405" text-anchor="middle" font-size="9" fill="#374151">projects valida e persiste progresso no Mongo</text>
-
-  <line x1="365" y1="425" x2="80" y2="425" stroke="#2563EB" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <text x="220" y="420" text-anchor="middle" font-size="9" fill="#1D4ED8">ws_queue → wsGateway → WebSocket progress (%)</text>
+  <line x1="665" y1="410" x2="80" y2="410" stroke="#2563EB" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="360" y="405" text-anchor="middle" font-size="9" fill="#1D4ED8">wsGateway difunde progresso por WebSocket (sem passar pelo projects)</text>
 
   <!-- Step 5: Result -->
   <text x="40" y="455" font-size="10" font-weight="bold" fill="#4B5563">5. Conclusão e Resultado</text>
@@ -106,10 +103,7 @@
   <line x1="665" y1="510" x2="365" y2="510" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
   <text x="515" y="505" text-anchor="middle" font-size="9" fill="#374151">Commit do lote: cria Result e remove Process</text>
 
-  <line x1="365" y1="525" x2="515" y2="525" stroke="#4B5563" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <text x="440" y="520" text-anchor="middle" font-size="9" fill="#374151">processingRun: completed</text>
-
-  <line x1="365" y1="545" x2="80" y2="545" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="220" y="540" text-anchor="middle" font-size="9" font-weight="bold" fill="#15803D">ws_queue → process-update (Resultados disponíveis)</text>
+  <line x1="365" y1="530" x2="80" y2="530" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="220" y="525" text-anchor="middle" font-size="9" font-weight="bold" fill="#15803D">ws_queue → update-client-process (Resultados disponíveis)</text>
 
 </svg>

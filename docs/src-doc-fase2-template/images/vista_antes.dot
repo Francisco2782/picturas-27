@@ -1,0 +1,49 @@
+// Vista arquitetural ANTES das decisões DA-1 e DA-2 (Fase 2).
+// Mesma notação e disposição de vista_depois.dot.
+// Contorno vermelho tracejado = fragilidade observada na base.
+// Gerar com: dot -Tsvg vista_antes.dot -o vista_antes.svg
+digraph antes {
+  rankdir=TB;
+  splines=spline;
+  nodesep=0.45;
+  ranksep=0.50;
+
+  node [shape=box, style="rounded,filled", fillcolor="white", color="#555555",
+        fontname="Helvetica", fontsize=13, margin="0.18,0.10"];
+  edge [color="#555555", fontname="Helvetica", fontsize=10.5, fontcolor="#333333"];
+
+  browser  [label="Browser\n[overlay bloqueante;\nestado React volátil]",
+            color="#B00020", penwidth=1.6];
+  gw       [label="apiGateway\n[verifica JWT]"];
+  projects [label="projects (orquestrador)\n[fecho do lote sem proteção atómica]",
+            color="#B00020", penwidth=1.6];
+  wsgw     [label="wsGateway\n(Socket.IO)"];
+  worker   [label="video_tool\n[1 réplica; prefetch_count=1]",
+            color="#B00020", penwidth=1.6];
+  mongo    [shape=cylinder, style=filled, label="MongoDB"];
+  s3       [shape=cylinder, style=filled, label="S3 (SeaweedFS)\n+ volume image_data"];
+
+  subgraph cluster_rabbit {
+    label="RabbitMQ — exchange «picturas»";
+    fontname="Helvetica"; fontsize=11; style=dashed; color="#999999";
+    vq [label="video_queue", fillcolor="#FFF6DE"];
+    pq [label="project_queue", fillcolor="#FFF6DE"];
+    wq [label="ws_queue", fillcolor="#FFF6DE"];
+
+    { rank=same; vq; pq; wq; }
+  }
+
+  browser -> gw      [label="HTTPS\n/api-gateway/"];
+  gw      -> projects;
+  projects -> vq     [label="1 mensagem por vídeo"];
+  vq      -> worker  [label="consome"];
+  worker  -> s3      [label="staging e\nresultados"];
+  worker  -> pq      [label="progresso e\nresultado terminal"];
+  pq      -> projects;
+  projects -> mongo  [label="persiste projetos\ne estado"];
+  projects -> wq     [label="publica eventos"];
+  wq      -> wsgw;
+  wsgw    -> browser [label="Socket.IO\nws_queue"];
+
+  { rank=same; mongo; s3; }
+}

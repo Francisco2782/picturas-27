@@ -1,0 +1,54 @@
+// Vista arquitetural DEPOIS das decisões DA-1 e DA-2 (Fase 2).
+// Mesma notação e disposição de vista_antes.dot.
+// Fundo e contorno laranja = introduzido ou alterado pelas táticas
+// (estereótipos «tática: TAT-nn»).
+// Gerar com: dot -Tsvg vista_depois.dot -o vista_depois.svg
+digraph depois {
+  rankdir=TB;
+  splines=spline;
+  nodesep=0.45;
+  ranksep=0.50;
+
+  node [shape=box, style="rounded,filled", fillcolor="white", color="#555555",
+        fontname="Helvetica", fontsize=13, margin="0.18,0.10"];
+  edge [color="#555555", fontname="Helvetica", fontsize=10.5, fontcolor="#333333"];
+
+  browser  [label="Browser\n[painel global de progresso «tática: TAT-05»;\nreconciliação «tática: TAT-06»]",
+            fillcolor="#FDECE1", color="#C76C1B", penwidth=1.8];
+  gw       [label="apiGateway\n[verifica JWT]"];
+  projects [label="projects (orquestrador)\n[fecho atómico do lote «tática: TAT-01»;\nvalidação de token «tática: TAT-01/TAT-06»]",
+            fillcolor="#FDECE1", color="#C76C1B", penwidth=1.8];
+  wsgw     [label="wsGateway\n(Socket.IO)"];
+  worker   [label="video_tool\n[N réplicas (2 no ensaio) «tática: TAT-01»]",
+            fillcolor="#FDECE1", color="#C76C1B", penwidth=1.8];
+  mongo    [shape=cylinder, style=filled, fillcolor="#FDECE1", color="#C76C1B",
+            penwidth=1.8, label="MongoDB\n[collection processingRun «tática: TAT-04»]"];
+  s3       [shape=cylinder, style=filled, label="S3 (SeaweedFS)\n+ volume image_data"];
+
+  subgraph cluster_rabbit {
+    label="RabbitMQ — exchange «picturas»";
+    fontname="Helvetica"; fontsize=11; style=dashed; color="#999999";
+    vq [label="video_queue", fillcolor="#FFF6DE"];
+    pq [label="project_queue", fillcolor="#FFF6DE"];
+    wq [label="ws_queue", fillcolor="#FFF6DE"];
+
+    { rank=same; vq; pq; wq; }
+  }
+
+  browser -> gw      [label="HTTPS\n/api-gateway/"];
+  gw      -> projects;
+  browser -> projects [style=dashed, color="#C76C1B", fontcolor="#C76C1B",
+                       label="consulta de estado autenticada\n«tática: TAT-04»", constraint=false];
+  projects -> vq     [label="1 mensagem por vídeo"];
+  vq      -> worker  [label="consomem"];
+  worker  -> s3      [label="staging e\nresultados"];
+  worker  -> pq      [label="progresso e\nresultado terminal"];
+  pq      -> projects;
+  projects -> mongo  [label="persiste projetos\ne estado"];
+  projects -> wq     [label="persiste e publica eventos\n«tática: TAT-04»",
+                      color="#C76C1B", fontcolor="#C76C1B"];
+  wq      -> wsgw;
+  wsgw    -> browser [label="Socket.IO\nws_queue"];
+
+  { rank=same; mongo; s3; }
+}
