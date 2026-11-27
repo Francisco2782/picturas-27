@@ -25,11 +25,11 @@
 
 #tab([Matriz de efeitos das decisões],
   tabela(
-    colunas: (1.8cm, 2.6cm, 3.4cm, 2.4cm, 2.4cm, 3.6cm, 1fr),
+    colunas: (1.6cm, 2.8cm, 3.2cm, 2.3cm, 2.4cm, 3.2cm, 1fr),
     tamanho: 8.5pt,
     [Decisão], [Desempenho], [Disponibilidade / Fiabilidade], [Segurança], [Usabilidade], [Manutenibilidade / Testabilidade], [Justificação],
-    [DA-1], [Menor espera de B. Mais RAM agregada.], [Dois resultados simultâneos preservados em P-02.], [Mesmas interfaces.], [B inicia mais cedo.], [Mais caminhos concorrentes a validar.], [Duas réplicas consomem a mesma fila com `prefetch_count=1`.],
-    [DA-2], [Mais pedidos HTTP observados.], [Recuperação de estado em 3/3 após recarregamento e reconexão.], [Controlos de cancelamento verificados por permissão.], [12/12 ações.], [Testes de reconciliação e de estado.], [O snapshot recupera a observação da execução durante falhas de ligação do browser.],
+    [DA-1], [↑ Capacidade e menor espera de B.\ ↓ Maior pico de RAM (+1,39 GB).], [↑ Fecho concorrente protegido e limpeza em falha.], [\= Mesmas fronteiras e contratos.], [↑ B inicia sem bloquear atrás de A.], [↓ Mais caminhos concorrentes a testar.], [Duas réplicas em `video_queue` com `prefetch_count=1` reduzem o tempo bloqueado. O custo de RAM é gerido mantendo 1 réplica por omissão no Compose; a complexidade concorrente é coberta pela regressão P-02.],
+    [DA-2], [↓ Mais pedidos HTTP e escritas de estado.], [↑ Recuperação 3/3 após recarregamento e reconexão.], [↑ Cancelamento verificado por permissão.], [↑ 12/12 ações sem _overlay_ bloqueante.], [↓ Requer testes de reconciliação e precedência.], [O _snapshot_ em MongoDB e a rota de estado garantem observabilidade contínua. O tráfego extra (7,75 ms de mediana no ensaio de polling) é gerido por eventos tipados e consulta sob demanda.],
   ),
 )
 ]
@@ -40,7 +40,7 @@
   tabela(
     colunas: (2.2cm, 2.2cm, 4.4cm, 1fr),
     [Decisão A], [Decisão B], [Efeito (pré-requisito, sinergia ou conflito)], [Razão / evidência],
-    [DA-1], [DA-2], [Sinergia e concorrência], [As duas configurações finais atingiram os alvos em ensaios próprios. O cliente valida o token da execução e preserva a precedência de estados terminais perante eventos fora de ordem.],
+    [DA-1], [DA-2], [Sinergia (com exigência de ordenação)], [As duas decisões atuam em planos complementares (fila de _workers_ vs. persistência e interface). Com múltiplos _workers_ ativos em simultâneo, o cliente valida o token da execução e preserva a precedência de estados terminais perante eventos fora de ordem.],
   ),
 )
 
@@ -79,7 +79,7 @@
 
 *Análise dos resultados* (por requisito não funcional):
 
-Na série oficial com uma réplica, o único consumidor executava a legendagem longa enquanto B aguardava. Na série final, o primeiro vídeo de B arrancou na segunda réplica antes de A terminar nos três ensaios. O intervalo medido começa imediatamente antes do pedido de B e acaba no primeiro arranque registado pelo worker. Inclui despacho e chegada ao worker. Os três ficheiros de capacidade têm os mesmos SHA-256 nos manifestos. A revisão da aplicação, as imagens e o limite de volumes do SeaweedFS mudaram entre as campanhas. A repetição com uma réplica e o instrumento final também registou espera pelo consumidor ocupado, com média de 82,242 s. Essa repetição usou imagens reconstruídas e acesso direto por HTTP em loopback.
+Em *capacidade* (`QS-01`), na série oficial com uma réplica, o único consumidor executava a legendagem longa enquanto B aguardava na fila. Na série final (`3cb1b74`), o primeiro vídeo de B arrancou na segunda réplica antes de A terminar nos três ensaios válidos. O intervalo medido começa imediatamente antes do pedido HTTP de B e termina no primeiro arranque registado pelo trabalhador, incluindo despacho e entrega AMQP. Os três ficheiros de entrada mantêm os mesmos SHA-256 nos manifestos; entre campanhas, alteraram-se a revisão da aplicação, as imagens e o limite de volumes do SeaweedFS. A repetição com uma réplica sob o instrumento final confirmou o mesmo comportamento de bloqueio, com espera média de 82,242 s (imagens reconstruídas e acesso direto por HTTP em loopback).
 
 #block(breakable: false, tab([Capacidade por campanha. Média e amplitude nas duas séries com o instrumento final],
   tabela(
@@ -97,32 +97,32 @@ Na série oficial com uma réplica, o único consumidor executava a legendagem l
   ),
 ))
 
-A média do pico de RAM subiu de 2,86 para 4,25 GB face à base repetida. As amplitudes dos picos de CPU sobrepõem-se. O instrumento inicial esperava pela conclusão de A para observar B. O instrumento final consulta ambos em cada ronda. As durações iniciais ficam como referência histórica, e as diferenças de imagens e de acesso limitam a atribuição das diferenças de duração ao número de réplicas.
+Confirmando o _trade-off_ previsto na matriz de efeitos, a média do pico de RAM subiu de 2,86 para 4,25 GB face à base repetida, enquanto as amplitudes dos picos de CPU se sobrepõem. Como ameaça à validade comparativa, o instrumento inicial aguardava a conclusão de A para observar B, ao passo que o instrumento final consulta ambos em cada ronda; assim, as durações iniciais permanecem como referência histórica, e as diferenças de imagens e de acesso limitam a atribuição das variações de duração absoluta apenas ao número de réplicas.
 
-Os valores finais de QS-01 e QS-02 correspondem à campanha da revisão `3cb1b74`; os ensaios, configurações e resultados individuais estão registados em `docs/sessoes/2026-11-24-validacao-final-3cb1b74.md`.
+Os valores finais de `QS-01` e `QS-02` correspondem à campanha da revisão `3cb1b74`, com os ensaios e dados individuais registados em `docs/sessoes/2026-11-24-validacao-final-3cb1b74.md`.
 
-Em operabilidade, A manteve o estado visível nas quatro ações de cada ensaio final. A navegação, o recarregamento e a reconexão tiveram 3/3 recuperações cada, sem conclusões prematuras; os três ensaios medidos tiveram downloads HTTP 200. A base registou 6/12 ações e 0/3 recuperações por navegação e por recarregamento. A duração média das legendas passou de 6,029 para 7,243 s. Foram observados 28 pedidos de API por ensaio na base e 40, 41 e 41 na revisão `3cb1b74`, com 6 pedidos de estado na base e 9 em cada ensaio final. Os totais incluem navegação, hidratação e a reconexão explícita do teste final. A base registou zero eventos de progresso reconhecíveis, pelo que a comparação de duplicados e ordem carece de observações equivalentes.
+Em *operabilidade* (`QS-02`), o projeto A manteve o estado visível nas quatro ações de cada ensaio final. A navegação, o recarregamento e a reconexão registaram 3/3 recuperações cada, sem conclusões prematuras e com downloads HTTP 200 nos três ensaios. A baseline tinha registado 6/12 ações e 0/3 recuperações por navegação e por recarregamento. A duração média das legendas passou de 6,029 para 7,243 s. Observaram-se 28 pedidos de API por ensaio na base e 40, 41 e 41 na revisão `3cb1b74` (com 6 pedidos de estado na base e 9 em cada ensaio final), refletindo navegação, hidratação e a reconexão explícita. Como a base registou zero eventos de progresso reconhecíveis, a comparação direta de duplicados e ordenação carece de observações equivalentes.
 
-Num ensaio complementar com quatro pares e o mesmo vídeo de 10 s, uma consulta de estado por segundo acrescentou quatro pedidos e 1 048 bytes de corpo HTTP em quatro segundos. A mediana por pedido foi 7,75 ms. Os tempos de conclusão variaram em ambos os sentidos entre pares. O ensaio quantifica o custo HTTP de um observador. O custo em CPU e memória fica por medir.
+Num ensaio complementar com quatro pares sobre o mesmo vídeo de 10 s, uma consulta de estado por segundo acrescentou quatro pedidos e 1 048 bytes de corpo HTTP em quatro segundos (mediana de 7,75 ms por pedido), quantificando o custo HTTP de um observador; o respetivo custo em CPU e memória fica por medir.
 
 #pagebreak(weak: true)
 == Preservação funcional
 
-R-01 a R-04 passaram na validação de 22/11 com 38 testes Node, 76 testes do worker, 14 testes do instrumento e o build de produção do frontend.
+Em alinhamento com o método de _refactoring_, a preservação do comportamento externo foi verificada através de uma suíte de testes de auto-verificação e regressão. `R-01` a `R-04` passaram na validação de 22/11 com 38 testes Node, 76 testes do trabalhador de vídeo, 14 testes do instrumento e o _build_ de produção do frontend.
 
-QS-03 foi uma verificação complementar de regressão da DA-1 (QS-01). Ao validar dois consumidores na mesma fila, verificámos se o processamento em lote preservava a reentrega, o resultado e a limpeza de ficheiros após uma interrupção. As primeiras provas revelaram ficheiros parciais após interromper um worker e perda do trabalho em curso após reiniciar o RabbitMQ. Depois das correções, as quatro provas recuperaram o mesmo trabalho, publicaram um MP4 descarregável e deixaram zero novos ficheiros parciais. Os requisitos selecionados mantêm-se QS-01 e QS-02. A suite do worker passou a 77 testes no seguimento QS-03 e a regressão de extração publicou quatro PNGs descarregáveis a partir de dois vídeos.
+`QS-03` funcionou como verificação complementar de regressão da `DA-1` (`QS-01`), avaliando reentrega, integridade de resultado e limpeza após interrupção com dois consumidores na mesma fila. As primeiras provas revelaram ficheiros parciais órfãos após interromper um trabalhador e perda do trabalho em curso após reiniciar o RabbitMQ. Após as correções, as quatro provas retomaram o mesmo trabalho, publicaram um MP4 descarregável e deixaram zero novos ficheiros parciais. Os requisitos selecionados mantêm-se `QS-01` e `QS-02`; a suíte do trabalhador passou a 77 testes e a regressão de extração publicou quatro PNGs descarregáveis a partir de dois vídeos.
 
-F8 corrigiu uma falha herdada de reembolso da quota de vídeo ao cancelar. Foi verificada em separado com contas gratuitas, incluindo cancelamentos concorrentes, uma repetição após indisponibilidade temporária e um projeto partilhado. As campanhas dos dois requisitos usaram contas premium.
+`F8` corrigiu uma falha herdada de reembolso da quota de vídeo ao cancelar, verificada separadamente com contas gratuitas (cancelamentos concorrentes, repetição após indisponibilidade temporária e projeto partilhado), uma vez que as campanhas principais usaram contas premium.
 
-No seguimento de F2 e F3, três regressões em MongoDB verificaram a preservação do estado terminal após uma edição e a aceitação de eventos pela ordem de cada vídeo. Pela API, renomear um projeto durante a execução preservou os dois resultados descarregáveis e o teste de reembolso voltou a passar. As medições comparativas acima são da campanha anterior a este seguimento.
+No seguimento de `F2` e `F3`, três regressões em MongoDB verificaram a preservação do estado terminal após edição e a aceitação de eventos pela ordem de cada vídeo. Pela API, renomear um projeto durante a execução preservou os dois resultados descarregáveis e o teste de reembolso voltou a passar (as medições comparativas acima pertencem à campanha imediatamente anterior a este seguimento).
 
 #tab([Preservação funcional e testes de regressão],
   tabela(
     colunas: (2.4cm, 3.8cm, 2.8cm, 3.2cm, 1fr),
     tamanho: 8.5pt,
     [Zona alterada], [Testes de regressão existentes (`Tools/video/tests`, `projects/tests`, …)], [Lacunas de teste], [Testes acrescentados], [Resultado (imagem e vídeo)],
-    [DA-1, orquestração], [`projects/tests`, `Tools/video/tests`], [Conclusões simultâneas e perda de resultados.], [Barreira controlada e prova com MongoDB e armazenamento reais (P-02).], [Dois resultados distintos e descarregáveis.],
-    [DA-2, estado e frontend], [Testes do orquestrador e do estado no frontend.], [Tokens antigos, ordem, permissões e cancelamento durante navegação.], [Regressão A/B e F5 em Chromium.], [Primeira visita a estados terminais, permissões e respostas 204 e 409 verificadas.],
+    [DA-1, orquestração], [`projects/tests`, `Tools/video/tests`], [Conclusões simultâneas, perda de resultados e órfãos em queda.], [Barreira controlada, prova com MongoDB e armazenamento reais (P-02) e interrupções QS-03.], [Dois resultados distintos descarregáveis; 4 PNGs na extração; zero órfãos em QS-03.],
+    [DA-2, estado e frontend], [Testes do orquestrador e do estado no frontend.], [Tokens antigos, ordem, permissões e cancelamento durante navegação.], [Regressão A/B e F5 em Chromium; regressões F2/F3 em MongoDB.], [Primeira visita a estados terminais, permissões e respostas 204 e 409 verificadas.],
   ),
 )
 
@@ -131,7 +131,7 @@ No seguimento de F2 e F3, três regressões em MongoDB verificaram a preservaç�
     colunas: (3.4cm, 3.2cm, 4cm, 3.2cm),
     tamanho: 8.5pt,
     [Risco], [Funcionalidade afetada (imagem / vídeo)], [Mitigação], [Teste de regressão],
-    [Perder resultados num fecho concorrente], [Vídeo e lotes mistos], [Atualização condicional e verificação do lote.], [P-02 e regressão com MongoDB e armazenamento.],
-    [Publicar resultados parciais após falha], [Imagem e vídeo], [Publicação condicionada ao estado do lote.], [Imagem só, vídeo só e lote misto com ZIP íntegro. Falha em lote misto com zero resultados publicados.],
+    [Perder resultados num fecho concorrente], [Vídeo e lotes mistos], [Atualização condicional atómica e verificação do lote.], [P-02 e regressão com MongoDB e armazenamento reais.],
+    [Publicar resultados parciais após falha], [Imagem e vídeo], [Publicação condicionada ao estado do lote.], [Imagem só, vídeo só e lote misto com ZIP íntegro; falha em lote misto com zero resultados publicados.],
   ),
 )
