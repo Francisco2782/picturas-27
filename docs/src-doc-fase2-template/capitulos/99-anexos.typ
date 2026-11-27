@@ -120,6 +120,12 @@ python3 instruments/summarize.py dynamic --runs 3
 
 A recontagem confirma a média de 7,902 s nos três ensaios válidos. Estes comandos recontam observações arquivadas; não repetem os ensaios no sistema.
 
+== Repetição independente
+
+A reprodução independente deve ser feita numa stack separada e registada para a entrega. O documento `evaluation/phase2-reproduction.md` descreve o ambiente, as versões, as entradas e os comandos necessários. Para evitar confundir dados arquivados com novas medições, cada membro deve guardar uma cópia dos logs, o resultado dos checksums, a versão Git testada e as ações individuais por ensaio.
+
+Os resultados desta reprodução independente não substituem, nem reescrevem, os valores das campanhas já arquivadas. Qualquer diferença deve ser apresentada como observação nova, com ambiente e método comparável documentados.
+
 = Glossário
 
 #tabela(

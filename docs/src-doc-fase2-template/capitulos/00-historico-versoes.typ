@@ -18,4 +18,5 @@
   [v1.0], [26/11/2026], [Revisão global de escrita], [PL3-G5],
   [v1.1], [27/11/2026], [Correções de referências, registo da elasticidade do vídeo e instruções de reprodução.], [PL3-G5],
   [v1.2], [27/11/2026], [Revisão de coerência arquitetural, resultados, utilização de IA e passos de reprodução.], [PL3-G5],
+  [v1.3], [27/11/2026], [Ampliação da rastreabilidade da utilização de IA, distinção entre recontagem e reprodução independente e síntese do estado final.], [PL3-G5],
 )
